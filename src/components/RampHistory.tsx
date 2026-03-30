@@ -203,7 +203,12 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
               type="application/pdf"
               className="w-full h-full absolute inset-0 z-10 bg-white" 
             >
-               <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-500 font-bold">目前不支援 PDF 預覽，或是系統找不到該檔案。</div>
+               <div className="w-full h-full flex flex-col gap-3 items-center justify-center bg-slate-100 text-slate-600 font-bold p-6 text-center shadow-inner">
+                 <span>系統暫不支援即時 PDF 預覽，或是系統找不到該檔案。</span>
+                 <a href={`/${selectedHighway}-${selectedInterchange}.pdf`} target="_blank" rel="noreferrer" className="px-5 py-2.5 bg-[#00488d] text-white rounded-xl text-sm shadow hover:bg-[#005fb8] transition-colors hover:shadow-md cursor-pointer inline-flex">
+                   點此另開視窗下載 / 檢視 PDF
+                 </a>
+               </div>
             </object>
           </div>
         </div>

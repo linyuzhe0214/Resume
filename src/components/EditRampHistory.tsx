@@ -79,40 +79,16 @@ export default function EditRampHistory({ segment, availableRamps, onChange, onS
         <section className="space-y-3">
           <h2 className="font-black text-sm uppercase tracking-wider text-slate-500 ml-2">施工履歷內容</h2>
           <div className="bg-white p-6 rounded-2xl space-y-5 shadow-sm border border-slate-100">
-            {/* Ramp Selection */}
+            {/* Ramp Input */}
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400">匝道編碼 / 名稱 (RAMP)</label>
-              <div className="relative">
-                <select
-                  className="w-full bg-slate-50 border-none h-12 px-4 pr-10 rounded-xl focus:ring-2 focus:ring-[#005fb8]/20 font-black text-slate-800 appearance-none"
-                  value={formData.rampId}
-                  onChange={(e) => {
-                    if (!availableRamps) return;
-                    const selected = availableRamps.find(r => r.rampId === e.target.value);
-                    if (selected) {
-                      handleChange({
-                        ...formData,
-                        rampId: selected.rampId,
-                        rampName: selected.rampName,
-                        rampNo: selected.rampNo,
-                        length: selected.length,
-                        highway: selected.highway,
-                        interchange: selected.interchange,
-                        startMileage: 0,
-                        endMileage: selected.length
-                      });
-                    }
-                  }}
-                >
-                  <option value="" disabled>請選擇匝道</option>
-                  {Array.from(new Map((availableRamps || []).map(r => [r.rampId, r])).values()).map(r => (
-                    <option key={r.rampId} value={r.rampId}>
-                      {r.rampId} - {r.rampName} ({r.rampNo})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              </div>
+              <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400">匝道編碼 (RAMP ID)</label>
+              <input
+                type="text"
+                className="w-full bg-slate-50 border-none h-12 px-4 rounded-xl focus:ring-2 focus:ring-[#005fb8]/20 font-black text-slate-800"
+                value={formData.rampId}
+                onChange={(e) => handleChange({...formData, rampId: e.target.value})}
+                placeholder="請輸入匝道編碼 (例如 R-045-22)"
+              />
             </div>
 
             {/* Property */}
