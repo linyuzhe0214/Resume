@@ -296,9 +296,63 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'surface' | 'mainline' | 'ramp' | 'planning'>('surface');
   const [subPage, setSubPage] = useState<'none' | 'editSegment' | 'editPavement' | 'editRamp' | 'editRampHistory' | 'editRampHistoryPavement'>('none');
 
-  const [segments, setSegments] = useState<Segment[]>(initialSegments);
-  const [planningSegments, setPlanningSegments] = useState<Segment[]>(initialPlanningSegments);
-  const [rampSegments, setRampSegments] = useState<RampSegment[]>(initialRampSegments);
+  const [segments, setSegments] = useState<Segment[]>(() => {
+    try {
+      const saved = localStorage.getItem('segments');
+      if (saved !== null) return JSON.parse(saved);
+    } catch(e) {}
+    return initialSegments;
+  });
+  const [planningSegments, setPlanningSegments] = useState<Segment[]>(() => {
+    try {
+      const saved = localStorage.getItem('planningSegments');
+      if (saved !== null) return JSON.parse(saved);
+    } catch(e) {}
+    return initialPlanningSegments;
+  });
+  const [rampSegments, setRampSegments] = useState<RampSegment[]>(() => {
+    try {
+      const saved = localStorage.getItem('rampSegments');
+      if (saved !== null) return JSON.parse(saved);
+    } catch(e) {}
+    return initialRampSegments;
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('segments', JSON.stringify(segments));
+  }, [segments]);
+  useEffect(() => {
+    localStorage.setItem('planningSegments', JSON.stringify(planningSegments));
+  }, [planningSegments]);
+  useEffect(() => {
+    localStorage.setItem('rampSegments', JSON.stringify(rampSegments));
+  }, [rampSegments]);
+
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const val = searchQuery.trim().toLowerCase();
+      if (val.includes('k+')) {
+        const parts = val.split('k+');
+        if (parts.length === 2) {
+          const km = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10);
+          if (!isNaN(km) && !isNaN(m)) {
+            const newMileage = km * 1000 + m;
+            setMileage(newMileage);
+            setToast({ message: `已定位至 ${km}k+${m.toString().padStart(3, '0')}`, type: 'success' });
+            return;
+          }
+        }
+      }
+      
+      const num = parseInt(val, 10);
+      if (!isNaN(num) && num >= 0 && !val.includes('k+')) {
+        setMileage(num);
+        setToast({ message: `已定位至 ${formatMileage(num)}`, type: 'success' });
+      }
+    }
+  };
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [editingRampId, setEditingRampId] = useState<string | null>(null);
   const [draftSegment, setDraftSegment] = useState<Segment | null>(null);
@@ -739,7 +793,10 @@ export default function App() {
           <input 
             type="text" 
             className="bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-white/50 focus:border-white/50 block w-full pl-10 p-2 placeholder-blue-200/70 outline-none transition-all" 
-            placeholder="搜尋里程、設施或關鍵字..." 
+            placeholder="搜尋里程 (例如: 166k+500 或 166500)..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearch}
           />
         </div>
       </header>
