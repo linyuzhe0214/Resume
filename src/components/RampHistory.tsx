@@ -199,13 +199,15 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
             </span>
             <iframe 
               key={`${selectedHighway}-${selectedInterchange}`}
-              src={`/${selectedHighway}-${selectedInterchange}.pdf`} 
+              // @ts-ignore
+              src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf`} 
               className="w-full h-full absolute inset-0 z-10 bg-white border-0" 
               title={`${selectedHighway}-${selectedInterchange} 匝道路網圖`}
             >
                <div className="w-full h-full flex flex-col gap-3 items-center justify-center bg-slate-100 text-slate-600 font-bold p-6 text-center shadow-inner">
                  <span>您的瀏覽器不支援即時 PDF 預覽，或系統找不到該檔案。</span>
-                 <a href={`/${selectedHighway}-${selectedInterchange}.pdf`} target="_blank" rel="noreferrer" className="px-5 py-2.5 bg-[#00488d] text-white rounded-xl text-sm shadow hover:bg-[#005fb8] transition-colors hover:shadow-md cursor-pointer inline-flex">
+                 {/* @ts-ignore */}
+                 <a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf`} target="_blank" rel="noreferrer" className="px-5 py-2.5 bg-[#00488d] text-white rounded-xl text-sm shadow hover:bg-[#005fb8] transition-colors hover:shadow-md cursor-pointer inline-flex">
                    點此另開視窗下載 / 檢視 PDF
                  </a>
                </div>

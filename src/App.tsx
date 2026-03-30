@@ -296,38 +296,72 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'surface' | 'mainline' | 'ramp' | 'planning'>('surface');
   const [subPage, setSubPage] = useState<'none' | 'editSegment' | 'editPavement' | 'editRamp' | 'editRampHistory' | 'editRampHistoryPavement'>('none');
 
+  const MAINLINE_URL = 'https://script.google.com/macros/s/AKfycbwFnImk16G7FulPiUxnBb_dd79RwH4k_16CREqsoDOzpYQ79GUR_E-aLWSMzVKol8rw/exec';
+  const RAMP_URL = 'https://script.google.com/macros/s/AKfycbxi2T-7P4BQv-KWJqEHNzL_P3iZ4zTwhHjPxFVk6Fp3qBUdVMsbxx_4sdww4r-tthL0/exec';
+
+  const [loadingData, setLoadingData] = useState(true);
+
+  // Initialize from LocalStorage as fallback
   const [segments, setSegments] = useState<Segment[]>(() => {
-    try {
-      const saved = localStorage.getItem('segments');
-      if (saved !== null) return JSON.parse(saved);
-    } catch(e) {}
+    try { const saved = localStorage.getItem('segments'); if (saved !== null) return JSON.parse(saved); } catch(e) {}
     return initialSegments;
   });
   const [planningSegments, setPlanningSegments] = useState<Segment[]>(() => {
-    try {
-      const saved = localStorage.getItem('planningSegments');
-      if (saved !== null) return JSON.parse(saved);
-    } catch(e) {}
+    try { const saved = localStorage.getItem('planningSegments'); if (saved !== null) return JSON.parse(saved); } catch(e) {}
     return initialPlanningSegments;
   });
   const [rampSegments, setRampSegments] = useState<RampSegment[]>(() => {
-    try {
-      const saved = localStorage.getItem('rampSegments');
-      if (saved !== null) return JSON.parse(saved);
-    } catch(e) {}
+    try { const saved = localStorage.getItem('rampSegments'); if (saved !== null) return JSON.parse(saved); } catch(e) {}
     return initialRampSegments;
   });
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Fetch data from Google Apps Script on mount
   useEffect(() => {
-    localStorage.setItem('segments', JSON.stringify(segments));
-  }, [segments]);
-  useEffect(() => {
-    localStorage.setItem('planningSegments', JSON.stringify(planningSegments));
-  }, [planningSegments]);
-  useEffect(() => {
-    localStorage.setItem('rampSegments', JSON.stringify(rampSegments));
-  }, [rampSegments]);
+    const fetchData = async () => {
+      try {
+        const [mainlineRes, rampRes] = await Promise.all([
+          fetch(`${MAINLINE_URL}?action=getMainline`),
+          fetch(`${RAMP_URL}?action=getRamp`)
+        ]);
+        const mainlineData = await mainlineRes.json();
+        const rampData = await rampRes.json();
+        
+        if (Array.isArray(mainlineData) && mainlineData.length > 0) {
+          const main = mainlineData.filter((s: any) => s.type !== 'planning');
+          const plan = mainlineData.filter((s: any) => s.type === 'planning');
+          if (main.length > 0) setSegments(main);
+          if (plan.length > 0) setPlanningSegments(plan);
+        }
+        if (Array.isArray(rampData) && rampData.length > 0) {
+          setRampSegments(rampData);
+        }
+        setToast({ message: '雲端資料載入成功', type: 'success' });
+      } catch (error) {
+        console.error('Failed to fetch from GAS:', error);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Save state to LocalStorage for offline capability & redundancy
+  useEffect(() => { localStorage.setItem('segments', JSON.stringify(segments)); }, [segments]);
+  useEffect(() => { localStorage.setItem('planningSegments', JSON.stringify(planningSegments)); }, [planningSegments]);
+  useEffect(() => { localStorage.setItem('rampSegments', JSON.stringify(rampSegments)); }, [rampSegments]);
+
+  // GAS Sync Helpers
+  const syncGas = async (url: string, action: string, sheetName: string, recordOrId: any, isDelete = false) => {
+    try {
+      const payload = isDelete 
+        ? { action, sheetName, id: recordOrId }
+        : { action, sheetName, record: recordOrId };
+      await fetch(url, { method: 'POST', body: JSON.stringify(payload) });
+    } catch (e) {
+      console.error(`GAS Sync Error [${action}]:`, e);
+    }
+  };
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -785,19 +819,36 @@ export default function App() {
           </div>
         </div>
         
-        {/* Search Bar */}
-        <div className="relative w-full">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search className="w-4 h-4 text-blue-200" />
+        {/* Advanced Location Search */}
+        <div className="flex w-full gap-2">
+          <select 
+            className="flex-1 bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-white/50 px-2 py-2.5 outline-none font-bold placeholder-blue-200/50 appearance-none text-center"
+            value={highwayName}
+            onChange={(e) => setHighwayName(e.target.value)}
+          >
+            {[1,2,3,4,5,6,8,10].map(h => (
+              <option key={h} className="text-black" value={`國道${h}號`}>國道{h}號</option>
+            ))}
+          </select>
+          <select 
+            className="flex-1 bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-white/50 px-2 py-2.5 outline-none font-bold appearance-none text-center"
+            value={direction}
+            onChange={(e) => setDirection(e.target.value)}
+          >
+            {['南下車道', '北上車道', '東向車道', '西向車道', '雙向'].map(d => (
+              <option key={d} className="text-black" value={d}>{d}</option>
+            ))}
+          </select>
+          <div className="flex-[2] relative">
+            <input 
+              type="text" 
+              className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-white/50 px-3 py-2.5 placeholder-blue-200/50 outline-none transition-all font-bold" 
+              placeholder="搜尋里程 (例: 166k+500)" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearch}
+            />
           </div>
-          <input 
-            type="text" 
-            className="bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-white/50 focus:border-white/50 block w-full pl-10 p-2 placeholder-blue-200/70 outline-none transition-all" 
-            placeholder="搜尋里程 (例如: 166k+500 或 166500)..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearch}
-          />
         </div>
       </header>
 
