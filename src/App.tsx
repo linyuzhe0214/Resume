@@ -320,6 +320,36 @@ export default function App() {
     }
   }, [toast]);
 
+  // Auto-load KML as the "database" logic
+  useEffect(() => {
+    fetch('/route.kml')
+      .then(res => res.text())
+      .then(kmlText => {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(kmlText, "text/xml");
+        const lineStrings = xmlDoc.getElementsByTagName("LineString");
+        if (lineStrings.length > 0) {
+          const coordsText = lineStrings[0].getElementsByTagName("coordinates")[0]?.textContent;
+          if (coordsText) {
+            const coords = coordsText.trim().split(/\s+/).map(coord => {
+              const [lon, lat] = coord.split(',').map(Number);
+              return [lon, lat];
+            });
+            if (coords.length >= 2) {
+              const line = turf.lineString(coords);
+              setHighwayLine(line);
+              const placemark = lineStrings[0].closest('Placemark');
+              const nameNode = placemark?.getElementsByTagName('name')[0];
+              if (nameNode?.textContent) {
+                setHighwayName(nameNode.textContent);
+              }
+            }
+          }
+        }
+      })
+      .catch(err => console.error('Failed to load local KML routing database:', err));
+  }, []);
+
   // Geolocation
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -363,52 +393,6 @@ export default function App() {
 
     return () => navigator.geolocation.clearWatch(watchId);
   }, [highwayLine]);
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const kmlText = event.target?.result as string;
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(kmlText, "text/xml");
-        
-        // Extract first LineString
-        const lineStrings = xmlDoc.getElementsByTagName("LineString");
-        if (lineStrings.length > 0) {
-          const coordsText = lineStrings[0].getElementsByTagName("coordinates")[0]?.textContent;
-          if (coordsText) {
-            const coords = coordsText.trim().split(/\s+/).map(coord => {
-              const [lon, lat] = coord.split(',').map(Number);
-              return [lon, lat];
-            });
-            
-            if (coords.length >= 2) {
-              const line = turf.lineString(coords);
-              setHighwayLine(line);
-              
-              // Try to get name from Placemark
-              const placemark = lineStrings[0].closest('Placemark');
-              const nameNode = placemark?.getElementsByTagName('name')[0];
-              if (nameNode?.textContent) {
-                setHighwayName(nameNode.textContent);
-              }
-              
-              alert('KML 載入成功，開始計算里程');
-            }
-          }
-        } else {
-          alert('KML 檔案中未找到 LineString');
-        }
-      } catch (err) {
-        console.error(err);
-        alert('解析 KML 失敗');
-      }
-    };
-    reader.readAsText(file);
-  };
 
   const formatMileage = (meters: number) => {
     const km = Math.floor(meters / 1000);
@@ -759,15 +743,6 @@ export default function App() {
           />
         </div>
       </header>
-
-      {/* Upload KML Button */}
-      <div className="flex justify-end px-1">
-        <label className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm text-xs font-bold text-slate-600 cursor-pointer hover:bg-slate-50 transition-colors">
-          <Upload className="w-4 h-4" />
-          上傳 KML 路線檔
-          <input type="file" accept=".kml" className="hidden" onChange={handleFileUpload} />
-        </label>
-      </div>
 
       {/* Location Section */}
       {activeTab === 'surface' && (

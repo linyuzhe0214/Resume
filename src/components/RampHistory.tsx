@@ -14,20 +14,18 @@ interface RampHistoryProps {
 export default function RampHistory({ rampSegments, onNavigateToEditDetails, onNavigateToEditHistory, onDeleteRamp }: RampHistoryProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingRampId, setDeletingRampId] = useState<string | null>(null);
-  const highways = useMemo(() => {
-    return Array.from(new Set(rampSegments.map(r => r.highway)));
-  }, [rampSegments]);
+  const HIGHWAY_INTERCHANGE_MAP: Record<string, string[]> = {
+    '國道1號': ['豐原交流道', '大雅系統', '大雅交流道', '台中交流道', '南屯交流道', '王田交流道'],
+    '國道3號': ['彰化系統', '和美交流道'],
+    '國道4號': ['后豐交流道', '豐勢交流道', '潭子交流道', '潭子系統']
+  };
 
-  const [selectedHighway, setSelectedHighway] = useState<string>(highways[0] || '');
+  const highways = Object.keys(HIGHWAY_INTERCHANGE_MAP);
+  const [selectedHighway, setSelectedHighway] = useState<string>('國道1號');
 
-  const interchanges = useMemo(() => {
-    const filtered = rampSegments.filter(r => r.highway === selectedHighway);
-    return Array.from(new Set(filtered.map(r => r.interchange)));
-  }, [rampSegments, selectedHighway]);
+  const interchanges = HIGHWAY_INTERCHANGE_MAP[selectedHighway] || [];
+  const [selectedInterchange, setSelectedInterchange] = useState<string>(interchanges[0] || '');
 
-  const [selectedInterchange, setSelectedInterchange] = useState<string>('');
-
-  // Update selectedInterchange when highway changes
   React.useEffect(() => {
     if (interchanges.length > 0 && !interchanges.includes(selectedInterchange)) {
       setSelectedInterchange(interchanges[0]);
@@ -95,7 +93,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
     else if (combinedType.includes('AB')) color = '#7f7f7f';
     else if (combinedType.includes('DG')) color = '#ffc000';
 
-    return { color, depth, label: `${depth}cm ${combinedType}` };
+    return { color, depth, label: `${combinedType}` };
   };
 
   const getLegendItems = () => {
@@ -185,8 +183,111 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
         </div>
       </header>
 
-      {/* Section 2: Construction History (Length-based Visualization) */}
+            {/* Section 2: Road Network Map */}
       <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+        <div className="p-6 border-b border-slate-100 bg-slate-50/30">
+          <h3 className="font-black text-lg tracking-tight text-slate-800 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-[#00488d]" /> 匝道路網圖
+          </h3>
+        </div>
+        <div className="p-4 bg-slate-50 flex justify-center items-center align-middle">
+          <div className="w-full max-w-4xl aspect-[16/9] bg-slate-100/50 rounded-xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center shadow-inner">
+            <span className="text-slate-400 font-bold mb-2 flex flex-col items-center gap-2">
+              <MapPin className="w-8 h-8 opacity-50" />
+              無對應交流道之 PDF
+              <span className="text-xs font-normal">({`/${selectedHighway}-${selectedInterchange}.pdf`})</span>
+            </span>
+            <object 
+              key={`${selectedHighway}-${selectedInterchange}`}
+              data={`/${selectedHighway}-${selectedInterchange}.pdf`} 
+              type="application/pdf"
+              className="w-full h-full absolute inset-0 z-10 bg-white" 
+            >
+               <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-500 font-bold">目前不支援 PDF 預覽，或是系統找不到該檔案。</div>
+            </object>
+          </div>
+        </div>
+      </section>
+
+{/* Section 3: Ramp Detailed Data Table */}
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+        <div className="p-6 flex justify-between items-center border-b border-slate-100 bg-slate-50/30">
+          <h3 className="font-black text-lg tracking-tight text-slate-800">匝道詳細資料 (Ramp Detailed Data)</h3>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => onNavigateToEditDetails()}
+              className="flex items-center gap-2 px-4 py-2 bg-[#00488d] text-white rounded-xl text-xs font-bold hover:bg-[#005fb8] transition-all shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" /> 新增資料
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm">
+              <Download className="w-3.5 h-3.5" /> 匯出報表
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝道編碼</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝道名稱</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝環道名稱</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝道長度 (m)</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">備註</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {groupedRamps.map((group) => {
+                const ramp = group.segments[0];
+                if (!ramp) return null;
+                return (
+                <tr key={group.rampId} className="hover:bg-slate-50/80 transition-colors group">
+                  <td className="px-6 py-5">
+                    <span className="font-black text-[#00488d]">{ramp.rampId}</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="font-bold text-slate-700">{ramp.rampName}</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="font-bold text-slate-600">{ramp.rampNo}</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="font-mono font-bold text-slate-800">{ramp.length}</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="text-xs font-medium text-slate-500 italic">
+                      {ramp.notes || '無備註'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-center">
+                    <div className="flex items-center justify-center gap-3">
+                      <button 
+                        onClick={() => onNavigateToEditDetails(ramp.id)}
+                        className="text-[#005fb8] font-black text-xs hover:underline"
+                      >
+                        修改
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setDeletingRampId(ramp.rampId);
+                          setShowDeleteConfirm(true);
+                        }}
+                        className="text-red-600 font-black text-xs hover:underline"
+                      >
+                        刪除
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )})}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Section 2: Construction History (Length-based Visualization) */}
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
           <h3 className="font-black text-lg tracking-tight text-slate-800 flex items-center gap-2">
             <Layers className="w-5 h-5 text-[#00488d]" /> 施工履歷 (Construction History)
@@ -346,83 +447,6 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Section 3: Ramp Detailed Data Table */}
-      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-6 flex justify-between items-center border-b border-slate-100 bg-slate-50/30">
-          <h3 className="font-black text-lg tracking-tight text-slate-800">匝道詳細資料 (Ramp Detailed Data)</h3>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => onNavigateToEditDetails()}
-              className="flex items-center gap-2 px-4 py-2 bg-[#00488d] text-white rounded-xl text-xs font-bold hover:bg-[#005fb8] transition-all shadow-sm"
-            >
-              <Plus className="w-3.5 h-3.5" /> 新增資料
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm">
-              <Download className="w-3.5 h-3.5" /> 匯出報表
-            </button>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50">
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝道編碼</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝道名稱</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝環道名稱</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝道長度 (m)</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">備註</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {groupedRamps.map((group) => {
-                const ramp = group.segments[0];
-                if (!ramp) return null;
-                return (
-                <tr key={group.rampId} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="px-6 py-5">
-                    <span className="font-black text-[#00488d]">{ramp.rampId}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="font-bold text-slate-700">{ramp.rampName}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="font-bold text-slate-600">{ramp.rampNo}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="font-mono font-bold text-slate-800">{ramp.length}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="text-xs font-medium text-slate-500 italic">
-                      {ramp.notes || '無備註'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <div className="flex items-center justify-center gap-3">
-                      <button 
-                        onClick={() => onNavigateToEditDetails(ramp.id)}
-                        className="text-[#005fb8] font-black text-xs hover:underline"
-                      >
-                        修改
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setDeletingRampId(ramp.rampId);
-                          setShowDeleteConfirm(true);
-                        }}
-                        className="text-red-600 font-black text-xs hover:underline"
-                      >
-                        刪除
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )})}
-            </tbody>
-          </table>
         </div>
       </section>
 

@@ -45,7 +45,13 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
     const periodMap: Record<string, { thickness: number; types: string[]; color: string }> = {};
     
     segments.forEach(s => {
-      s.pavementLayers.forEach(layer => {
+      if (!s.pavementLayers || s.pavementLayers.length === 0) return;
+      
+      const layerPeriods = Array.from(new Set(s.pavementLayers.map(l => l.month))).sort((a, b) => b.localeCompare(a));
+      const latestPeriod = layerPeriods[0];
+      const latestLayers = s.pavementLayers.filter(l => l.month === latestPeriod);
+      
+      latestLayers.forEach(layer => {
         const typeAbbr = layer.type.split('(')[0].trim().toUpperCase();
         let color = '#e7e6e6';
         if (typeAbbr.includes('OG')) color = '#ffff00';
@@ -60,7 +66,7 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
         let typeName = layer.type.split('(')[0].trim();
         typeName = typeName.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim();
         
-        const label = `${layer.thickness}cm ${typeName}`;
+        const label = typeName;
         if (!periodMap[label]) {
           periodMap[label] = { thickness: layer.thickness, types: [], color };
         }
