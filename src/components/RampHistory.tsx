@@ -170,7 +170,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
 
     return Object.entries(methodMap).map(([label, data]) => ({
       label,
-      color: data.color
+      color: getColorFromLabel(label)
     }));
   };
 
@@ -402,13 +402,13 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
               >
                 <div className={cn(
                   "flex flex-col items-center justify-center py-4 border-b border-white rounded-l-md transition-shadow",
-                  idx % 4 === 0 ? "bg-[#a3f69c]/40 text-[#135d18]" :
-                  idx % 4 === 1 ? "bg-[#cbe7f5] text-[#00488d]" :
-                  idx % 4 === 2 ? "bg-[#ffdad6] text-[#ba1a1a]" :
-                  "bg-[#d6e3ff] text-[#00468b]"
+                  idx % 4 === 0 ? "bg-[#a3f69c]/40" :
+                  idx % 4 === 1 ? "bg-[#cbe7f5]" :
+                  idx % 4 === 2 ? "bg-[#ffdad6]" :
+                  "bg-[#d6e3ff]"
                 )}>
-                  <span className="font-black text-xs">{group.rampName}</span>
-                  <span className="text-[10px] font-black tracking-widest uppercase mt-0.5 opacity-70">
+                  <span className="font-black text-xs text-slate-950 drop-shadow-sm">{group.rampName}</span>
+                  <span className="text-[10px] font-black tracking-widest uppercase mt-0.5 text-slate-950 opacity-60">
                     {group.rampId}
                   </span>
                 </div>

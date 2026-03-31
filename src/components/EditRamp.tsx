@@ -51,8 +51,6 @@ export default function EditRamp({ segment, onChange, onSave, onDelete, onBack, 
     } else {
       setError(null);
     }
-    // Sync length
-    newData.length = newData.endMileage - newData.startMileage;
     
     setFormData(newData);
     onChange(newData);
@@ -174,7 +172,7 @@ export default function EditRamp({ segment, onChange, onSave, onDelete, onBack, 
                   value={formData.length}
                   onChange={(e) => {
                     const newLength = Number(e.target.value);
-                    handleChange({...formData, length: newLength});
+                    handleChange({...formData, length: newLength, endMileage: formData.startMileage + newLength});
                   }}
                   placeholder="例如: 670"
                 />
