@@ -357,7 +357,14 @@ export default function App() {
       const payload = isDelete 
         ? { action, sheetName, id: recordOrId }
         : { action, sheetName, record: recordOrId };
-      await fetch(url, { method: 'POST', body: JSON.stringify(payload) });
+      await fetch(url, { 
+        method: 'POST', 
+        body: JSON.stringify(payload),
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        }
+      });
     } catch (e) {
       console.error(`GAS Sync Error [${action}]:`, e);
     }
@@ -589,13 +596,18 @@ export default function App() {
             if (editingRampId) {
               setRampSegments(rampSegments.map(s => s.id === editingRampId ? ramp : s));
             } else {
-              setRampSegments([...rampSegments, { ...ramp, id: Math.random().toString(36).substr(2, 9) }]);
+              const newRamp = { ...ramp, id: Math.random().toString(36).substr(2, 9) };
+              ramp = newRamp;
+              setRampSegments([...rampSegments, newRamp]);
             }
+            syncGas(RAMP_URL, 'saveRamp', ramp.interchange, ramp);
             setDraftRamp(null);
             setEditingRampId(null);
             setSubPage('none');
           }}
           onDelete={(id) => {
+            const seg = rampSegments.find(s => s.id === id);
+            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.interchange, id, true);
             setRampSegments(rampSegments.filter(s => s.id !== id));
             setDraftRamp(null);
             setEditingRampId(null);
