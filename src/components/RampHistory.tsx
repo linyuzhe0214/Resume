@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, Download, Plus, Layers, ChevronDown, MapPin, Trash2 } from 'lucide-react';
+import { Download, Plus, Layers, ChevronDown, MapPin } from 'lucide-react';
 import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
+import { HIGHWAY_INTERCHANGE_MAP } from '../constants';
 
 interface RampHistoryProps {
   rampSegments: RampSegment[];
-  onNavigateToEditDetails: (rampId?: string) => void;
+  onNavigateToEditDetails: (rampId?: string, defaultHighway?: string, defaultInterchange?: string) => void;
   onNavigateToEditHistory: (rampId: string) => void;
   onDeleteRamp?: (rampId: string) => void;
 }
@@ -14,11 +15,6 @@ interface RampHistoryProps {
 export default function RampHistory({ rampSegments, onNavigateToEditDetails, onNavigateToEditHistory, onDeleteRamp }: RampHistoryProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingRampId, setDeletingRampId] = useState<string | null>(null);
-  const HIGHWAY_INTERCHANGE_MAP: Record<string, string[]> = {
-    '國道1號': ['豐原交流道', '大雅系統', '大雅交流道', '台中交流道', '南屯交流道', '王田交流道'],
-    '國道3號': ['彰化系統', '和美交流道'],
-    '國道4號': ['后豐交流道', '豐勢交流道', '潭子交流道', '潭子系統']
-  };
 
   const highways = Object.keys(HIGHWAY_INTERCHANGE_MAP);
   const [selectedHighway, setSelectedHighway] = useState<string>('國道1號');
@@ -230,7 +226,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
           <h3 className="font-black text-lg tracking-tight text-slate-800">匝道詳細資料 (Ramp Detailed Data)</h3>
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => onNavigateToEditDetails()}
+              onClick={() => onNavigateToEditDetails(undefined, selectedHighway, selectedInterchange)}
               className="flex items-center gap-2 px-4 py-2 bg-[#00488d] text-white rounded-xl text-xs font-bold hover:bg-[#005fb8] transition-all shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" /> 新增資料

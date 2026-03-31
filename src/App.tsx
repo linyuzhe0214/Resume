@@ -736,7 +736,7 @@ export default function App() {
       <div className="min-h-screen bg-[#f7f9fc]">
         <RampHistory 
           rampSegments={rampSegments}
-          onNavigateToEditDetails={(id) => {
+          onNavigateToEditDetails={(id, defaultHighway, defaultInterchange) => {
             setEditingRampId(id || null);
             if (id) {
               const ramp = rampSegments.find(s => s.id === id);
@@ -750,8 +750,8 @@ export default function App() {
                 laneCount: 1,
                 length: 0,
                 status: 'Optimal',
-                highway: '國道3號',
-                interchange: '中興系統',
+                highway: defaultHighway || '國道1號',
+                interchange: defaultInterchange || '豐原交流道',
                 property: '路堤',
                 laneCategory: '一般路段',
                 constructionYear: '113',

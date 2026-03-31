@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Edit2, Trash2, Lock, Unlock } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, Lock, Unlock, ChevronDown } from 'lucide-react';
+import { HIGHWAY_INTERCHANGE_MAP } from '../constants';
 import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
@@ -108,6 +109,40 @@ export default function EditRamp({ segment, onChange, onSave, onDelete, onBack, 
         <section className="space-y-3">
           <h2 className="font-black text-sm uppercase tracking-wider text-slate-500 ml-2">匝道詳細資料</h2>
           <div className="bg-white p-6 rounded-2xl space-y-5 shadow-sm border border-slate-100">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400">國道選擇</label>
+                <div className="relative">
+                  <select 
+                    value={formData.highway}
+                    onChange={(e) => {
+                      const highway = e.target.value;
+                      const interchanges = HIGHWAY_INTERCHANGE_MAP[highway] || [];
+                      handleChange({ ...formData, highway, interchange: interchanges[0] || '' });
+                    }}
+                    className="appearance-none w-full bg-slate-50 border-none h-12 px-4 rounded-xl focus:ring-2 focus:ring-[#005fb8]/20 font-black text-slate-800 pr-10"
+                  >
+                    {Object.keys(HIGHWAY_INTERCHANGE_MAP).map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400">交流道選擇</label>
+                <div className="relative">
+                  <select 
+                    value={formData.interchange}
+                    onChange={(e) => handleChange({...formData, interchange: e.target.value})}
+                    className="appearance-none w-full bg-slate-50 border-none h-12 px-4 rounded-xl focus:ring-2 focus:ring-[#005fb8]/20 font-black text-slate-800 pr-10"
+                  >
+                    {(HIGHWAY_INTERCHANGE_MAP[formData.highway] || []).map(i => <option key={i} value={i}>{i}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400">匝道名稱 (RAMP NAME)</label>
               <input 
