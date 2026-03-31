@@ -775,6 +775,8 @@ export default function App() {
             setSubPage('editRampHistory');
           }}
           onDeleteRamp={(rampId) => {
+            const seg = rampSegments.find(s => s.rampId === rampId);
+            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.rampName, seg.id, true);
             setRampSegments(rampSegments.filter(s => s.rampId !== rampId));
           }}
         />
