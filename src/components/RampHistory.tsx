@@ -375,24 +375,22 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
             </div>
 
             {/* Data Rows */}
-            {groupedRamps.map((group) => (
+            {groupedRamps.map((group, idx) => (
               <div 
                 key={group.rampId} 
                 className="grid grid-cols-[180px_100px_1fr] items-stretch group transition-colors"
               >
                 <div className={cn(
-                  "flex flex-col items-center justify-center py-4 border-b border-white rounded-l-md transition-colors",
-                  group.status === 'Optimal' ? "bg-green-100/80 text-green-900 border-green-50" :
-                  group.status === 'Warning' ? "bg-orange-100/80 text-orange-900 border-orange-50" :
-                  "bg-red-100/80 text-red-900 border-red-50"
+                  "flex flex-col items-center justify-center py-4 border-b border-white rounded-l-md transition-shadow",
+                  idx % 4 === 0 ? "bg-[#a3f69c]/40 text-[#135d18]" :
+                  idx % 4 === 1 ? "bg-[#cbe7f5] text-[#00488d]" :
+                  idx % 4 === 2 ? "bg-[#ffdad6] text-[#ba1a1a]" :
+                  "bg-[#d6e3ff] text-[#00468b]"
                 )}>
-                  <span className="font-black text-xs drop-shadow-sm">{group.rampName}</span>
-                  <span className={cn(
-                    "text-[10px] font-black tracking-widest uppercase mt-0.5",
-                    group.status === 'Optimal' ? "text-green-700/70" :
-                    group.status === 'Warning' ? "text-orange-700/70" :
-                    "text-red-700/70"
-                  )}>{group.rampId}</span>
+                  <span className="font-black text-xs">{group.rampName}</span>
+                  <span className="text-[10px] font-black tracking-widest uppercase mt-0.5 opacity-70">
+                    {group.rampId}
+                  </span>
                 </div>
                 <div className="flex items-center justify-center bg-yellow-50/50 font-bold text-sm text-slate-800 border-l border-slate-100 border-b border-white">
                   {group.length}
