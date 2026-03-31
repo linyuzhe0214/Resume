@@ -101,13 +101,14 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
     if (!ramp.pavementLayers || ramp.pavementLayers.length === 0) {
       if (ramp.maintenanceHistory && ramp.maintenanceHistory.length > 0) {
          const latest = ramp.maintenanceHistory[ramp.maintenanceHistory.length - 1];
+         const color = getColorFromLabel(latest.label);
          return { 
-           color: getColorFromLabel(latest.label), 
+           color, 
            depth: latest.depth || 0, 
            label: latest.label 
          };
       }
-      return { color: '#ffffff', depth: 0, label: '' };
+      return { color: '#e7e6e6', depth: 0, label: '其他/舊有' };
     }
     
     const targetMonth = ramp.constructionYear + ramp.constructionMonth;
@@ -128,9 +129,9 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
     
     filteredRamps.forEach(ramp => {
       const data = getSegmentData(ramp);
-      if (data.depth > 0) {
+      if (data.depth > 0 || data.label !== '其他/舊有') {
         const material = data.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase();
-        const label = `${data.depth}cm ${material}`;
+        const label = data.depth > 0 ? `${data.depth}cm ${material}` : material;
         if (!methodMap[label]) {
           methodMap[label] = { color: data.color };
         }
@@ -138,11 +139,10 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
       
       if (ramp.maintenanceHistory) {
         ramp.maintenanceHistory.forEach(event => {
-          const color = getColorFromLabel(event.label);
           const material = event.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase();
           const label = `${event.depth || 0}cm ${material}`;
           if (!methodMap[label]) {
-            methodMap[label] = { color };
+            methodMap[label] = { color: getColorFromLabel(event.label) };
           }
         });
       }
@@ -375,20 +375,24 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
             </div>
 
             {/* Data Rows */}
-            {groupedRamps.map((group, idx) => (
+            {groupedRamps.map((group) => (
               <div 
                 key={group.rampId} 
                 className="grid grid-cols-[180px_100px_1fr] items-stretch group transition-colors"
               >
                 <div className={cn(
-                  "flex flex-col items-center justify-center py-4 border-b border-white rounded-l-md",
-                  idx % 4 === 0 ? "bg-[#a3f69c]/40 text-[#005312]" :
-                  idx % 4 === 1 ? "bg-[#cbe7f5] text-[#00488d]" :
-                  idx % 4 === 2 ? "bg-[#ffdad6] text-[#ba1a1a]" :
-                  "bg-[#d6e3ff] text-[#00468b]"
+                  "flex flex-col items-center justify-center py-4 border-b border-white rounded-l-md transition-colors",
+                  group.status === 'Optimal' ? "bg-green-100/80 text-green-900 border-green-50" :
+                  group.status === 'Warning' ? "bg-orange-100/80 text-orange-900 border-orange-50" :
+                  "bg-red-100/80 text-red-900 border-red-50"
                 )}>
-                  <span className="font-black text-xs">{group.rampName}</span>
-                  <span className="text-[10px] font-medium opacity-60 tracking-wider uppercase mt-0.5">{group.rampId}</span>
+                  <span className="font-black text-xs drop-shadow-sm">{group.rampName}</span>
+                  <span className={cn(
+                    "text-[10px] font-black tracking-widest uppercase mt-0.5",
+                    group.status === 'Optimal' ? "text-green-700/70" :
+                    group.status === 'Warning' ? "text-orange-700/70" :
+                    "text-red-700/70"
+                  )}>{group.rampId}</span>
                 </div>
                 <div className="flex items-center justify-center bg-yellow-50/50 font-bold text-sm text-slate-800 border-l border-slate-100 border-b border-white">
                   {group.length}
