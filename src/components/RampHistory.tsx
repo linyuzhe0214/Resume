@@ -13,6 +13,26 @@ interface RampHistoryProps {
   onDeleteRamp?: (rampId: string) => void;
 }
 
+/**
+ * 根據種子字串生成穩定的淺色 (粉色系)
+ * 確保黑色文字在任何情況下都能清楚辨識
+ */
+function getStablePastelColor(seed: string) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  // 色相範圍 0-360
+  const h = Math.abs(hash % 360);
+  // 飽和度保持在 70-90% (鮮豔但不螢光)
+  const s = 70 + (Math.abs(hash % 20));
+  // 亮度維持在 88-95% (確保是淺色/粉色系)
+  const l = 88 + (Math.abs(hash % 7));
+  
+  return `hsl(${h}, ${s}%, ${l}%)`;
+}
+
 export default function RampHistory({ rampSegments, onNavigateToEditDetails, onNavigateToEditHistory, onDeleteRamp }: RampHistoryProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingRampId, setDeletingRampId] = useState<string | null>(null);
@@ -405,34 +425,31 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                     className="h-9 bg-white rounded-md shadow-inner relative z-10 overflow-hidden flex border border-slate-200" 
                     style={{ width: `${(group.length / maxLength) * 100}%` }}
                   >
-                    {/* Render all segments for this ramp */}
+                     {/* Render all segments for this ramp */}
                     {group.segments.map(ramp => {
                       const segmentData = getSegmentData(ramp);
                       const start = ramp.startMileage || 0;
                       const end = ramp.endMileage || group.length;
                       if (end <= start) return null;
                       
+                      // 使用穩定隨機淺色 (避免材質配色可能導致的深色或重複)
+                      const segmentColor = getStablePastelColor(ramp.id + ramp.constructionYear);
+                      
                       return (
                         <div
                           key={ramp.id}
                           onClick={() => onNavigateToEditHistory(ramp.id)}
-                          className="h-full absolute flex flex-col items-center justify-center text-[9px] font-bold border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer"
+                          className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10"
                           style={{ 
                             left: `${(start / group.length) * 100}%`, 
                             width: `${((end - start) / group.length) * 100}%`, 
-                            backgroundColor: segmentData.color 
+                            backgroundColor: segmentColor 
                           }}
                         >
-                          <span className={cn(
-                            "drop-shadow-sm truncate px-1",
-                            ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(segmentData.color) ? "text-slate-900" : "text-white"
-                          )}>
+                          <span className="drop-shadow-sm truncate px-1 text-[11px] font-black leading-none text-slate-950">
                             {ramp.constructionYear}
                           </span>
-                          <span className={cn(
-                            "text-[8px] font-black opacity-90",
-                            ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(segmentData.color) ? "text-slate-800" : "text-white"
-                          )}>
+                          <span className="text-[10px] font-black leading-none mt-0.5 text-slate-950">
                             {segmentData.depth}cm
                           </span>
                         </div>
@@ -445,24 +462,23 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                         const left = (event.startMileage / group.length) * 100;
                         const width = ((event.endMileage - event.startMileage) / group.length) * 100;
                         if (width <= 0) return null;
-                        const eventColor = getColorFromLabel(event.label);
+                        
+                        // 使用穩定隨機淺色
+                        const eventColor = getStablePastelColor(event.id || event.year + event.label);
+                        
                         return (
                           <div
                             key={event.id}
                             onClick={() => onNavigateToEditHistory(ramp.id)}
-                            className="h-full absolute flex flex-col items-center justify-center text-[9px] font-bold border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10"
+                            className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10"
                             style={{ left: `${left}%`, width: `${width}%`, backgroundColor: eventColor }}
                           >
-                            <span className={cn(
-                              "drop-shadow-sm truncate px-1",
-                              ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(eventColor) ? "text-slate-900" : "text-white"
-                            )}>{event.year}</span>
+                            <span className="drop-shadow-sm truncate px-1 text-[11px] font-black leading-none text-slate-950">
+                              {event.year}
+                            </span>
                             
                             {event.depth && (
-                               <span className={cn(
-                                 "text-[8px] font-black opacity-90",
-                                 ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(eventColor) ? "text-slate-800" : "text-white"
-                               )}>
+                               <span className="text-[10px] font-black leading-none mt-0.5 text-slate-950">
                                  {event.depth}cm
                                </span>
                             )}

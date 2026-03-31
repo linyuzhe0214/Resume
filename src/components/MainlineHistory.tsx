@@ -105,15 +105,11 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
         className="absolute w-full border border-black/10 flex flex-col items-center justify-center leading-none cursor-pointer hover:opacity-90 overflow-hidden group"
         style={{ top: `${top}px`, height: `${height}px`, backgroundColor: bgColor }}
       >
-        <span className={cn(
-          "font-bold",
-          ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(bgColor) ? "text-slate-900" : "text-white"
-        )}>{segment.constructionYear}</span>
-        {height >= 40 && (
-          <span className={cn(
-            "scale-90 origin-top truncate w-full text-center",
-            ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(bgColor) ? "text-slate-900" : "text-white"
-          )}>
+        <span className="font-black text-[11px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
+          {segment.constructionYear}
+        </span>
+        {height >= 35 && (
+          <span className="truncate w-full text-center font-black text-[10px] text-slate-950 leading-none mt-0.5">
             {thickness}cm
           </span>
         )}
