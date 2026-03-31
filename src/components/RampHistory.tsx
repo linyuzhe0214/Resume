@@ -130,7 +130,8 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
     filteredRamps.forEach(ramp => {
       const data = getSegmentData(ramp);
       if (data.depth > 0) {
-        const label = `${data.depth}cm ${data.label}`;
+        // Format: {depth}cm {material}
+        const label = `${data.depth}cm ${data.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase()}`;
         if (!methodMap[label]) {
           methodMap[label] = { color: data.color };
         }
@@ -139,6 +140,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
       if (ramp.maintenanceHistory) {
         ramp.maintenanceHistory.forEach(event => {
           const color = getColorFromLabel(event.label);
+          // Format: {depth}cm {material}
           const label = `${event.depth || 0}cm ${event.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase()}`;
           if (!methodMap[label]) {
             methodMap[label] = { color };
@@ -162,9 +164,13 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
 
   const scaleMarkers = useMemo(() => {
     const markers = [];
-    const step = maxLength / 5;
-    for (let i = 0; i <= 5; i++) {
-      markers.push(Math.round(i * step));
+    const step = 200; // Every 200m for cleaner look
+    for (let i = 0; i <= maxLength; i += step) {
+      markers.push(i);
+    }
+    // Always include max length if not there
+    if (markers[markers.length - 1] !== maxLength && maxLength - markers[markers.length - 1] > 50) {
+       markers.push(maxLength);
     }
     return markers;
   }, [maxLength]);
@@ -319,7 +325,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
         </div>
       </section>
 
-      {/* Section 2: Construction History (Restored Table/Bar View) */}
+      {/* Section 2: Construction History (Refined Table/Bar View) */}
       <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -342,10 +348,10 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
           {legendItems.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
               <div 
-                className="w-6 h-3 border border-black/10 rounded-sm"
+                className="w-6 h-3 border border-black/10 rounded-sm shadow-sm"
                 style={{ backgroundColor: item.color }}
               ></div>
-              <span className="text-[10px] font-bold text-slate-500">{item.label}</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{item.label}</span>
             </div>
           ))}
           {legendItems.length === 0 && (
@@ -357,52 +363,45 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
         </div>
         
         <div className="p-6 overflow-x-auto">
-          <div className="min-w-[900px] space-y-1">
+          <div className="min-w-[800px] space-y-1">
             {/* Header Row */}
-            <div className="grid grid-cols-[180px_100px_1fr_120px] items-center text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">
+            <div className="grid grid-cols-[180px_100px_1fr] items-center text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">
               <div className="text-center">匝道編碼</div>
               <div className="text-center border-l border-slate-200">車道長度 (m)</div>
               <div className="relative h-6 flex items-center px-4">
                 {scaleMarkers.map(val => (
-                  <span key={val} className="absolute text-slate-900 text-[10px]" style={{ left: `${(val / maxLength) * 100}%`, transform: 'translateX(-50%)' }}>{val}</span>
+                  <span key={val} className="absolute text-slate-900 text-[10px] font-black" style={{ left: `${(val / maxLength) * 100}%`, transform: 'translateX(-50%)' }}>{val}</span>
                 ))}
               </div>
-              <div className="text-center border-l border-slate-200">近期整修年度</div>
             </div>
 
             {/* Data Rows */}
-            {groupedRamps.map((group, idx) => {
-              const latestYear = group.segments.reduce((max, s) => {
-                 const current = parseInt(s.constructionYear || '0', 10);
-                 return current > max ? current : max;
-              }, 0);
-
-              return (
+            {groupedRamps.map((group, idx) => (
               <div 
                 key={group.rampId} 
-                className="grid grid-cols-[180px_100px_1fr_120px] items-stretch group transition-colors"
+                className="grid grid-cols-[180px_100px_1fr] items-stretch group transition-colors"
               >
                 <div className={cn(
-                  "flex flex-col items-center justify-center py-3 border-b border-white rounded-l-md",
+                  "flex flex-col items-center justify-center py-4 border-b border-white rounded-l-md",
                   idx % 4 === 0 ? "bg-[#a3f69c]/40 text-[#005312]" :
                   idx % 4 === 1 ? "bg-[#cbe7f5] text-[#00488d]" :
                   idx % 4 === 2 ? "bg-[#ffdad6] text-[#ba1a1a]" :
                   "bg-[#d6e3ff] text-[#00468b]"
                 )}>
                   <span className="font-black text-xs">{group.rampName}</span>
-                  <span className="text-[10px] font-medium opacity-60">{group.rampId}</span>
+                  <span className="text-[10px] font-medium opacity-60 tracking-wider uppercase mt-0.5">{group.rampId}</span>
                 </div>
                 <div className="flex items-center justify-center bg-yellow-50/50 font-bold text-sm text-slate-800 border-l border-slate-100 border-b border-white">
                   {group.length}
                 </div>
-                <div className="relative bg-yellow-50/50 flex items-center px-4 border-b border-white">
+                <div className="relative bg-yellow-50/50 flex items-center px-4 border-b border-white rounded-r-md">
                   {/* Grid Lines */}
                   {scaleMarkers.map(val => (
-                    <div key={val} className="absolute top-0 bottom-0 w-[1px] bg-slate-200/30" style={{ left: `${(val / maxLength) * 100}%` }}></div>
+                    <div key={val} className="absolute top-0 bottom-0 w-[1px] bg-slate-200/40" style={{ left: `${(val / maxLength) * 100}%` }}></div>
                   ))}
                   {/* Length Bar with Construction History */}
                   <div 
-                    className="h-8 bg-white rounded-md shadow-inner relative z-10 overflow-hidden flex border border-slate-200" 
+                    className="h-9 bg-white rounded-md shadow-inner relative z-10 overflow-hidden flex border border-slate-200" 
                     style={{ width: `${(group.length / maxLength) * 100}%` }}
                   >
                     {/* Render all segments for this ramp */}
@@ -410,6 +409,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                       const segmentData = getSegmentData(ramp);
                       const start = ramp.startMileage || 0;
                       const end = ramp.endMileage || group.length;
+                      if (end <= start) return null;
                       
                       return (
                         <div
@@ -429,7 +429,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                             {ramp.constructionYear}
                           </span>
                           <span className={cn(
-                            "text-[8px] opacity-90",
+                            "text-[8px] font-black opacity-90",
                             ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(segmentData.color) ? "text-slate-800" : "text-white"
                           )}>
                             {segmentData.depth}cm
@@ -443,12 +443,13 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                       ramp.maintenanceHistory?.map((event) => {
                         const left = (event.startMileage / group.length) * 100;
                         const width = ((event.endMileage - event.startMileage) / group.length) * 100;
+                        if (width <= 0) return null;
                         const eventColor = getColorFromLabel(event.label);
                         return (
                           <div
                             key={event.id}
                             onClick={() => onNavigateToEditHistory(ramp.id)}
-                            className="h-full absolute flex flex-col items-center justify-center text-[9px] font-bold border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/5"
+                            className="h-full absolute flex flex-col items-center justify-center text-[9px] font-bold border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10"
                             style={{ left: `${left}%`, width: `${width}%`, backgroundColor: eventColor }}
                           >
                             <span className={cn(
@@ -458,7 +459,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                             
                             {event.depth && (
                                <span className={cn(
-                                 "text-[8px] opacity-90",
+                                 "text-[8px] font-black opacity-90",
                                  ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(eventColor) ? "text-slate-800" : "text-white"
                                )}>
                                  {event.depth}cm
@@ -470,11 +471,8 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                     )}
                   </div>
                 </div>
-                <div className="flex items-center justify-center bg-yellow-50/50 font-black text-sm text-slate-700 border-l border-slate-200 border-b border-white rounded-r-md">
-                   {latestYear > 0 ? latestYear : '--'}
-                </div>
               </div>
-            )})}
+            ))}
           </div>
         </div>
       </section>

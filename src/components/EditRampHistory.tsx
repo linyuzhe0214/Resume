@@ -79,16 +79,39 @@ export default function EditRampHistory({ segment, availableRamps, onChange, onS
         <section className="space-y-3">
           <h2 className="font-black text-sm uppercase tracking-wider text-slate-500 ml-2">施工履歷內容</h2>
           <div className="bg-white p-6 rounded-2xl space-y-5 shadow-sm border border-slate-100">
-            {/* Ramp Input */}
+            {/* Ramp Select */}
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400">匝道編碼 (RAMP ID)</label>
-              <input
-                type="text"
-                className="w-full bg-slate-50 border-none h-12 px-4 rounded-xl focus:ring-2 focus:ring-[#005fb8]/20 font-black text-slate-800"
-                value={formData.rampId}
-                onChange={(e) => handleChange({...formData, rampId: e.target.value})}
-                placeholder="請輸入匝道編碼 (例如 R-045-22)"
-              />
+              <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400 font-sans">匝道編碼 (RAMP ID)</label>
+              <div className="relative">
+                <select
+                  className="w-full bg-slate-50 border-none h-12 px-4 pr-10 rounded-xl focus:ring-2 focus:ring-[#005fb8]/20 font-black text-slate-800 appearance-none"
+                  value={formData.rampId}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    const rampTemplate = availableRamps?.find(r => r.rampId === selectedId);
+                    if (rampTemplate) {
+                      handleChange({
+                        ...formData, 
+                        rampId: selectedId,
+                        rampName: rampTemplate.rampName,
+                        rampNo: rampTemplate.rampNo,
+                        laneCount: rampTemplate.laneCount,
+                        length: rampTemplate.length,
+                        highway: rampTemplate.highway,
+                        interchange: rampTemplate.interchange
+                      });
+                    } else {
+                      handleChange({...formData, rampId: selectedId});
+                    }
+                  }}
+                >
+                  <option value="" disabled>請選擇匝道編碼</option>
+                  {Array.from(new Set(availableRamps?.map(r => r.rampId) || [])).map(id => (
+                    <option key={id} value={id}>{id}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              </div>
             </div>
 
             {/* Property */}
