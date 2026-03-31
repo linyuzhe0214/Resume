@@ -72,48 +72,58 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
   const getSegmentData = (ramp: RampSegment) => {
     if (!ramp.pavementLayers || ramp.pavementLayers.length === 0) return { color: '#ffffff', depth: 0, label: '' };
     
-    // Normalize completionTime (e.g., "113/08" -> "11308")
-    const compMonth = ramp.completionTime ? ramp.completionTime.replace('/', '') : '';
+    // Use construction year and month to match layer months
+    const targetMonth = ramp.constructionYear + ramp.constructionMonth;
     
-    // Filter layers where construction month matches completion month
-    const currentLayers = ramp.pavementLayers.filter(l => l.month === compMonth);
-    
-    if (currentLayers.length === 0) return { color: '#ffffff', depth: 0, label: '' };
-    
-    const depth = currentLayers.reduce((acc, curr) => acc + curr.thickness, 0);
-    const types = currentLayers.map(l => l.type.split('(')[0].trim());
-    const combinedType = types.join('+');
+    // Filter layers matching the construction month
+    const currentLayers = ramp.pavementLayers.filter(l => l.month === targetMonth);
     
     let color = '#e7e6e6';
-    if (combinedType.includes('OG')) color = '#ffff00';
-    else if (combinedType.includes('PAC')) color = '#00b0f0';
-    else if (combinedType.includes('SMA')) color = '#7030a0';
-    else if (combinedType.includes('GUSS')) color = '#c00000';
-    else if (combinedType.includes('BTB')) color = '#843c0c';
-    else if (combinedType.includes('AB')) color = '#7f7f7f';
-    else if (combinedType.includes('DG')) color = '#ffc000';
+    let depth = 0;
+    let combinedType = '';
 
-    return { color, depth, label: `${combinedType}` };
+    if (currentLayers.length > 0) {
+      depth = currentLayers.reduce((acc, curr) => acc + curr.thickness, 0);
+      const types = currentLayers.map(l => l.type.split('(')[0].trim().toUpperCase());
+      combinedType = types.join('+');
+      
+      if (combinedType.includes('OG')) color = '#ffff00';
+      else if (combinedType.includes('PAC')) color = '#00b0f0';
+      else if (combinedType.includes('SMA')) color = '#7030a0';
+      else if (combinedType.includes('GUSS')) color = '#c00000';
+      else if (combinedType.includes('BTB')) color = '#843c0c';
+      else if (combinedType.includes('AB')) color = '#7f7f7f';
+      else if (combinedType.includes('DG')) color = '#ffc000';
+    } else if (ramp.pavementLayers.length > 0) {
+      // Fallback: use latest layers if no direct match
+      const latestMonth = [...ramp.pavementLayers].sort((a, b) => b.month.localeCompare(a.month))[0].month;
+      const latestLayers = ramp.pavementLayers.filter(l => l.month === latestMonth);
+      depth = latestLayers.reduce((acc, curr) => acc + curr.thickness, 0);
+      combinedType = latestLayers.map(l => l.type.split('(')[0].trim().toUpperCase()).join('+');
+    }
+
+    return { color, depth, label: combinedType };
   };
 
   const getLegendItems = () => {
-    const methodMap: Record<string, { thickness: number; types: string[]; color: string }> = {};
+    const methodMap: Record<string, { color: string }> = {};
     
-    rampSegments.forEach(ramp => {
+    // Only use ramps from the currently filtered view
+    filteredRamps.forEach(ramp => {
       const data = getSegmentData(ramp);
       if (data.depth > 0) {
-        // Clean up the label
-        let cleanLabel = data.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim();
-        if (!methodMap[cleanLabel]) {
-          methodMap[cleanLabel] = { thickness: data.depth, types: [], color: data.color };
+        const label = `${data.depth}cm ${data.label}`;
+        if (!methodMap[label]) {
+          methodMap[label] = { color: data.color };
         }
       }
       
       if (ramp.maintenanceHistory) {
         ramp.maintenanceHistory.forEach(event => {
-          let cleanLabel = event.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim();
-          if (!methodMap[cleanLabel]) {
-            methodMap[cleanLabel] = { thickness: event.depth || 0, types: [], color: event.color };
+          const mLabel = event.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase();
+          const label = `${event.depth || 0}cm ${mLabel}`;
+          if (!methodMap[label]) {
+            methodMap[label] = { color: event.color };
           }
         });
       }
@@ -156,9 +166,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
             <div className="relative">
               <select 
                 value={selectedHighway}
-                onChange={(e) => {
-                  setSelectedHighway(e.target.value);
-                }}
+                onChange={(e) => setSelectedHighway(e.target.value)}
                 className="appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-[#005fb8] focus:border-transparent min-w-[140px]"
               >
                 {highways.map(h => <option key={h} value={h}>{h}</option>)}

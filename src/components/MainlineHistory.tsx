@@ -40,37 +40,35 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
   const southColumns = [...customSouthLanes, ...STANDARD_LANES_SOUTH];
   const northColumns = [...STANDARD_LANES_NORTH, ...customNorthLanes];
 
-  // Calculate dynamic legend based on all segments
+  // Calculate dynamic legend based on filtered segments
   const getLegendItems = () => {
-    const periodMap: Record<string, { thickness: number; types: string[]; color: string }> = {};
+    const periodMap: Record<string, { color: string }> = {};
     
-    segments.forEach(s => {
+    filteredSegments.forEach(s => {
       if (!s.pavementLayers || s.pavementLayers.length === 0) return;
       
-      const layerPeriods = Array.from(new Set(s.pavementLayers.map(l => l.month))).sort((a, b) => b.localeCompare(a));
-      const latestPeriod = layerPeriods[0];
-      const latestLayers = s.pavementLayers.filter(l => l.month === latestPeriod);
+      const targetMonth = s.constructionYear + s.constructionMonth;
+      const currentLayers = s.pavementLayers.filter(l => l.month === targetMonth);
       
-      latestLayers.forEach(layer => {
-        const typeAbbr = layer.type.split('(')[0].trim().toUpperCase();
-        let color = '#e7e6e6';
-        if (typeAbbr.includes('OG')) color = '#ffff00';
-        else if (typeAbbr.includes('PAC')) color = '#00b0f0';
-        else if (typeAbbr.includes('SMA')) color = '#7030a0';
-        else if (typeAbbr.includes('GUSS')) color = '#c00000';
-        else if (typeAbbr.includes('BTB')) color = '#843c0c';
-        else if (typeAbbr.includes('AB')) color = '#7f7f7f';
-        else if (typeAbbr.includes('DG')) color = '#ffc000';
-
-        // Clean up the label by removing keywords
-        let typeName = layer.type.split('(')[0].trim();
-        typeName = typeName.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim();
+      if (currentLayers.length > 0) {
+        const thickness = currentLayers.reduce((acc, curr) => acc + curr.thickness, 0);
+        const types = currentLayers.map(l => l.type.split('(')[0].trim().toUpperCase());
+        const combinedType = types.join('+');
         
-        const label = typeName;
+        let color = '#e7e6e6';
+        if (combinedType.includes('OG')) color = '#ffff00';
+        else if (combinedType.includes('PAC')) color = '#00b0f0';
+        else if (combinedType.includes('SMA')) color = '#7030a0';
+        else if (combinedType.includes('GUSS')) color = '#c00000';
+        else if (combinedType.includes('BTB')) color = '#843c0c';
+        else if (combinedType.includes('AB')) color = '#7f7f7f';
+        else if (combinedType.includes('DG')) color = '#ffc000';
+
+        const label = `${thickness}cm ${combinedType}`;
         if (!periodMap[label]) {
-          periodMap[label] = { thickness: layer.thickness, types: [], color };
+          periodMap[label] = { color };
         }
-      });
+      }
     });
 
     return Object.entries(periodMap).map(([label, data]) => ({
@@ -87,31 +85,17 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
     const top = (segment.startMileage - baseMileage) * 0.4;
     const height = (segment.endMileage - segment.startMileage) * 0.4;
 
-    // Aggregate layers by period
-    const periodMap: Record<string, { thickness: number; types: string[] }> = {};
-    segment.pavementLayers.forEach(layer => {
-      const period = layer.month;
-      if (!periodMap[period]) {
-        periodMap[period] = { thickness: 0, types: [] };
-      }
-      periodMap[period].thickness += layer.thickness;
-      const typeAbbr = layer.type.split('(')[0];
-      if (!periodMap[period].types.includes(typeAbbr)) {
-        periodMap[period].types.push(typeAbbr);
-      }
-    });
-
-    const periods = Object.keys(periodMap).sort((a, b) => b.localeCompare(a));
-    const latestPeriod = periods[0];
-    const data = latestPeriod ? periodMap[latestPeriod] : null;
-
+    const targetMonth = segment.constructionYear + segment.constructionMonth;
+    const currentLayers = segment.pavementLayers.filter(l => l.month === targetMonth);
+    
     let bgColor = '#ffffff';
     let thickness = 0;
     let combinedType = '';
     
-    if (data) {
-      combinedType = data.types.join('+').toUpperCase();
-      thickness = data.thickness;
+    if (currentLayers.length > 0) {
+      thickness = currentLayers.reduce((acc, curr) => acc + curr.thickness, 0);
+      const types = currentLayers.map(l => l.type.split('(')[0].trim().toUpperCase());
+      combinedType = types.join('+');
       
       if (combinedType.includes('OG')) bgColor = '#ffff00';
       else if (combinedType.includes('PAC')) bgColor = '#00b0f0';
@@ -120,6 +104,13 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
       else if (combinedType.includes('BTB')) bgColor = '#843c0c';
       else if (combinedType.includes('AB')) bgColor = '#7f7f7f';
       else if (combinedType.includes('DG')) bgColor = '#ffc000';
+    } else if (segment.pavementLayers.length > 0) {
+      // Fallback for older data or different month logic
+      const latestMonth = [...segment.pavementLayers].sort((a, b) => b.month.localeCompare(a.month))[0].month;
+      const latestLayers = segment.pavementLayers.filter(l => l.month === latestMonth);
+      thickness = latestLayers.reduce((acc, curr) => acc + curr.thickness, 0);
+      combinedType = latestLayers.map(l => l.type.split('(')[0].trim().toUpperCase()).join('+');
+      bgColor = '#e7e6e6';
     }
 
     const formatMileage = (m: number) => {
@@ -135,13 +126,11 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
         className="absolute w-full border border-black/10 flex flex-col items-center justify-center leading-none cursor-pointer hover:opacity-90 overflow-hidden group"
         style={{ top: `${top}px`, height: `${height}px`, backgroundColor: bgColor }}
       >
-        {data && (
-          <span className={cn(
-            "font-bold",
-            ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(bgColor) ? "text-slate-900" : "text-white"
-          )}>{segment.constructionYear}</span>
-        )}
-        {height >= 40 && data && (
+        <span className={cn(
+          "font-bold",
+          ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(bgColor) ? "text-slate-900" : "text-white"
+        )}>{segment.constructionYear}</span>
+        {height >= 40 && (
           <span className={cn(
             "scale-90 origin-top truncate w-full text-center",
             ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(bgColor) ? "text-slate-900" : "text-white"
