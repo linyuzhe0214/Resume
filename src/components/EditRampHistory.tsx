@@ -106,9 +106,15 @@ export default function EditRampHistory({ segment, availableRamps, onChange, onS
                   }}
                 >
                   <option value="" disabled>請選擇匝道編碼</option>
-                  {Array.from(new Set(availableRamps?.map(r => r.rampId) || [])).map(id => (
-                    <option key={id} value={id}>{id}</option>
-                  ))}
+                  {(() => {
+                    const detailedIds = availableRamps?.map(r => r.rampId) || [];
+                    // Merge with any IDs already in history that might not be in detailed data
+                    const historyIds = segment && segment.rampId ? [segment.rampId] : []; 
+                    const allIds = Array.from(new Set([...detailedIds, ...historyIds])).filter(Boolean);
+                    return allIds.map(id => (
+                      <option key={id} value={id}>{id}</option>
+                    ));
+                  })()}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               </div>

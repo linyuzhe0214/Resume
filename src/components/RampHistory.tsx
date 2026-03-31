@@ -99,7 +99,6 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
 
   const getSegmentData = (ramp: RampSegment) => {
     if (!ramp.pavementLayers || ramp.pavementLayers.length === 0) {
-      // Check maintenance history as fallback
       if (ramp.maintenanceHistory && ramp.maintenanceHistory.length > 0) {
          const latest = ramp.maintenanceHistory[ramp.maintenanceHistory.length - 1];
          return { 
@@ -114,11 +113,11 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
     const targetMonth = ramp.constructionYear + ramp.constructionMonth;
     const info = getPavementDisplayInfo(ramp.pavementLayers, targetMonth);
     
-    // If no layers for current month, try latest
     if (info.thickness === 0 && ramp.pavementLayers.length > 0) {
-      const latestMonth = [...ramp.pavementLayers].sort((a, b) => b.month.localeCompare(a.month))[0].month;
+      const sortedMonths = Array.from(new Set(ramp.pavementLayers.map(l => l.month))).sort((a, b) => b.localeCompare(a));
+      const latestMonth = sortedMonths[0];
       const latestInfo = getPavementDisplayInfo(ramp.pavementLayers, latestMonth);
-      return { ...latestInfo, color: '#e7e6e6' }; // Use fallback color for non-current month
+      return { ...latestInfo, color: '#e7e6e6', depth: latestInfo.thickness, label: latestInfo.combinedType };
     }
 
     return { color: info.color, depth: info.thickness, label: info.combinedType };
@@ -130,8 +129,8 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
     filteredRamps.forEach(ramp => {
       const data = getSegmentData(ramp);
       if (data.depth > 0) {
-        // Format: {depth}cm {material}
-        const label = `${data.depth}cm ${data.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase()}`;
+        const material = data.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase();
+        const label = `${data.depth}cm ${material}`;
         if (!methodMap[label]) {
           methodMap[label] = { color: data.color };
         }
@@ -140,8 +139,8 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
       if (ramp.maintenanceHistory) {
         ramp.maintenanceHistory.forEach(event => {
           const color = getColorFromLabel(event.label);
-          // Format: {depth}cm {material}
-          const label = `${event.depth || 0}cm ${event.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase()}`;
+          const material = event.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase();
+          const label = `${event.depth || 0}cm ${material}`;
           if (!methodMap[label]) {
             methodMap[label] = { color };
           }
