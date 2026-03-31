@@ -1,7 +1,8 @@
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { cn } from '../App';
-import { Segment, PavementLayer } from '../types';
+import { Segment } from '../types';
+import { getPavementColor, getPavementDisplayInfo } from '../utils/pavement';
 
 interface MainlineHistoryProps {
   segments: Segment[];
@@ -48,25 +49,12 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
       if (!s.pavementLayers || s.pavementLayers.length === 0) return;
       
       const targetMonth = s.constructionYear + s.constructionMonth;
-      const currentLayers = s.pavementLayers.filter(l => l.month === targetMonth);
+      const info = getPavementDisplayInfo(s.pavementLayers, targetMonth);
       
-      if (currentLayers.length > 0) {
-        const thickness = currentLayers.reduce((acc, curr) => acc + curr.thickness, 0);
-        const types = currentLayers.map(l => l.type.split('(')[0].trim().toUpperCase());
-        const combinedType = types.join('+');
-        
-        let color = '#e7e6e6';
-        if (combinedType.includes('OG')) color = '#ffff00';
-        else if (combinedType.includes('PAC')) color = '#00b0f0';
-        else if (combinedType.includes('SMA')) color = '#7030a0';
-        else if (combinedType.includes('GUSS')) color = '#c00000';
-        else if (combinedType.includes('BTB')) color = '#843c0c';
-        else if (combinedType.includes('AB')) color = '#7f7f7f';
-        else if (combinedType.includes('DG')) color = '#ffc000';
-
-        const label = `${thickness}cm ${combinedType}`;
+      if (info.thickness > 0) {
+        const label = `${info.thickness}cm ${info.combinedType}`;
         if (!periodMap[label]) {
-          periodMap[label] = { color };
+          periodMap[label] = { color: info.color };
         }
       }
     });
@@ -86,32 +74,23 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
     const height = (segment.endMileage - segment.startMileage) * 0.4;
 
     const targetMonth = segment.constructionYear + segment.constructionMonth;
-    const currentLayers = segment.pavementLayers.filter(l => l.month === targetMonth);
+    const info = getPavementDisplayInfo(segment.pavementLayers, targetMonth);
     
-    let bgColor = '#ffffff';
-    let thickness = 0;
-    let combinedType = '';
+    let bgColor = info.color;
+    let thickness = info.thickness;
+    let combinedType = info.combinedType;
     
-    if (currentLayers.length > 0) {
-      thickness = currentLayers.reduce((acc, curr) => acc + curr.thickness, 0);
-      const types = currentLayers.map(l => l.type.split('(')[0].trim().toUpperCase());
-      combinedType = types.join('+');
-      
-      if (combinedType.includes('OG')) bgColor = '#ffff00';
-      else if (combinedType.includes('PAC')) bgColor = '#00b0f0';
-      else if (combinedType.includes('SMA')) bgColor = '#7030a0';
-      else if (combinedType.includes('GUSS')) bgColor = '#c00000';
-      else if (combinedType.includes('BTB')) bgColor = '#843c0c';
-      else if (combinedType.includes('AB')) bgColor = '#7f7f7f';
-      else if (combinedType.includes('DG')) bgColor = '#ffc000';
-    } else if (segment.pavementLayers.length > 0) {
+    if (thickness === 0 && segment.pavementLayers.length > 0) {
       // Fallback for older data or different month logic
       const latestMonth = [...segment.pavementLayers].sort((a, b) => b.month.localeCompare(a.month))[0].month;
-      const latestLayers = segment.pavementLayers.filter(l => l.month === latestMonth);
-      thickness = latestLayers.reduce((acc, curr) => acc + curr.thickness, 0);
-      combinedType = latestLayers.map(l => l.type.split('(')[0].trim().toUpperCase()).join('+');
+      const latestInfo = getPavementDisplayInfo(segment.pavementLayers, latestMonth);
+      thickness = latestInfo.thickness;
+      combinedType = latestInfo.combinedType;
       bgColor = '#e7e6e6';
+    } else if (thickness === 0) {
+      bgColor = '#ffffff';
     }
+
 
     const formatMileage = (m: number) => {
       const km = Math.floor(m / 1000);

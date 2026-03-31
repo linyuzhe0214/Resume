@@ -4,6 +4,7 @@ import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
 import { HIGHWAY_INTERCHANGE_MAP } from '../constants';
+import { getPavementColor, getPavementDisplayInfo, getColorFromLabel } from '../utils/pavement';
 
 interface RampHistoryProps {
   rampSegments: RampSegment[];
@@ -66,45 +67,35 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
   }, [filteredRamps]);
 
   const getSegmentData = (ramp: RampSegment) => {
-    if (!ramp.pavementLayers || ramp.pavementLayers.length === 0) return { color: '#ffffff', depth: 0, label: '' };
+    if (!ramp.pavementLayers || ramp.pavementLayers.length === 0) {
+      // Check maintenance history as fallback
+      if (ramp.maintenanceHistory && ramp.maintenanceHistory.length > 0) {
+         const latest = ramp.maintenanceHistory[ramp.maintenanceHistory.length - 1];
+         return { 
+           color: getColorFromLabel(latest.label), 
+           depth: latest.depth || 0, 
+           label: latest.label 
+         };
+      }
+      return { color: '#ffffff', depth: 0, label: '' };
+    }
     
-    // Use construction year and month to match layer months
     const targetMonth = ramp.constructionYear + ramp.constructionMonth;
+    const info = getPavementDisplayInfo(ramp.pavementLayers, targetMonth);
     
-    // Filter layers matching the construction month
-    const currentLayers = ramp.pavementLayers.filter(l => l.month === targetMonth);
-    
-    let color = '#e7e6e6';
-    let depth = 0;
-    let combinedType = '';
-
-    if (currentLayers.length > 0) {
-      depth = currentLayers.reduce((acc, curr) => acc + curr.thickness, 0);
-      const types = currentLayers.map(l => l.type.split('(')[0].trim().toUpperCase());
-      combinedType = types.join('+');
-      
-      if (combinedType.includes('OG')) color = '#ffff00';
-      else if (combinedType.includes('PAC')) color = '#00b0f0';
-      else if (combinedType.includes('SMA')) color = '#7030a0';
-      else if (combinedType.includes('GUSS')) color = '#c00000';
-      else if (combinedType.includes('BTB')) color = '#843c0c';
-      else if (combinedType.includes('AB')) color = '#7f7f7f';
-      else if (combinedType.includes('DG')) color = '#ffc000';
-    } else if (ramp.pavementLayers.length > 0) {
-      // Fallback: use latest layers if no direct match
+    // If no layers for current month, try latest
+    if (info.thickness === 0 && ramp.pavementLayers.length > 0) {
       const latestMonth = [...ramp.pavementLayers].sort((a, b) => b.month.localeCompare(a.month))[0].month;
-      const latestLayers = ramp.pavementLayers.filter(l => l.month === latestMonth);
-      depth = latestLayers.reduce((acc, curr) => acc + curr.thickness, 0);
-      combinedType = latestLayers.map(l => l.type.split('(')[0].trim().toUpperCase()).join('+');
+      const latestInfo = getPavementDisplayInfo(ramp.pavementLayers, latestMonth);
+      return { ...latestInfo, color: '#e7e6e6' }; // Use fallback color for non-current month
     }
 
-    return { color, depth, label: combinedType };
+    return { color: info.color, depth: info.thickness, label: info.combinedType };
   };
 
   const getLegendItems = () => {
     const methodMap: Record<string, { color: string }> = {};
     
-    // Only use ramps from the currently filtered view
     filteredRamps.forEach(ramp => {
       const data = getSegmentData(ramp);
       if (data.depth > 0) {
@@ -116,10 +107,10 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
       
       if (ramp.maintenanceHistory) {
         ramp.maintenanceHistory.forEach(event => {
-          const mLabel = event.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase();
-          const label = `${event.depth || 0}cm ${mLabel}`;
+          const color = getColorFromLabel(event.label);
+          const label = `${event.depth || 0}cm ${event.label.replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase()}`;
           if (!methodMap[label]) {
-            methodMap[label] = { color: event.color };
+            methodMap[label] = { color };
           }
         });
       }
@@ -421,18 +412,28 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                       ramp.maintenanceHistory?.map((event) => {
                         const left = (event.startMileage / group.length) * 100;
                         const width = ((event.endMileage - event.startMileage) / group.length) * 100;
+                        const eventColor = getColorFromLabel(event.label);
                         return (
                           <div
                             key={event.id}
                             onClick={() => onNavigateToEditHistory(ramp.id)}
                             className="h-full absolute flex flex-col items-center justify-center text-[9px] font-bold border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer"
-                            style={{ left: `${left}%`, width: `${width}%`, backgroundColor: event.color }}
+                            style={{ left: `${left}%`, width: `${width}%`, backgroundColor: eventColor }}
                           >
                             <span className={cn(
                               "drop-shadow-sm truncate px-1",
-                              ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(event.color) ? "text-slate-900" : "text-white"
+                              ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(eventColor) ? "text-slate-900" : "text-white"
                             )}>{event.year}</span>
                             
+                            {event.depth && (
+                               <span className={cn(
+                                 "text-[8px] opacity-90",
+                                 ['#ffff00', '#e7e6e6', '#ffffff', '#ffc000', '#00b0f0'].includes(eventColor) ? "text-slate-800" : "text-white"
+                               )}>
+                                 {event.depth}cm
+                               </span>
+                            )}
+
                             {/* Mileage Annotations */}
                             <span className="absolute -bottom-4 left-0 text-[7px] font-black text-slate-400 whitespace-nowrap">{formatMileage(event.startMileage)}</span>
                             <span className="absolute -bottom-4 right-0 text-[7px] font-black text-slate-400 whitespace-nowrap">{formatMileage(event.endMileage)}</span>
@@ -440,7 +441,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                             {/* Tooltip */}
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
                               <div className="bg-gray-900 text-white text-[10px] rounded py-1 px-2 whitespace-nowrap shadow-xl">
-                                {event.year}年: {event.label} ({formatMileage(event.startMileage)} - {formatMileage(event.endMileage)})
+                                {event.year}年: {event.label} ({event.depth}cm) ({formatMileage(event.startMileage)} - {formatMileage(event.endMileage)})
                               </div>
                             </div>
                           </div>

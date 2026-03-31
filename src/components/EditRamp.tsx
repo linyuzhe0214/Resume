@@ -243,69 +243,8 @@ export default function EditRamp({ segment, onChange, onSave, onDelete, onBack, 
           </div>
         </section>
 
-        {/* Pavement Section Details Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-6 bg-[#005fb8] rounded-sm"></div>
-              <h2 className="font-bold text-lg text-slate-800">Pavement Cross-section (鋪面斷面圖說)</h2>
-            </div>
-            <button 
-              onClick={onNavigateToPavement}
-              className="text-[#005fb8] font-bold text-sm flex items-center gap-1 hover:underline"
-            >
-              調整斷面 <Edit2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div 
-            onClick={onNavigateToPavement}
-            className="bg-white rounded-2xl p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-slate-100 space-y-6 cursor-pointer hover:shadow-md transition-shadow"
-          >
-            {/* Visual Layering representation */}
-            <div className="space-y-2">
-              {formData.pavementLayers.length > 0 ? (
-                formData.pavementLayers.map((layer, index) => {
-                  const colors = ['#8ba1b5', '#5c7089', '#4a5a6e', '#374354', '#2c3643'];
-                  const color = colors[index % colors.length];
-                  const typeAbbr = layer.type.split('(')[0].trim();
-                  const displayType = typeAbbr;
+        {/* Pavement Section Details Section - Removed in Optimizer Version */}
 
-                  return (
-                    <div 
-                      key={layer.id || index}
-                      className="relative h-14 w-full flex items-center justify-center px-4 rounded-xl shadow-sm transition-all"
-                      style={{ backgroundColor: color }}
-                    >
-                      <span className="font-bold text-base tracking-wider text-white">
-                        {layer.thickness.toFixed(1)}cm {displayType}
-                      </span>
-                      
-                      <div className="absolute right-3 bg-white/20 backdrop-blur-sm rounded px-2 py-1 flex items-center">
-                        <span className="text-xs font-medium text-white">
-                          施工: {layer.month}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="h-28 w-full flex items-center justify-center border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-400 font-bold">
-                  尚未設定鋪面層
-                </div>
-              )}
-            </div>
-            
-            <div className="pt-4 flex items-end justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">TOTAL THICKNESS 總厚度</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black text-[#00488d] tracking-tighter">
-                  {formData.pavementLayers.reduce((acc, curr) => acc + curr.thickness, 0).toFixed(1)} 
-                </span>
-                <span className="text-lg font-bold text-[#00488d]">cm</span>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
       <ConfirmDialog 
