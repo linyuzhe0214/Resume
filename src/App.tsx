@@ -539,11 +539,11 @@ export default function App() {
                 } : s);
                 setRampSegments(updatedSegments);
               }
-              syncGas(RAMP_URL, 'saveRamp', ramp.interchange, ramp);
+              syncGas(RAMP_URL, 'saveRamp', ramp.rampName, ramp);
             } else {
               const newRamp = { ...ramp, id: Math.random().toString(36).substr(2, 9) };
               setRampSegments(prev => [...prev, newRamp]);
-              syncGas(RAMP_URL, 'saveRamp', newRamp.interchange, newRamp);
+              syncGas(RAMP_URL, 'saveRamp', newRamp.rampName, newRamp);
             }
             setDraftRamp(null);
             setEditingRampId(null);
@@ -551,7 +551,7 @@ export default function App() {
           }}
           onDelete={(id) => {
             const seg = rampSegments.find(s => s.id === id);
-            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.interchange, id, true);
+            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.rampName, id, true);
             setRampSegments(rampSegments.filter(s => s.id !== id));
             setDraftRamp(null);
             setEditingRampId(null);
@@ -603,14 +603,14 @@ export default function App() {
               ramp = newRamp;
               setRampSegments([...rampSegments, newRamp]);
             }
-            syncGas(RAMP_URL, 'saveRamp', ramp.interchange, ramp);
+            syncGas(RAMP_URL, 'saveRamp', ramp.rampName, ramp);
             setDraftRamp(null);
             setEditingRampId(null);
             setSubPage('none');
           }}
           onDelete={(id) => {
             const seg = rampSegments.find(s => s.id === id);
-            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.interchange, id, true);
+            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.rampName, id, true);
             setRampSegments(rampSegments.filter(s => s.id !== id));
             setDraftRamp(null);
             setEditingRampId(null);
@@ -658,20 +658,20 @@ export default function App() {
             if (activeTab === 'planning') {
               if (editingSegmentId) {
                 setPlanningSegments(planningSegments.map(s => s.id === editingSegmentId ? segment : s));
-                syncGas(MAINLINE_URL, 'saveMainline', 'planning', { ...segment, type: 'planning' });
+                syncGas(MAINLINE_URL, 'saveMainline', segment.highway + ' (規劃)', { ...segment, type: 'planning' });
               } else {
                 const newSeg = { ...segment, id: Math.random().toString(36).substr(2, 9), type: 'planning' };
                 setPlanningSegments(prev => [...prev, newSeg]);
-                syncGas(MAINLINE_URL, 'saveMainline', 'planning', newSeg);
+                syncGas(MAINLINE_URL, 'saveMainline', segment.highway + ' (規劃)', newSeg);
               }
             } else {
               if (editingSegmentId) {
                 setSegments(segments.map(s => s.id === editingSegmentId ? segment : s));
-                syncGas(MAINLINE_URL, 'saveMainline', 'mainline', segment);
+                syncGas(MAINLINE_URL, 'saveMainline', segment.highway, segment);
               } else {
                 const newSeg = { ...segment, id: Math.random().toString(36).substr(2, 9) };
                 setSegments(prev => [...prev, newSeg]);
-                syncGas(MAINLINE_URL, 'saveMainline', 'mainline', newSeg);
+                syncGas(MAINLINE_URL, 'saveMainline', segment.highway, newSeg);
               }
             }
             setDraftSegment(null);
@@ -680,11 +680,13 @@ export default function App() {
           }}
           onDelete={(id) => {
             if (activeTab === 'planning') {
+              const seg = planningSegments.find(s => s.id === id);
               setPlanningSegments(planningSegments.filter(s => s.id !== id));
-              syncGas(MAINLINE_URL, 'deleteMainline', 'planning', id, true);
+              if (seg) syncGas(MAINLINE_URL, 'deleteMainline', seg.highway + ' (規劃)', id, true);
             } else {
+              const seg = segments.find(s => s.id === id);
               setSegments(segments.filter(s => s.id !== id));
-              syncGas(MAINLINE_URL, 'deleteMainline', 'mainline', id, true);
+              if (seg) syncGas(MAINLINE_URL, 'deleteMainline', seg.highway, id, true);
             }
             setDraftSegment(null);
             setEditingSegmentId(null);
