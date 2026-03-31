@@ -166,41 +166,6 @@ export default function EditRamp({ segment, onChange, onSave, onDelete, onBack, 
             </div>
 
             <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400">里程範圍 (MILEAGE RANGE)</label>
-                <button 
-                  onClick={() => setLockLength(!lockLength)}
-                  className={cn(
-                    "flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold transition-all",
-                    lockLength ? "bg-blue-50 text-[#005fb8]" : "bg-slate-100 text-slate-500"
-                  )}
-                >
-                  {lockLength ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
-                  {lockLength ? '鎖定長度' : '自由調整'}
-                </button>
-              </div>
-              
-              {error && (
-                <div className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-[10px] font-bold mb-2">
-                  ⚠️ {error}
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <MileageInput 
-                  label="起點" 
-                  value={formData.startMileage} 
-                  onChange={handleStartMileageChange} 
-                />
-                <MileageInput 
-                  label="終點" 
-                  value={formData.endMileage} 
-                  onChange={handleEndMileageChange} 
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400">匝道長度 (LENGTH m)</label>
               <div className="relative">
                 <input 
@@ -209,7 +174,7 @@ export default function EditRamp({ segment, onChange, onSave, onDelete, onBack, 
                   value={formData.length}
                   onChange={(e) => {
                     const newLength = Number(e.target.value);
-                    handleChange({...formData, length: newLength, endMileage: formData.startMileage + newLength});
+                    handleChange({...formData, length: newLength});
                   }}
                   placeholder="例如: 670"
                 />
