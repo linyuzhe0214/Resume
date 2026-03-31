@@ -526,9 +526,7 @@ export default function App() {
             if (editingRampId) {
               const oldRamp = rampSegments.find(s => s.id === editingRampId);
               if (oldRamp) {
-                // Update the specific segment
                 let updatedSegments = rampSegments.map(s => s.id === editingRampId ? ramp : s);
-                // Update shared fields for all segments with the same rampId
                 updatedSegments = updatedSegments.map(s => s.rampId === oldRamp.rampId ? {
                   ...s,
                   rampId: ramp.rampId,
@@ -541,14 +539,19 @@ export default function App() {
                 } : s);
                 setRampSegments(updatedSegments);
               }
+              syncGas(RAMP_URL, 'saveRamp', ramp.interchange, ramp);
             } else {
-              setRampSegments([...rampSegments, { ...ramp, id: Math.random().toString(36).substr(2, 9) }]);
+              const newRamp = { ...ramp, id: Math.random().toString(36).substr(2, 9) };
+              setRampSegments(prev => [...prev, newRamp]);
+              syncGas(RAMP_URL, 'saveRamp', newRamp.interchange, newRamp);
             }
             setDraftRamp(null);
             setEditingRampId(null);
             setSubPage('none');
           }}
           onDelete={(id) => {
+            const seg = rampSegments.find(s => s.id === id);
+            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.interchange, id, true);
             setRampSegments(rampSegments.filter(s => s.id !== id));
             setDraftRamp(null);
             setEditingRampId(null);
@@ -655,14 +658,20 @@ export default function App() {
             if (activeTab === 'planning') {
               if (editingSegmentId) {
                 setPlanningSegments(planningSegments.map(s => s.id === editingSegmentId ? segment : s));
+                syncGas(MAINLINE_URL, 'saveMainline', 'planning', { ...segment, type: 'planning' });
               } else {
-                setPlanningSegments([...planningSegments, { ...segment, id: Math.random().toString(36).substr(2, 9) }]);
+                const newSeg = { ...segment, id: Math.random().toString(36).substr(2, 9), type: 'planning' };
+                setPlanningSegments(prev => [...prev, newSeg]);
+                syncGas(MAINLINE_URL, 'saveMainline', 'planning', newSeg);
               }
             } else {
               if (editingSegmentId) {
                 setSegments(segments.map(s => s.id === editingSegmentId ? segment : s));
+                syncGas(MAINLINE_URL, 'saveMainline', 'mainline', segment);
               } else {
-                setSegments([...segments, { ...segment, id: Math.random().toString(36).substr(2, 9) }]);
+                const newSeg = { ...segment, id: Math.random().toString(36).substr(2, 9) };
+                setSegments(prev => [...prev, newSeg]);
+                syncGas(MAINLINE_URL, 'saveMainline', 'mainline', newSeg);
               }
             }
             setDraftSegment(null);
@@ -672,8 +681,10 @@ export default function App() {
           onDelete={(id) => {
             if (activeTab === 'planning') {
               setPlanningSegments(planningSegments.filter(s => s.id !== id));
+              syncGas(MAINLINE_URL, 'deleteMainline', 'planning', id, true);
             } else {
               setSegments(segments.filter(s => s.id !== id));
+              syncGas(MAINLINE_URL, 'deleteMainline', 'mainline', id, true);
             }
             setDraftSegment(null);
             setEditingSegmentId(null);
