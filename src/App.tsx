@@ -305,6 +305,7 @@ export default function App() {
 
   const MAINLINE_URL = 'https://script.google.com/macros/s/AKfycbwFnImk16G7FulPiUxnBb_dd79RwH4k_16CREqsoDOzpYQ79GUR_E-aLWSMzVKol8rw/exec';
   const RAMP_URL = 'https://script.google.com/macros/s/AKfycbxi2T-7P4BQv-KWJqEHNzL_P3iZ4zTwhHjPxFVk6Fp3qBUdVMsbxx_4sdww4r-tthL0/exec';
+  const PLANNING_URL = 'https://script.google.com/macros/s/AKfycbyi3Ib_fulT4L_VFLkOMOXYM92rwvvY5kfmyxfHz2yMPdVNZfiEQ-G1kJu3p021OsVQ9g/exec';
 
   const [loadingData, setLoadingData] = useState(true);
 
@@ -327,17 +328,28 @@ export default function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [mainlineRes, rampRes] = await Promise.all([
+        const [mainlineRes, rampRes, planningRes] = await Promise.all([
           fetch(`${MAINLINE_URL}?action=getMainline`),
-          fetch(`${RAMP_URL}?action=getRamp`)
+          fetch(`${RAMP_URL}?action=getRamp`),
+          PLANNING_URL ? fetch(`${PLANNING_URL}?action=getPlanning`) : Promise.resolve(null)
         ]);
-        const mainlineData = await mainlineRes.json();
-        const rampData = await rampRes.json();
+        
+        const [mainlineData, rampData, planningData] = await Promise.all([
+          mainlineRes.json(),
+          rampRes.json(),
+          planningRes ? planningRes.json() : []
+        ]);
         
         if (Array.isArray(mainlineData) && mainlineData.length > 0) {
+          // 向後相容：先從 mainline 取出資料
           const main = mainlineData.filter((s: any) => s.type !== 'planning');
-          const plan = mainlineData.filter((s: any) => s.type === 'planning');
           if (main.length > 0) setSegments(main);
+        }
+        
+        if (PLANNING_URL && Array.isArray(planningData) && planningData.length > 0) {
+          setPlanningSegments(planningData);
+        } else if (Array.isArray(mainlineData)) { // 如果沒有新 URL，向後相容從舊的拿
+          const plan = mainlineData.filter((s: any) => s.type === 'planning');
           if (plan.length > 0) setPlanningSegments(plan);
         }
         if (Array.isArray(rampData) && rampData.length > 0) {
@@ -680,11 +692,11 @@ export default function App() {
             if (activeTab === 'planning') {
               if (editingSegmentId) {
                 setPlanningSegments(planningSegments.map(s => s.id === editingSegmentId ? segment : s));
-                syncGas(MAINLINE_URL, 'saveMainline', segment.highway + ' (規劃)', { ...segment, type: 'planning' });
+                if (PLANNING_URL) syncGas(PLANNING_URL, 'savePlanning', segment.highway + ' (規劃)', { ...segment, type: 'planning' });
               } else {
                 const newSeg = { ...segment, id: Math.random().toString(36).substr(2, 9), type: 'planning' };
                 setPlanningSegments(prev => [...prev, newSeg]);
-                syncGas(MAINLINE_URL, 'saveMainline', segment.highway + ' (規劃)', newSeg);
+                if (PLANNING_URL) syncGas(PLANNING_URL, 'savePlanning', segment.highway + ' (規劃)', newSeg);
               }
             } else {
               if (editingSegmentId) {
@@ -704,7 +716,7 @@ export default function App() {
             if (activeTab === 'planning') {
               const seg = planningSegments.find(s => s.id === id);
               setPlanningSegments(planningSegments.filter(s => s.id !== id));
-              if (seg) syncGas(MAINLINE_URL, 'deleteMainline', seg.highway + ' (規劃)', id, true);
+              if (seg && PLANNING_URL) syncGas(PLANNING_URL, 'deletePlanning', seg.highway + ' (規劃)', id, true);
             } else {
               const seg = segments.find(s => s.id === id);
               setSegments(segments.filter(s => s.id !== id));
