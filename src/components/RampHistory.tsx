@@ -118,7 +118,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
       const sortedMonths = Array.from(new Set(ramp.pavementLayers.map(l => l.month))).sort((a, b) => b.localeCompare(a));
       const latestMonth = sortedMonths[0];
       const latestInfo = getPavementDisplayInfo(ramp.pavementLayers, latestMonth);
-      return { ...latestInfo, color: '#e7e6e6', depth: latestInfo.thickness, label: latestInfo.combinedType };
+      return { ...latestInfo, color: latestInfo.color, depth: latestInfo.thickness, label: latestInfo.combinedType };
     }
 
     return { color: info.color, depth: info.thickness, label: info.combinedType };

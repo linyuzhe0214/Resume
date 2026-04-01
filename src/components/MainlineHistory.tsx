@@ -86,7 +86,7 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
       const latestInfo = getPavementDisplayInfo(segment.pavementLayers, latestMonth);
       thickness = latestInfo.thickness;
       combinedType = latestInfo.combinedType;
-      bgColor = '#e7e6e6';
+      bgColor = latestInfo.color;
     } else if (thickness === 0) {
       bgColor = '#ffffff';
     }
