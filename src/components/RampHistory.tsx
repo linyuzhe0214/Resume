@@ -13,26 +13,6 @@ interface RampHistoryProps {
   onDeleteRamp?: (rampId: string) => void;
 }
 
-/**
- * 根據種子字串生成穩定的淺色 (粉色系)
- * 確保黑色文字在任何情況下都能清楚辨識
- */
-function getStablePastelColor(seed: string) {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  
-  // 色相範圍 0-360
-  const h = Math.abs(hash % 360);
-  // 飽和度保持在 70-90% (鮮豔但不螢光)
-  const s = 70 + (Math.abs(hash % 20));
-  // 亮度維持在 88-95% (確保是淺色/粉色系)
-  const l = 88 + (Math.abs(hash % 7));
-  
-  return `hsl(${h}, ${s}%, ${l}%)`;
-}
-
 export default function RampHistory({ rampSegments, onNavigateToEditDetails, onNavigateToEditHistory, onDeleteRamp }: RampHistoryProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingRampId, setDeletingRampId] = useState<string | null>(null);
@@ -408,7 +388,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                   "bg-[#d6e3ff]"
                 )}>
                   <span className="font-black text-xs text-slate-950 drop-shadow-sm">{group.rampName}</span>
-                  <span className="text-[10px] font-black tracking-widest uppercase mt-0.5 text-slate-950 opacity-60">
+                  <span className="text-[10px] font-black tracking-widest uppercase mt-0.5 text-black">
                     {group.rampId}
                   </span>
                 </div>
@@ -432,8 +412,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                       const end = ramp.endMileage || group.length;
                       if (end <= start) return null;
                       
-                      // 使用穩定隨機淺色 (避免材質配色可能導致的深色或重複)
-                      const segmentColor = getStablePastelColor(ramp.id + ramp.constructionYear);
+                      const segmentColor = segmentData.color;
                       
                       return (
                         <div
@@ -463,8 +442,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                         const width = ((event.endMileage - event.startMileage) / group.length) * 100;
                         if (width <= 0) return null;
                         
-                        // 使用穩定隨機淺色
-                        const eventColor = getStablePastelColor(event.id || event.year + event.label);
+                        const eventColor = getColorFromLabel(event.label);
                         
                         return (
                           <div
