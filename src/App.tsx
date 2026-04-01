@@ -770,11 +770,24 @@ export default function App() {
       <div className="min-h-screen bg-[#f7f9fc]">
         <RampHistory 
           rampSegments={rampSegments}
-          onNavigateToEditDetails={(id, defaultHighway, defaultInterchange) => {
+          onNavigateToEditDetails={(id, defaultHighway, defaultInterchange, prototypeId) => {
             setEditingRampId(id || null);
             if (id) {
               const ramp = rampSegments.find(s => s.id === id);
               setDraftRamp(ramp ? { ...ramp } : null);
+            } else if (prototypeId) {
+              const proto = rampSegments.find(s => s.id === prototypeId);
+              if (proto) {
+                setDraftRamp({
+                  ...proto,
+                  id: '',
+                  pavementLayers: [],
+                  maintenanceHistory: [],
+                  notes: '',
+                  constructionYear: '113',
+                  constructionMonth: '08'
+                });
+              }
             } else {
               setDraftRamp({
                 id: '',

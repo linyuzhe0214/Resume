@@ -1,8 +1,9 @@
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Download } from 'lucide-react';
 import { cn } from '../App';
 import { Segment } from '../types';
 import { getPavementColor, getPavementDisplayInfo } from '../utils/pavement';
+import { exportComponentAsImage } from '../utils/exportImage';
 
 interface MainlineHistoryProps {
   segments: Segment[];
@@ -136,6 +137,12 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
             <h1 className="font-bold text-xl tracking-tight text-[#191c1e]">{title}</h1>
           </div>
           <div className="flex items-center gap-4">
+            <button 
+              onClick={() => exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700"
+            >
+              <Download className="w-3.5 h-3.5" /> 匯出圖表
+            </button>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 cursor-pointer"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center cursor-pointer">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -161,7 +168,8 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
         </div>
       </header>
 
-      {/* Legend Section */}
+      <div id="mainline-export-container" className="flex-1 flex flex-col bg-[#f7f9fc] overflow-hidden pt-4">
+        {/* Legend Section */}
       <section className="mx-4 mb-4 bg-white rounded-xl p-4 shadow-sm border border-slate-200 shrink-0">
         <h2 className="font-bold text-xs tracking-wider text-slate-500 uppercase mb-3 flex items-center gap-2">
           <span className="w-1.5 h-4 bg-[#00488d] rounded-full"></span>
@@ -317,6 +325,7 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
         >
           <Plus className="w-6 h-6" />
         </button>
+      </div>
       </div>
     </div>
   );

@@ -5,10 +5,11 @@ import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
 import { HIGHWAY_INTERCHANGE_MAP } from '../constants';
 import { getPavementColor, getPavementDisplayInfo, getColorFromLabel } from '../utils/pavement';
+import { exportComponentAsImage } from '../utils/exportImage';
 
 interface RampHistoryProps {
   rampSegments: RampSegment[];
-  onNavigateToEditDetails: (rampId?: string, defaultHighway?: string, defaultInterchange?: string) => void;
+  onNavigateToEditDetails: (rampId?: string, defaultHighway?: string, defaultInterchange?: string, prototypeId?: string) => void;
   onNavigateToEditHistory: (rampId: string) => void;
   onDeleteRamp?: (rampId: string) => void;
 }
@@ -334,16 +335,25 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
             </h3>
           </div>
           
-          <button 
-            onClick={() => onNavigateToEditHistory('')}
-            className="flex items-center gap-2 px-4 py-2 bg-[#00488d] text-white rounded-xl text-xs font-black hover:bg-[#005fb8] transition-all shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> 新增履歷
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => exportComponentAsImage('ramp-export-container', `${selectedHighway}_${selectedInterchange}_匝道履歷`)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black hover:bg-slate-50 transition-all shadow-sm"
+            >
+              <Download className="w-4 h-4" /> 匯出圖表
+            </button>
+            <button 
+              onClick={() => onNavigateToEditHistory('')}
+              className="flex items-center gap-2 px-4 py-2 bg-[#00488d] text-white rounded-xl text-xs font-black hover:bg-[#005fb8] transition-all shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> 新增履歷
+            </button>
+          </div>
         </div>
 
         {/* Legend */}
-        <div className="px-6 py-3 bg-slate-50/50 flex flex-wrap gap-4 border-b border-slate-100">
+        <div id="ramp-export-container" className="bg-white">
+        <div className="px-6 py-3 bg-slate-50/50 flex flex-wrap gap-4 border-y border-slate-100">
           {legendItems.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
               <div 
@@ -402,8 +412,15 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                   ))}
                   {/* Length Bar with Construction History */}
                   <div 
-                    className="h-9 bg-white rounded-md shadow-inner relative z-10 overflow-hidden flex border border-slate-200" 
+                    className="h-9 bg-[#e7e6e6]/30 hover:bg-[#e7e6e6]/80 rounded-md shadow-inner relative z-10 overflow-hidden flex border border-slate-200 cursor-pointer transition-colors" 
                     style={{ width: `${(group.length / maxLength) * 100}%` }}
+                    onClick={(e) => {
+                      // Only trigger when clicking the empty background track itself, not the populated colored segments
+                      if (e.target === e.currentTarget && group.segments[0]) {
+                        onNavigateToEditDetails(undefined, selectedHighway, selectedInterchange, group.segments[0].id);
+                      }
+                    }}
+                    title="點擊空白處新增目前匝道之新履歷資料"
                   >
                      {/* Render all segments for this ramp */}
                     {group.segments.map(ramp => {
@@ -470,8 +487,8 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
             ))}
           </div>
         </div>
+        </div>
       </section>
-
 
       <ConfirmDialog 
         isOpen={showDeleteConfirm}
