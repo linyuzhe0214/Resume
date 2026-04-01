@@ -426,7 +426,9 @@ export default function App() {
   // Auto-load KML as the "database" logic — 解析所有 Point Placemark
   useEffect(() => {
     setKmlLoading(true);
-    fetch('/route.kml')
+    const basePath = (import.meta as any).env?.BASE_URL || '/';
+    const fetchPath = basePath.endsWith('/') ? `${basePath}route.kml` : `${basePath}/route.kml`;
+    fetch(fetchPath)
       .then(res => res.text())
       .then(kmlText => {
         const points = parseKmlToPoints(kmlText);
@@ -446,6 +448,8 @@ export default function App() {
         }
         
         console.log(`KML 資料庫載入完成: ${points.length} 個測量點`);
+        console.log(`Available highways in Mainline:`, Object.keys(index.mainline));
+        console.log(`Available highways in Ramp:`, Object.keys(index.ramp));
       })
       .catch(err => console.error('Failed to load local KML routing database:', err))
       .finally(() => setKmlLoading(false));
@@ -871,7 +875,7 @@ export default function App() {
             value={highwayName}
             onChange={(e) => setHighwayName(e.target.value)}
           >
-            {[1,2,3,4,5,6,8,10].map(h => (
+            {[1, 3, 4].map(h => (
               <option key={h} className="text-black" value={`國道${h}號`}>國道{h}號</option>
             ))}
           </select>
@@ -933,7 +937,17 @@ export default function App() {
                   <Search className="w-8 h-8 text-slate-400" />
                 </div>
                 <span className="text-sm font-bold text-slate-500">此里程無測量資料</span>
-                <span className="text-xs text-slate-400">請搜尋其他里程或切換國道/方向</span>
+                <span className="text-xs text-slate-400">目前選擇：{highwayName} / {direction} / {formatMileage(mileage)}</span>
+                {kmlIndex && (
+                  <div className="mt-4 text-[10px] text-slate-400 text-center space-y-1 bg-slate-50 p-3 rounded-lg w-full max-w-sm">
+                    <div className="font-bold text-slate-500 mb-1">📋 KML 檔案內含資料摘要</div>
+                    <div>主線包含 : {Object.keys(kmlIndex.mainline).length > 0 ? Object.keys(kmlIndex.mainline).join(', ') : '無'}</div>
+                    <div className="text-amber-600/70">匝道包含 : {Object.keys(kmlIndex.ramp).length > 0 ? Object.keys(kmlIndex.ramp).join(', ') : '無'}</div>
+                    <div className="mt-2 text-blue-500 font-bold border-t border-slate-200 pt-2">
+                       💡 提示：如果切換國道後無資料，請確認搜尋的「里程」是否在該國道的範圍內。例如國道4號可能沒有 166k+500。
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <>
