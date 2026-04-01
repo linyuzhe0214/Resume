@@ -539,11 +539,11 @@ export default function App() {
                 } : s);
                 setRampSegments(updatedSegments);
               }
-              syncGas(RAMP_URL, 'saveRamp', ramp.rampName, ramp);
+              syncGas(RAMP_URL, 'saveRamp', ramp.interchange, ramp);
             } else {
               const newRamp = { ...ramp, id: Math.random().toString(36).substr(2, 9) };
               setRampSegments(prev => [...prev, newRamp]);
-              syncGas(RAMP_URL, 'saveRamp', newRamp.rampName, newRamp);
+              syncGas(RAMP_URL, 'saveRamp', newRamp.interchange, newRamp);
             }
             setDraftRamp(null);
             setEditingRampId(null);
@@ -551,7 +551,7 @@ export default function App() {
           }}
           onDelete={(id) => {
             const seg = rampSegments.find(s => s.id === id);
-            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.rampName, id, true);
+            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.interchange, id, true);
             setRampSegments(rampSegments.filter(s => s.id !== id));
             setDraftRamp(null);
             setEditingRampId(null);
@@ -603,14 +603,14 @@ export default function App() {
               ramp = newRamp;
               setRampSegments([...rampSegments, newRamp]);
             }
-            syncGas(RAMP_URL, 'saveRamp', ramp.rampName, ramp);
+            syncGas(RAMP_URL, 'saveRamp', ramp.interchange, ramp);
             setDraftRamp(null);
             setEditingRampId(null);
             setSubPage('none');
           }}
           onDelete={(id) => {
             const seg = rampSegments.find(s => s.id === id);
-            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.rampName, id, true);
+            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.interchange, id, true);
             setRampSegments(rampSegments.filter(s => s.id !== id));
             setDraftRamp(null);
             setEditingRampId(null);
@@ -775,8 +775,8 @@ export default function App() {
             setSubPage('editRampHistory');
           }}
           onDeleteRamp={(rampId) => {
-            const seg = rampSegments.find(s => s.rampId === rampId);
-            if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.rampName, seg.id, true);
+            const segsToDelete = rampSegments.filter(s => s.rampId === rampId);
+            segsToDelete.forEach(seg => syncGas(RAMP_URL, 'deleteRamp', seg.interchange, seg.id, true));
             setRampSegments(rampSegments.filter(s => s.rampId !== rampId));
           }}
         />

@@ -18,22 +18,22 @@ export default function EditRampHistory({ segment, availableRamps, onChange, onS
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState<RampSegment>(segment || {
     id: '',
-    highway: '國道3號',
-    interchange: '中興系統',
+    highway: '',
+    interchange: '',
     property: '路堤',
     laneCategory: '一般路段',
-    constructionYear: '113',
-    constructionMonth: '08',
+    constructionYear: '',
+    constructionMonth: '',
     startMileage: 0,
-    endMileage: 670,
+    endMileage: 0,
     direction: 'Southbound',
     lanes: ['第一車道'],
     pavementLayers: [],
-    rampId: 'R-045-22',
-    rampName: '國道3號-中興系統',
-    rampNo: '匝道二',
-    laneCount: 2,
-    length: 670,
+    rampId: '',
+    rampName: '',
+    rampNo: '',
+    laneCount: 1,
+    length: 0,
     status: 'Optimal'
   });
 

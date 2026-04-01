@@ -98,7 +98,7 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
                       <option value="PAC (多孔隙瀝青混凝土)">PAC (多孔隙瀝青混凝土)</option>
                       <option value="DGAC (密級配瀝青混凝土)">DGAC (密級配瀝青混凝土)</option>
                       <option value="OGAC (開級配瀝青混凝土)">OGAC (開級配瀝青混凝土)</option>
-                      <option value="SMAAC (石膠泥瀝青混凝土)">SMAAC (石膠泥瀝青混凝土)</option>
+                      <option value="SMA (石膠泥瀝青混凝土)">SMA (石膠泥瀝青混凝土)</option>
                       <option value="GUSS (澆注式瀝青混凝土)">GUSS (澆注式瀝青混凝土)</option>
                       <option value="BTB (瀝青處理底層)">BTB (瀝青處理底層)</option>
                       <option value="AB (碎石級配底層)">AB (碎石級配底層)</option>
