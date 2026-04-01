@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MapPin, Upload, Route, Split, HardHat, Search, Layers } from 'lucide-react';
 import * as turf from '@turf/turf';
 import { format } from 'date-fns';
@@ -15,6 +15,7 @@ import ConfirmDialog from './components/ConfirmDialog';
 
 import { Segment, RampSegment, PavementLayer } from './types';
 import type { Feature, LineString } from 'geojson';
+import { parseKmlToPoints, buildKmlIndex, findNearestPoint, DIRECTION_REVERSE_MAP, type KmlIndex, type KmlPoint, type KmlMainlinePoint, type KmlRampPoint } from './utils/kmlParser';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -290,9 +291,15 @@ export default function App() {
   const [accuracy, setAccuracy] = useState<number | null>(null);
   
   const [highwayLine, setHighwayLine] = useState<Feature<LineString> | null>(null);
-  const [highwayName, setHighwayName] = useState<string>('國道1號'); // Default mock name
-  const [mileage, setMileage] = useState<number>(123524); // Default mock mileage in meters
+  const [highwayName, setHighwayName] = useState<string>('國道1號');
+  const [mileage, setMileage] = useState<number>(166500);
   const [direction, setDirection] = useState<string>('北上車道');
+  
+  // KML 資料庫
+  const [kmlIndex, setKmlIndex] = useState<KmlIndex | null>(null);
+  const [kmlLoading, setKmlLoading] = useState(true);
+  const [currentKmlPoint, setCurrentKmlPoint] = useState<KmlPoint | null>(null);
+  const [currentKmlType, setCurrentKmlType] = useState<'mainline' | 'ramp' | null>(null);
   const [activeTab, setActiveTab] = useState<'surface' | 'mainline' | 'ramp' | 'planning'>('surface');
   const [subPage, setSubPage] = useState<'none' | 'editSegment' | 'editPavement' | 'editRamp' | 'editRampHistory' | 'editRampHistoryPavement'>('none');
 
@@ -381,6 +388,7 @@ export default function App() {
           if (!isNaN(km) && !isNaN(m)) {
             const newMileage = km * 1000 + m;
             setMileage(newMileage);
+            // KML 查表會由 useEffect 自動觸發
             setToast({ message: `已定位至 ${km}k+${m.toString().padStart(3, '0')}`, type: 'success' });
             return;
           }
@@ -415,35 +423,45 @@ export default function App() {
     }
   }, [toast]);
 
-  // Auto-load KML as the "database" logic
+  // Auto-load KML as the "database" logic — 解析所有 Point Placemark
   useEffect(() => {
+    setKmlLoading(true);
     fetch('/route.kml')
       .then(res => res.text())
       .then(kmlText => {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(kmlText, "text/xml");
-        const lineStrings = xmlDoc.getElementsByTagName("LineString");
-        if (lineStrings.length > 0) {
-          const coordsText = lineStrings[0].getElementsByTagName("coordinates")[0]?.textContent;
-          if (coordsText) {
-            const coords = coordsText.trim().split(/\s+/).map(coord => {
-              const [lon, lat] = coord.split(',').map(Number);
-              return [lon, lat];
-            });
-            if (coords.length >= 2) {
-              const line = turf.lineString(coords);
-              setHighwayLine(line);
-              const placemark = lineStrings[0].closest('Placemark');
-              const nameNode = placemark?.getElementsByTagName('name')[0];
-              if (nameNode?.textContent) {
-                setHighwayName(nameNode.textContent);
-              }
-            }
+        const points = parseKmlToPoints(kmlText);
+        const index = buildKmlIndex(points);
+        setKmlIndex(index);
+        
+        // 從主線點建構 LineString for GPS 定位
+        // 按國道分組，只取每個國道的第一個方向來建 line
+        for (const hw of Object.keys(index.mainline)) {
+          const dirs = Object.values(index.mainline[hw]);
+          if (dirs.length > 0 && dirs[0].length >= 2) {
+            const coords = dirs[0].map(p => [p.lon, p.lat]);
+            const line = turf.lineString(coords);
+            setHighwayLine(line);
+            break; // 先用第一個國道的 line
           }
         }
+        
+        console.log(`KML 資料庫載入完成: ${points.length} 個測量點`);
       })
-      .catch(err => console.error('Failed to load local KML routing database:', err));
+      .catch(err => console.error('Failed to load local KML routing database:', err))
+      .finally(() => setKmlLoading(false));
   }, []);
+
+  // 當 mileage / highway / direction 改變時，查詢 KML 對應的測量點
+  useEffect(() => {
+    if (!kmlIndex) {
+      setCurrentKmlPoint(null);
+      setCurrentKmlType(null);
+      return;
+    }
+    const result = findNearestPoint(kmlIndex, highwayName, direction, mileage);
+    setCurrentKmlPoint(result.point);
+    setCurrentKmlType(result.type);
+  }, [kmlIndex, highwayName, direction, mileage]);
 
   // Geolocation
   useEffect(() => {
@@ -904,112 +922,207 @@ export default function App() {
 
           {/* Road Information Dashboard */}
           <main className="flex-grow flex flex-col gap-3">
-            {/* General & Geometry Info */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl flex flex-col gap-2">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">路基/路面</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 bg-blue-50 text-[10px] font-bold rounded border border-blue-200 text-blue-700">路堤</span>
-                  <span className="px-2 py-0.5 bg-slate-50 text-[10px] font-bold rounded border border-slate-200 text-slate-600">柔性路面</span>
-                </div>
-                <div className="mt-1 text-xl font-black text-slate-800">
-                  14.946<span className="text-xs ml-1 text-slate-500">m</span>
-                </div>
+            {kmlLoading ? (
+              <div className="bg-white border border-slate-200 shadow-sm p-8 rounded-2xl flex flex-col items-center justify-center gap-3">
+                <div className="w-8 h-8 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <span className="text-sm font-bold text-slate-500">載入路面資料庫中...</span>
               </div>
-              
-              <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl flex flex-col gap-2">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">線型資訊</span>
-                <div className="text-sm font-black text-slate-800">曲率: 2000.57m</div>
-                <div className="flex items-center justify-between mt-1">
-                  <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold text-slate-500">縱坡 0.016</span>
-                      <span className="text-[11px] font-black text-green-700 bg-green-50 px-1 rounded">上坡</span>
+            ) : !currentKmlPoint ? (
+              <div className="bg-white border border-slate-200 shadow-sm p-8 rounded-2xl flex flex-col items-center justify-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+                  <Search className="w-8 h-8 text-slate-400" />
+                </div>
+                <span className="text-sm font-bold text-slate-500">此里程無測量資料</span>
+                <span className="text-xs text-slate-400">請搜尋其他里程或切換國道/方向</span>
+              </div>
+            ) : (
+              <>
+                {/* 匝道提示 */}
+                {currentKmlPoint.isRamp && (
+                  <div className="bg-amber-50 border border-amber-200 shadow-sm p-4 rounded-xl flex items-center gap-3">
+                    <Split className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black text-amber-800">匝道區域 — {(currentKmlPoint as KmlRampPoint).interchangeName}</span>
+                      <span className="text-xs text-amber-600 font-bold">
+                        {(currentKmlPoint as KmlRampPoint).rampDescription} · {(currentKmlPoint as KmlRampPoint).entryExit}國道 · 匝道編號: {(currentKmlPoint as KmlRampPoint).rampId}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold text-slate-500">橫坡 -0.035</span>
-                      <span className="text-[11px] font-black text-red-700 bg-red-50 px-1 rounded">下坡</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+                )}
 
-            {/* Lane Details & Diagram */}
-            <div className="bg-white border border-slate-200 shadow-sm p-5 rounded-2xl flex flex-col gap-5">
-              <h3 className="text-xs font-black text-[#0284c7] uppercase tracking-widest border-b border-slate-100 pb-3">
-                斷面配置圖 (CROSS-SECTION)
-              </h3>
-              
-              {/* Visual Cross-section Diagram */}
-              <div className="w-full flex items-end justify-center h-28 gap-1 px-2 font-mono text-[9px]">
-                {/* Inner Shoulder */}
-                <div className="flex flex-col items-center">
-                  <div className="bg-slate-200 w-7 h-14 border-l-2 border-slate-300 flex items-center justify-center text-slate-600 text-[8px] leading-tight text-center font-bold">
-                    內<br/>肩
+                {/* General & Geometry Info */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl flex flex-col gap-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">路基/路面</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).roadType && (
+                        <span className="px-2 py-0.5 bg-blue-50 text-[10px] font-bold rounded border border-blue-200 text-blue-700">
+                          {(currentKmlPoint as KmlMainlinePoint).roadType}
+                        </span>
+                      )}
+                      <span className="px-2 py-0.5 bg-slate-50 text-[10px] font-bold rounded border border-slate-200 text-slate-600">
+                        {currentKmlPoint.pavementType || '柔性'}路面
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xl font-black text-slate-800">
+                      {currentKmlPoint.roadWidth.toFixed(3)}<span className="text-xs ml-1 text-slate-500">m</span>
+                    </div>
                   </div>
-                  <span className="mt-2 text-slate-500 font-bold">0.96m</span>
-                </div>
-                
-                {/* Lane 1 */}
-                <div className="flex flex-col items-center flex-1">
-                  <div className="bg-slate-100 border-l border-dashed border-slate-300 w-full h-20 flex items-center justify-center text-slate-700 font-black text-[10px]">
-                    車道1
+                  
+                  <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl flex flex-col gap-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">線型資訊</span>
+                    <div className="text-sm font-black text-slate-800">
+                      曲率: {currentKmlPoint.curvatureRadius > 0 ? `${currentKmlPoint.curvatureRadius.toFixed(2)}m` : 'N/A'}
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-bold text-slate-500">縱坡 {currentKmlPoint.longitudinalSlope.toFixed(3)}</span>
+                          <span className={cn(
+                            "text-[11px] font-black px-1 rounded",
+                            currentKmlPoint.longitudinalSlope > 0 
+                              ? "text-green-700 bg-green-50" 
+                              : currentKmlPoint.longitudinalSlope < 0 
+                                ? "text-red-700 bg-red-50" 
+                                : "text-slate-500 bg-slate-50"
+                          )}>
+                            {currentKmlPoint.longitudinalSlope > 0 ? '上坡' : currentKmlPoint.longitudinalSlope < 0 ? '下坡' : '平'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-bold text-slate-500">橫坡 {currentKmlPoint.lateralSlope.toFixed(3)}</span>
+                          <span className={cn(
+                            "text-[11px] font-black px-1 rounded",
+                            currentKmlPoint.lateralSlope > 0 
+                              ? "text-green-700 bg-green-50" 
+                              : currentKmlPoint.lateralSlope < 0 
+                                ? "text-red-700 bg-red-50" 
+                                : "text-slate-500 bg-slate-50"
+                          )}>
+                            {currentKmlPoint.lateralSlope > 0 ? '上坡' : currentKmlPoint.lateralSlope < 0 ? '下坡' : '平'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <span className="mt-2 text-slate-500 font-bold">3.63m</span>
                 </div>
-                
-                {/* Lane 2 */}
-                <div className="flex flex-col items-center flex-1">
-                  <div className="bg-slate-100 border-l border-dashed border-slate-300 w-full h-20 flex items-center justify-center text-slate-700 font-black text-[10px]">
-                    車道2
+
+                {/* Lane Details & Diagram */}
+                <div className="bg-white border border-slate-200 shadow-sm p-5 rounded-2xl flex flex-col gap-5">
+                  <h3 className="text-xs font-black text-[#0284c7] uppercase tracking-widest border-b border-slate-100 pb-3">
+                    斷面配置圖 (CROSS-SECTION) · {currentKmlPoint.stakeNo}
+                  </h3>
+                  
+                  {/* Visual Cross-section Diagram */}
+                  <div className="w-full flex items-end justify-center h-28 gap-1 px-2 font-mono text-[9px]">
+                    {/* Inner Shoulder (主線才有) */}
+                    {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).innerShoulderWidth > 0 && (
+                      <div className="flex flex-col items-center">
+                        <div className="bg-slate-200 w-7 h-14 border-l-2 border-slate-300 flex items-center justify-center text-slate-600 text-[8px] leading-tight text-center font-bold">
+                          內<br/>肩
+                        </div>
+                        <span className="mt-2 text-slate-500 font-bold">{(currentKmlPoint as KmlMainlinePoint).innerShoulderWidth.toFixed(2)}m</span>
+                      </div>
+                    )}
+                    
+                    {/* Lanes */}
+                    {currentKmlPoint.laneWidths.map((w, i) => (
+                      <div key={i} className="flex flex-col items-center flex-1">
+                        <div className="bg-slate-100 border-l border-dashed border-slate-300 w-full h-20 flex items-center justify-center text-slate-700 font-black text-[10px]">
+                          車道{i + 1}
+                        </div>
+                        <span className="mt-2 text-slate-500 font-bold">{w.toFixed(2)}m</span>
+                      </div>
+                    ))}
+
+                    {/* 輔助車道 (主線才有) */}
+                    {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).auxiliaryLanes.map((aux, i) => (
+                      <div key={`aux-${i}`} className="flex flex-col items-center flex-1">
+                        <div className="bg-blue-50 border-l border-dashed border-blue-200 w-full h-16 flex items-center justify-center text-blue-700 font-black text-[9px]">
+                          {aux.name}
+                        </div>
+                        <span className="mt-2 text-blue-500 font-bold">{aux.width.toFixed(2)}m</span>
+                      </div>
+                    ))}
+                    
+                    {/* Outer Shoulder (主線才有) */}
+                    {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).outerShoulderWidth > 0 && (
+                      <div className="flex flex-col items-center">
+                        <div className="bg-slate-200 w-16 h-14 border-r-2 border-slate-300 flex items-center justify-center text-slate-600 text-[10px] font-bold">
+                          外路肩
+                        </div>
+                        <span className="mt-2 text-slate-500 font-bold">{(currentKmlPoint as KmlMainlinePoint).outerShoulderWidth.toFixed(2)}m</span>
+                      </div>
+                    )}
                   </div>
-                  <span className="mt-2 text-slate-500 font-bold">3.65m</span>
+                  
+                  {/* Detail Grid */}
+                  {!currentKmlPoint.isRamp ? (() => {
+                    const mp = currentKmlPoint as KmlMainlinePoint;
+                    return (
+                      <div className="grid grid-cols-2 gap-y-3 text-xs border-t border-slate-100 pt-5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 font-bold">槽化線:</span> 
+                          <span className="font-black text-slate-800">{mp.hasChannelization ? `有 (${mp.channelizationWidth.toFixed(3)}m)` : '無'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 font-bold">輔助車道:</span> 
+                          <span className="font-black text-slate-800">
+                            {mp.auxiliaryLanes.length > 0 
+                              ? mp.auxiliaryLanes.map(a => `${a.name} (${a.width.toFixed(2)}m)`).join(', ')
+                              : '無'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 font-bold">內側路肩:</span> 
+                          <span className={cn("font-black", mp.hasInnerShoulder ? "text-[#0284c7]" : "text-slate-800")}>
+                            {mp.hasInnerShoulder ? `有 (${mp.innerShoulderWidth.toFixed(3)}m)` : mp.innerShoulderWidth > 0 ? `有* (${mp.innerShoulderWidth.toFixed(3)}m)` : '無'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 font-bold">避車彎:</span> 
+                          <span className="font-black text-slate-800">{mp.hasPullover ? '有' : '無'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 col-span-2">
+                          <span className="text-slate-500 font-bold">外側路肩:</span> 
+                          <span className={cn("font-black", mp.hasOuterShoulder ? "text-[#0284c7]" : "text-slate-800")}>
+                            {mp.hasOuterShoulder ? `有 (${mp.outerShoulderWidth.toFixed(3)}m)` : mp.outerShoulderWidth > 0 ? `有* (${mp.outerShoulderWidth.toFixed(3)}m)` : '無'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })() : (() => {
+                    const rp = currentKmlPoint as KmlRampPoint;
+                    return (
+                      <div className="grid grid-cols-2 gap-y-3 text-xs border-t border-slate-100 pt-5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 font-bold">匝道編號:</span> 
+                          <span className="font-black text-slate-800">{rp.rampId}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 font-bold">出入國道:</span> 
+                          <span className="font-black text-slate-800">{rp.entryExit}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 font-bold">槽化區:</span> 
+                          <span className="font-black text-slate-800">{rp.hasChannelization ? `有 (${rp.channelizationWidth.toFixed(3)}m)` : '無'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 font-bold">與起點距離:</span> 
+                          <span className="font-black text-[#0284c7]">{rp.distFromRampStart.toFixed(1)}m</span>
+                        </div>
+                        <div className="flex items-center gap-2 col-span-2">
+                          <span className="text-slate-500 font-bold">交流道:</span> 
+                          <span className="font-black text-slate-800">{rp.interchangeName}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
-                
-                {/* Lane 3 */}
-                <div className="flex flex-col items-center flex-1">
-                  <div className="bg-slate-100 border-l border-dashed border-slate-300 w-full h-20 flex items-center justify-center text-slate-700 font-black text-[10px]">
-                    車道3
-                  </div>
-                  <span className="mt-2 text-slate-500 font-bold">3.69m</span>
-                </div>
-                
-                {/* Outer Shoulder */}
-                <div className="flex flex-col items-center">
-                  <div className="bg-slate-200 w-16 h-14 border-r-2 border-slate-300 flex items-center justify-center text-slate-600 text-[10px] font-bold">
-                    外路肩
-                  </div>
-                  <span className="mt-2 text-slate-500 font-bold">3.01m</span>
-                </div>
-              </div>
-              
-              {/* Detail Grid */}
-              <div className="grid grid-cols-2 gap-y-3 text-xs border-t border-slate-100 pt-5">
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500 font-bold">槽化線:</span> 
-                  <span className="font-black text-slate-800">無</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500 font-bold">輔助車道:</span> 
-                  <span className="font-black text-slate-800">無</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500 font-bold">內側路肩:</span> 
-                  <span className="font-black text-[#0284c7]">有 (0.962m)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500 font-bold">避車彎:</span> 
-                  <span className="font-black text-slate-800">無</span>
-                </div>
-                <div className="flex items-center gap-2 col-span-2">
-                  <span className="text-slate-500 font-bold">外側路肩:</span> 
-                  <span className="font-black text-[#0284c7]">有 (3.013m)</span>
-                </div>
-              </div>
-            </div>
+              </>
+            )}
           </main>
         </>
       )}
