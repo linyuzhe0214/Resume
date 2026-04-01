@@ -1,5 +1,39 @@
 import { toPng } from 'html-to-image';
 
+/**
+ * 遍歷元素及其子元素，將所有計算後的顏色（包含 oklch, oklab 等）強行轉換為 RGB 內嵌樣式。
+ * 這是為了解決截圖套件無法解析 Tailwind v4 新顏色格式的問題。
+ */
+const convertToComputedRgb = (element: HTMLElement) => {
+  const elements = [element, ...Array.from(element.querySelectorAll('*'))] as HTMLElement[];
+  const savedStyles: Array<{ el: HTMLElement; style: string }> = [];
+
+  elements.forEach((el) => {
+    const style = window.getComputedStyle(el);
+    const colorProps = ['backgroundColor', 'color', 'borderColor', 'boxShadow', 'outlineColor', 'textDecorationColor'];
+    
+    savedStyles.push({ el, style: el.style.cssText });
+
+    colorProps.forEach((prop) => {
+      const value = (style as any)[prop];
+      if (value && (value.includes('oklch') || value.includes('oklab') || value.includes('var('))) {
+        // 使用 computed style 的值，瀏覽器會自動將其轉為 rgb(...) 或 rgba(...)
+        el.style.setProperty(prop === 'backgroundColor' ? 'background-color' : 
+                            prop === 'borderColor' ? 'border-color' : 
+                            prop === 'boxShadow' ? 'box-shadow' : 
+                            prop.replace(/([A-Z])/g, '-$1').toLowerCase(), 
+                            value, 'important');
+      }
+    });
+  });
+
+  return () => {
+    savedStyles.forEach(({ el, style }) => {
+      el.style.cssText = style;
+    });
+  };
+};
+
 export const exportComponentAsImage = async (elementId: string, filename: string) => {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -7,53 +41,57 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     return;
   }
   
+  let restoreColors: (() => void) | null = null;
+  const originalStyle = element.style.cssText;
+  const scrollContainers = element.querySelectorAll('.overflow-auto, .overflow-y-auto, .hide-scrollbar');
+  const originalScrollStyles = Array.from(scrollContainers).map((el: any) => el.style.cssText);
+
   try {
-    // 暫時將容器及內部滾動區域展開，以便捕捉完整內容
-    const originalStyle = element.style.cssText;
+    // 1. 展開容器
     element.style.setProperty('height', 'max-content', 'important');
     element.style.setProperty('overflow', 'visible', 'important');
     
-    // 找出內部的 overflow-auto 元素並展開
-    const scrollContainers = element.querySelectorAll('.overflow-auto, .overflow-y-auto, .hide-scrollbar');
-    const originalScrollStyles = Array.from(scrollContainers).map((el: any) => el.style.cssText);
     scrollContainers.forEach((el: any) => {
       el.style.setProperty('height', 'max-content', 'important');
       el.style.setProperty('overflow', 'visible', 'important');
       el.style.setProperty('max-height', 'none', 'important');
     });
 
-    // 等待 DOM 更新
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // 2. 轉換顏色為 RGB，避免截圖套件解析失敗
+    restoreColors = convertToComputedRgb(element);
 
-    // 計算適當的縮放比例 (避免 Canvas 過大導致 toDataURL 失敗)
+    // 等待 DOM 更新
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     const targetHeight = element.scrollHeight;
     const pixelRatio = targetHeight > 8000 ? 1 : 2; 
 
-    try {
-      // 改用 html-to-image，原生支援 oklch 以及 Tailwind CSS v4 的所有新特性
-      const dataUrl = await toPng(element, {
-        backgroundColor: '#f7f9fc',
-        pixelRatio: pixelRatio,
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-        style: {
-          transform: 'none',
-        }
-      });
-      
-      const link = document.createElement('a');
-      link.download = `${filename}_${new Date().getTime()}.png`;
-      link.href = dataUrl;
-      link.click();
-    } finally {
-      // 復原 DOM 樣式
-      element.style.cssText = originalStyle;
-      scrollContainers.forEach((el: any, i) => {
-        el.style.cssText = originalScrollStyles[i];
-      });
-    }
+    const dataUrl = await toPng(element, {
+      backgroundColor: '#f7f9fc',
+      pixelRatio: pixelRatio,
+      width: element.scrollWidth,
+      height: element.scrollHeight,
+      style: {
+        transform: 'none',
+        // 確保在導出時不顯示某些 UI
+        transition: 'none'
+      }
+    });
+    
+    const link = document.createElement('a');
+    link.download = `${filename}_${new Date().getTime()}.png`;
+    link.href = dataUrl;
+    link.click();
+
   } catch (err: any) {
     console.error('Failed to export image:', err);
     alert(`匯出圖片失敗：${err.message || err} \n請檢查 F12 主控台錯誤訊息。`);
+  } finally {
+    // 3. 復原一切
+    if (restoreColors) restoreColors();
+    element.style.cssText = originalStyle;
+    scrollContainers.forEach((el: any, i) => {
+      el.style.cssText = originalScrollStyles[i];
+    });
   }
 };
