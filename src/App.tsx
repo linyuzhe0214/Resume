@@ -323,6 +323,7 @@ export default function App() {
     return initialRampSegments;
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [autoTracking, setAutoTracking] = useState(true);
 
   // Fetch data from Google Apps Script on mount
   useEffect(() => {
@@ -392,6 +393,14 @@ export default function App() {
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const val = searchQuery.trim().toLowerCase();
+      
+      const setManualMode = () => {
+        if (autoTracking) {
+          setAutoTracking(false);
+          setToast({ message: 'GPS 自動跟隨已暫停', type: 'info' });
+        }
+      };
+
       if (val.includes('k+')) {
         const parts = val.split('k+');
         if (parts.length === 2) {
@@ -400,8 +409,9 @@ export default function App() {
           if (!isNaN(km) && !isNaN(m)) {
             const newMileage = km * 1000 + m;
             setMileage(newMileage);
+            setManualMode();
             // KML 查表會由 useEffect 自動觸發
-            setToast({ message: `已定位至 ${km}k+${m.toString().padStart(3, '0')}`, type: 'success' });
+            setToast({ message: `已手動定位至 ${km}k+${m.toString().padStart(3, '0')}`, type: 'success' });
             return;
           }
         }
@@ -410,7 +420,8 @@ export default function App() {
       const num = parseInt(val, 10);
       if (!isNaN(num) && num >= 0 && !val.includes('k+')) {
         setMileage(num);
-        setToast({ message: `已定位至 ${formatMileage(num)}`, type: 'success' });
+        setManualMode();
+        setToast({ message: `已手動定位至 ${formatMileage(num)}`, type: 'success' });
       }
     }
   };
@@ -492,8 +503,8 @@ export default function App() {
         setAccuracy(pos.coords.accuracy);
         setGpsStatus('active');
         
-        // If we have a highway line, calculate mileage
-        if (highwayLine) {
+        // If we have a highway line and auto tracking is enabled, calculate mileage
+        if (highwayLine && autoTracking) {
           const pt = turf.point([pos.coords.longitude, pos.coords.latitude]);
           const snapped = turf.nearestPointOnLine(highwayLine, pt);
           
@@ -507,7 +518,6 @@ export default function App() {
           setMileage(distMeters);
           
           // Basic direction mock based on bearing
-          // In a real app, this would depend on the highway's defined direction
           if (pos.coords.heading !== null) {
             setDirection(pos.coords.heading < 180 ? '北上車道' : '南下車道');
           }
@@ -521,7 +531,7 @@ export default function App() {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [highwayLine]);
+  }, [highwayLine, autoTracking]);
 
   const formatMileage = (meters: number) => {
     const km = Math.floor(meters / 1000);
@@ -917,13 +927,25 @@ export default function App() {
         <div className="flex items-center justify-between w-full">
           <div className="flex flex-col">
             <h1 className="text-xl font-extrabold tracking-tight text-white drop-shadow-sm">高速公路路巡里程資訊系統</h1>
-            <div className="flex items-center gap-2 mt-1">
+            <div 
+              className="flex items-center gap-2 mt-1 cursor-pointer hover:bg-white/10 px-2 py-1 rounded-lg w-max -ml-2 transition-colors group"
+              onClick={() => {
+                setAutoTracking(!autoTracking);
+                if (!autoTracking) {
+                  setToast({ message: '已恢復 GPS 自動追蹤', type: 'success' });
+                }
+              }}
+              title="點擊切換 GPS 自動跟隨狀態"
+            >
               <span className={cn(
                 "flex h-2 w-2 rounded-full",
-                gpsStatus === 'active' ? "bg-green-400" : gpsStatus === 'locating' ? "bg-yellow-400 animate-pulse" : "bg-red-400"
+                !autoTracking ? "bg-slate-400" :
+                gpsStatus === 'active' ? "bg-green-400" : 
+                gpsStatus === 'locating' ? "bg-yellow-400 animate-pulse" : "bg-red-400"
               )}></span>
-              <span className="text-[11px] font-semibold text-blue-100">
-                {gpsStatus === 'active' ? `GPS 定位中 (準確度: ${Math.round(accuracy || 0)}m)` : 
+              <span className="text-[11px] font-semibold text-blue-100 group-hover:text-white transition-colors">
+                {!autoTracking ? 'GPS 自動追蹤已暫停 (點擊恢復)' :
+                 gpsStatus === 'active' ? `GPS 連線中 (${Math.round(accuracy || 0)}m)` : 
                  gpsStatus === 'locating' ? 'GPS 定位中...' : 'GPS 定位失敗'}
               </span>
             </div>
