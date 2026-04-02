@@ -815,10 +815,51 @@ export default function App() {
             }
             setSubPage('editRamp');
           }} 
-          onNavigateToEditHistory={(id) => {
-            setEditingRampId(id);
-            const ramp = rampSegments.find(s => s.id === id);
-            setDraftRamp(ramp ? { ...ramp } : null);
+          onNavigateToEditHistory={(id, prototypeId) => {
+            setEditingRampId(id || null);
+            if (id) {
+              const ramp = rampSegments.find(s => s.id === id);
+              setDraftRamp(ramp ? { ...ramp } : null);
+            } else if (prototypeId) {
+              const proto = rampSegments.find(s => s.id === prototypeId);
+              if (proto) {
+                setDraftRamp({
+                  ...proto,
+                  id: '',
+                  pavementLayers: [],
+                  maintenanceHistory: [],
+                  notes: '',
+                  constructionYear: '114',
+                  constructionMonth: '01'
+                });
+              } else {
+                setDraftRamp(null);
+              }
+            } else {
+              setDraftRamp({
+                id: '',
+                rampId: '',
+                rampName: '',
+                rampNo: '',
+                laneCount: 1,
+                length: 0,
+                status: 'Optimal',
+                highway: '國道1號',
+                interchange: '豐原交流道',
+                property: '路堤',
+                laneCategory: '一般路段',
+                constructionYear: '114',
+                constructionMonth: '01',
+                startMileage: 0,
+                endMileage: 0,
+                direction: 'Southbound',
+                lanes: ['第一車道'],
+                pavementLayers: [],
+                notes: '',
+                prevConstructionYear: '',
+                prevConstructionDepth: 0
+              });
+            }
             setSubPage('editRampHistory');
           }}
           onDeleteRamp={(rampId) => {

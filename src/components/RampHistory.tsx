@@ -10,7 +10,7 @@ import { exportComponentAsImage } from '../utils/exportImage';
 interface RampHistoryProps {
   rampSegments: RampSegment[];
   onNavigateToEditDetails: (rampId?: string, defaultHighway?: string, defaultInterchange?: string, prototypeId?: string) => void;
-  onNavigateToEditHistory: (rampId: string) => void;
+  onNavigateToEditHistory: (rampId?: string, prototypeId?: string) => void;
   onDeleteRamp?: (rampId: string) => void;
 }
 
@@ -259,12 +259,15 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
             >
               <Plus className="w-3.5 h-3.5" /> 新增資料
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm">
+            <button 
+              onClick={() => exportComponentAsImage('ramp-details-export', `${selectedHighway}_${selectedInterchange}_匝道詳細資料`)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm"
+            >
               <Download className="w-3.5 h-3.5" /> 匯出報表
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div id="ramp-details-export" className="overflow-x-auto bg-white">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/50">
@@ -343,7 +346,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
               <Download className="w-4 h-4" /> 匯出圖表
             </button>
             <button 
-              onClick={() => onNavigateToEditHistory('')}
+              onClick={() => onNavigateToEditHistory(undefined)}
               className="flex items-center gap-2 px-4 py-2 bg-[#00488d] text-white rounded-xl text-xs font-black hover:bg-[#005fb8] transition-all shadow-sm"
             >
               <Plus className="w-4 h-4" /> 新增履歷
@@ -417,7 +420,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                     onClick={(e) => {
                       // Only trigger when clicking the empty background track itself, not the populated colored segments
                       if (e.target === e.currentTarget && group.segments[0]) {
-                        onNavigateToEditDetails(undefined, selectedHighway, selectedInterchange, group.segments[0].id);
+                        onNavigateToEditHistory(undefined, group.segments[0].id);
                       }
                     }}
                     title="點擊空白處新增目前匝道之新履歷資料"
