@@ -394,10 +394,10 @@ export default function App() {
     return null;
   };
 
-  const handleAddLane = (newLane: string) => {
+  const handleAddLane = (newLane: string, targetHighway: string = highwayName) => {
     if (!newLane || !newLane.trim()) return;
     const trimmedLane = newLane.trim();
-    const currentLanes = laneOptions[highwayName] || [];
+    const currentLanes = laneOptions[targetHighway] || [];
     
     if (currentLanes.some(l => l.toLowerCase() === trimmedLane.toLowerCase())) {
       setToast({ message: '此車道名稱已存在於該國道', type: 'error' });
@@ -406,30 +406,43 @@ export default function App() {
     
     setLaneOptions({
       ...laneOptions,
-      [highwayName]: [...currentLanes, trimmedLane]
+      [targetHighway]: [...currentLanes, trimmedLane]
     });
-    setToast({ message: `已於 ${highwayName} 新增車道: ${trimmedLane}`, type: 'success' });
+    setToast({ message: `已於 ${targetHighway} 新增車道: ${trimmedLane}`, type: 'success' });
   };
 
-  const handleDeleteLane = (laneName: string) => {
-    const affectedSegments = segments.filter(s => s.highway === highwayName && s.lanes.includes(laneName));
-    const confirmMsg = `刪除 ${highwayName} 的「${laneName}」將連帶刪除 ${affectedSegments.length} 筆施工紀錄。確定要繼續嗎？`;
+  const handleDeleteLane = (laneName: string, targetHighway: string = highwayName) => {
+    const affectedSegments = segments.filter(s => s.highway === targetHighway && s.lanes.includes(laneName));
+    setShowLaneDeleteConfirm({ highway: targetHighway, lane: laneName, count: affectedSegments.length });
+  };
+
+  const confirmDeleteLane = () => {
+    if (!showLaneDeleteConfirm) return;
+    const { highway: targetHighway, lane: laneName } = showLaneDeleteConfirm;
+    const affectedSegments = segments.filter(s => s.highway === targetHighway && s.lanes.includes(laneName));
     
-    if (window.confirm(confirmMsg)) {
-      // 1. Delete associated segments from cloud & local
-      affectedSegments.forEach(seg => {
-        syncGas(MAINLINE_URL, 'deleteMainline', 'Mainline', seg.id, true);
-      });
-      setSegments(segments.filter(s => !(s.highway === highwayName && s.lanes.includes(laneName))));
-      
-      // 2. Remove lane from options
-      const currentLanes = laneOptions[highwayName] || [];
-      setLaneOptions({
-        ...laneOptions,
-        [highwayName]: currentLanes.filter(l => l !== laneName)
-      });
-      setToast({ message: `已刪除 ${highwayName} 車道及相關 ${affectedSegments.length} 筆資料`, type: 'success' });
-    }
+    // 1. Delete associated segments from cloud & local
+    affectedSegments.forEach(seg => {
+      syncGas(MAINLINE_URL, 'deleteMainline', targetHighway, seg.id, true);
+    });
+    setSegments(segments.filter(s => !(s.highway === targetHighway && s.lanes.includes(laneName))));
+    
+    // 2. Remove lane from options
+    const currentLanes = laneOptions[targetHighway] || [];
+    setLaneOptions({
+      ...laneOptions,
+      [targetHighway]: currentLanes.filter(l => l !== laneName)
+    });
+    setToast({ message: `已刪除 ${targetHighway} 車道及相關 ${affectedSegments.length} 筆資料`, type: 'success' });
+    setShowLaneDeleteConfirm(null);
+  };
+
+  const handleUpdateLaneOrder = (targetHighway: string, newLanesOrder: string[]) => {
+    setLaneOptions({
+      ...laneOptions,
+      [targetHighway]: newLanesOrder
+    });
+    setToast({ message: `已更新 ${targetHighway} 車道排序`, type: 'success' });
   };
 
 
@@ -492,7 +505,8 @@ export default function App() {
   const [draftSegment, setDraftSegment] = useState<Segment | null>(null);
   const [draftRamp, setDraftRamp] = useState<RampSegment | null>(null);
   const [showConfirmDeleteAll, setShowConfirmDeleteAll] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const [showLaneDeleteConfirm, setShowLaneDeleteConfirm] = useState<{ highway: string, lane: string, count: number } | null>(null);
 
   // Update clock
   useEffect(() => {
@@ -961,8 +975,9 @@ export default function App() {
           activeHighway={activeHistoryHighway}
           onActiveHighwayChange={setActiveHistoryHighway}
           laneOptions={laneOptions[activeHistoryHighway] || []}
-          onAddLane={handleAddLane}
-          onDeleteLane={handleDeleteLane}
+          onAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
+          onDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
+          onUpdateLaneOrder={(newLanes) => handleUpdateLaneOrder(activeHistoryHighway, newLanes)}
           onNavigateToEdit={(id) => {
             setEditingSegmentId(id || null);
 
@@ -1321,7 +1336,9 @@ export default function App() {
             activeHighway={activeHistoryHighway}
             onActiveHighwayChange={setActiveHistoryHighway}
             laneOptions={laneOptions[activeHistoryHighway] || []}
-            onAddLane={handleAddLane}
+            onAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
+            onDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
+            onUpdateLaneOrder={(newLanes) => handleUpdateLaneOrder(activeHistoryHighway, newLanes)}
             onDeleteAll={() => setShowConfirmDeleteAll(true)}
             onNavigateToEdit={(id) => {
 
@@ -1365,11 +1382,21 @@ export default function App() {
         onCancel={() => setShowConfirmDeleteAll(false)}
       />
 
+      <ConfirmDialog 
+        isOpen={!!showLaneDeleteConfirm}
+        title="確定要刪除此車道嗎？"
+        message={`刪除 ${showLaneDeleteConfirm?.highway} 的「${showLaneDeleteConfirm?.lane}」將連帶刪除 ${showLaneDeleteConfirm?.count} 筆施工紀錄。此操作無法復原。`}
+        type="danger"
+        onConfirm={confirmDeleteLane}
+        onCancel={() => setShowLaneDeleteConfirm(null)}
+      />
+
       {toast && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-top-4 duration-300">
           <div className={cn(
             "px-6 py-3 rounded-full shadow-2xl text-white font-bold text-sm",
-            toast.type === 'success' ? "bg-green-500" : "bg-slate-800"
+            toast.type === 'success' ? "bg-green-500" : 
+            toast.type === 'error' ? "bg-red-500" : "bg-slate-800"
           )}>
             {toast.message}
           </div>

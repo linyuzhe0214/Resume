@@ -12,6 +12,7 @@ interface MainlineHistoryProps {
   laneOptions?: string[];
   onAddLane?: (newLane: string) => void;
   onDeleteLane?: (laneName: string) => void;
+  onUpdateLaneOrder?: (newLanes: string[]) => void;
   onNavigateToEdit: (segmentId?: string) => void;
   onDeleteAll?: () => void;
   title?: string;
@@ -24,6 +25,7 @@ export default function MainlineHistory({
   laneOptions = [], 
   onAddLane, 
   onDeleteLane,
+  onUpdateLaneOrder,
   onNavigateToEdit, 
   onDeleteAll, 
   title = '路面整修履歷' 
@@ -72,17 +74,13 @@ export default function MainlineHistory({
   const uniqueSouthLanes = Array.from(new Set(southSegments.flatMap(s => s.lanes)));
   const uniqueNorthLanes = Array.from(new Set(northSegments.flatMap(s => s.lanes)));
 
-  const STANDARD_LANES_SOUTH = ['外路肩', '第四車道', '第三車道', '第二車道', '第一車道', '內路肩'];
-  const STANDARD_LANES_NORTH = ['內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '外路肩'];
-
-  // Combine lanes from data segments and EXTRA lane options added by user
-  // This ensures that when a user adds a new lane category, a column appears immediately
-  const customLanes = laneOptions.filter(l => 
-    !STANDARD_LANES_SOUTH.includes(l) && !STANDARD_LANES_NORTH.includes(l)
-  );
-  
-  const southColumns = [...customLanes, ...STANDARD_LANES_SOUTH];
-  const northColumns = [...STANDARD_LANES_NORTH, ...customLanes];
+  // Use the provided laneOptions for ordering
+  // We mirror the order for Northbound to keep Inner-to-Outer consistency if that's what the user wants
+  // or simply respect the array order.
+  // Standard logic: Southbound lists lanes in the order provided (e.g. Inner to Outer)
+  // Northbound usually mirrors this.
+  const southColumns = laneOptions;
+  const northColumns = [...laneOptions].reverse();
 
   // Calculate dynamic legend based on filtered segments
   const getLegendItems = () => {
@@ -168,7 +166,8 @@ export default function MainlineHistory({
   };
 
   const isDefaultLane = (lane: string) => {
-    return STANDARD_LANES_SOUTH.includes(lane) || STANDARD_LANES_NORTH.includes(lane);
+    const defaults = ['內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '外路肩', '輔助車道', '機車道', '加速車道', '減速車道', '避難車道', '爬坡車道'];
+    return defaults.includes(lane);
   };
 
   return (
@@ -468,19 +467,49 @@ export default function MainlineHistory({
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1 px-1">現有車道清單</p>
                   <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 customize-scrollbar">
-                    {laneOptions.map((lane) => {
+                    {laneOptions.map((lane, index) => {
                       const isDefault = isDefaultLane(lane);
                       const count = segments.filter(s => s.highway === activeHighway && s.lanes.includes(lane)).length;
                       
                       return (
                         <div key={lane} className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm hover:border-blue-200 transition-all group">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-slate-700 flex items-center gap-2">
-                              {lane}
-                              {isDefault && <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md font-black">預設</span>}
-                              {!isDefault && <span className="text-[9px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-md font-black">自定義</span>}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-bold">包含 {count} 筆施工紀錄</span>
+                          <div className="flex items-center gap-3">
+                            <div className="flex flex-col gap-1">
+                              <button 
+                                onClick={() => {
+                                  if (index > 0 && onUpdateLaneOrder) {
+                                    const newOrder = [...laneOptions];
+                                    [newOrder[index-1], newOrder[index]] = [newOrder[index], newOrder[index-1]];
+                                    onUpdateLaneOrder(newOrder);
+                                  }
+                                }}
+                                disabled={index === 0}
+                                className="p-0.5 hover:bg-slate-100 rounded disabled:opacity-30"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="m18 15-6-6-6 6"/></svg>
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  if (index < laneOptions.length - 1 && onUpdateLaneOrder) {
+                                    const newOrder = [...laneOptions];
+                                    [newOrder[index+1], newOrder[index]] = [newOrder[index], newOrder[index+1]];
+                                    onUpdateLaneOrder(newOrder);
+                                  }
+                                }}
+                                disabled={index === laneOptions.length - 1}
+                                className="p-0.5 hover:bg-slate-100 rounded disabled:opacity-30"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="m6 9 6 6 6-6"/></svg>
+                              </button>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-700 flex items-center gap-2">
+                                {lane}
+                                {isDefault && <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md font-black">預設</span>}
+                                {!isDefault && <span className="text-[9px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-md font-black">自定義</span>}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-bold">包含 {count} 筆施工紀錄</span>
+                            </div>
                           </div>
                           <button 
                             onClick={() => {
