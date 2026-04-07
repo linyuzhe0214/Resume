@@ -37,8 +37,24 @@ export default function MainlineHistory({
 
   const currentHighway = highways.find(h => h.name === activeHighway) || highways[0];
   const baseMileage = currentHighway.start;
-  const totalLength = currentHighway.end - currentHighway.start;
-  const numRows = Math.ceil(totalLength / 100); // 100 meters per row
+
+  const generateGridIntervals = (startM: number, endM: number) => {
+    const intervals = [];
+    let current = startM;
+    while (current < endM) {
+      let next = Math.floor(current / 100) * 100 + 100;
+      if (current % 100 === 0) {
+        next = current + 100;
+      }
+      if (next > endM) {
+        next = endM;
+      }
+      intervals.push({ startM: current, endM: next });
+      current = next;
+    }
+    return intervals;
+  };
+  const gridIntervals = generateGridIntervals(currentHighway.start, currentHighway.end);
 
   const filteredSegments = segments.filter(s => s.highway === activeHighway);
   const southSegments = filteredSegments.filter(s => {
@@ -164,6 +180,12 @@ export default function MainlineHistory({
             <h1 className="font-bold text-xl tracking-tight text-[#191c1e]">{title}</h1>
           </div>
           <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsLaneSettingsOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700"
+            >
+              <Settings className="w-3.5 h-3.5" /> 車道編輯
+            </button>
             <button 
               onClick={() => exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`)}
               className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700"
@@ -318,12 +340,16 @@ export default function MainlineHistory({
 
             {/* Scrollable Content Grid */}
             <div className="relative flex-1">
-              {/* The background lines for rows */}
+              {/* compute grid row heights */}
               <div 
                 className="absolute inset-0 grid divide-y divide-slate-100 pointer-events-none"
-                style={{ gridTemplateRows: `repeat(${numRows}, 40px)` }}
+                style={{ 
+                  gridTemplateRows: gridIntervals.map(interval => {
+                    return `${(interval.endM - interval.startM) * 0.4}px`;
+                  }).join(' ') 
+                }}
               >
-                {Array.from({ length: numRows }).map((_, i) => <div key={i}></div>)}
+                {gridIntervals.map((_, i) => <div key={i}></div>)}
               </div>
 
               {/* Layout Content */}
@@ -342,18 +368,27 @@ export default function MainlineHistory({
 
                 {/* Mileage Center Column */}
                 <div className="bg-blue-50/10 divide-y divide-slate-100 text-center font-mono font-bold text-slate-500 text-[10px] z-20">
-                  {Array.from({ length: numRows }).map((_, i) => {
-                    const currentM = baseMileage + i * 100;
-                    const endM = Math.min(currentM + 100, currentHighway.end);
+                  {gridIntervals.map((interval, i) => {
+                    const currentM = interval.startM;
+                    const endM = interval.endM;
+                    const rowHeight = (endM - currentM) * 0.4;
                     const km = Math.floor(currentM / 1000);
                     const m = currentM % 1000;
                     const endKm = Math.floor(endM / 1000);
                     const endMStr = endM % 1000;
                     return (
-                      <div key={i} className="h-[40px] flex flex-col items-center justify-center leading-none gap-0.5">
-                        <span>{km}k+{m.toString().padStart(3, '0')}</span>
-                        <span className="text-[8px] text-slate-400">~</span>
-                        <span>{endKm}k+{endMStr.toString().padStart(3, '0')}</span>
+                      <div key={i} className="flex flex-col items-center justify-center leading-none overflow-hidden relative" style={{ height: `${rowHeight}px` }}>
+                        {rowHeight >= 25 ? (
+                          <>
+                            <span>{km}k+{m.toString().padStart(3, '0')}</span>
+                            {rowHeight >= 35 && <span className="text-[8px] text-slate-400">~</span>}
+                            <span>{endKm}k+{endMStr.toString().padStart(3, '0')}</span>
+                          </>
+                        ) : (
+                          <span className="scale-[0.85] truncate w-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 leading-none">
+                            ~{endKm}k+{endMStr.toString().padStart(3, '0')}
+                          </span>
+                        )}
                       </div>
                     );
                   })}

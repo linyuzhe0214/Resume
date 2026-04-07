@@ -17,7 +17,7 @@ interface EditRampProps {
 
 export default function EditRamp({ segment, onChange, onSave, onDelete, onBack, onNavigateToPavement }: EditRampProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [lockLength, setLockLength] = useState(true);
+  const [lockLength, setLockLength] = useState(!!segment?.id);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<RampSegment>(segment || {
     id: '',

@@ -20,7 +20,7 @@ interface EditSegmentProps {
 
 export default function EditSegment({ segment, isPlanning, laneOptions = [], onChange, onSave, onDelete, onMoveToPlanning, onBack, onNavigateToPavement }: EditSegmentProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [lockLength, setLockLength] = useState(true);
+  const [lockLength, setLockLength] = useState(!!segment?.id);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<Segment>(segment || {
     id: '',
