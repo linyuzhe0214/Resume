@@ -7,6 +7,8 @@ import { exportComponentAsImage } from '../utils/exportImage';
 
 interface MainlineHistoryProps {
   segments: Segment[];
+  activeHighway: string;
+  onActiveHighwayChange: (highway: string) => void;
   laneOptions?: string[];
   onAddLane?: (newLane: string) => void;
   onDeleteLane?: (laneName: string) => void;
@@ -17,6 +19,8 @@ interface MainlineHistoryProps {
 
 export default function MainlineHistory({ 
   segments, 
+  activeHighway,
+  onActiveHighwayChange,
   laneOptions = [], 
   onAddLane, 
   onDeleteLane,
@@ -24,7 +28,6 @@ export default function MainlineHistory({
   onDeleteAll, 
   title = '路面整修履歷' 
 }: MainlineHistoryProps) {
-  const [activeHighway, setActiveHighway] = React.useState('國道1號');
   const [newLaneName, setNewLaneName] = React.useState('');
   const [isLaneSettingsOpen, setIsLaneSettingsOpen] = React.useState(false);
 
@@ -70,19 +73,16 @@ export default function MainlineHistory({
   const uniqueNorthLanes = Array.from(new Set(northSegments.flatMap(s => s.lanes)));
 
   const STANDARD_LANES_SOUTH = ['外路肩', '第四車道', '第三車道', '第二車道', '第一車道', '內路肩'];
-  const STANDARD_LANES_NORTH = ['內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '第五車道', '外路肩'];
+  const STANDARD_LANES_NORTH = ['內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '外路肩'];
 
   // Combine lanes from data segments and EXTRA lane options added by user
   // This ensures that when a user adds a new lane category, a column appears immediately
-  const extraLanes = laneOptions.length > 13 ? laneOptions.slice(13) : [];
+  const customLanes = laneOptions.filter(l => 
+    !STANDARD_LANES_SOUTH.includes(l) && !STANDARD_LANES_NORTH.includes(l)
+  );
   
-  const customSouthLanes = Array.from(new Set([...uniqueSouthLanes, ...extraLanes]))
-    .filter(l => !STANDARD_LANES_SOUTH.includes(l));
-  const customNorthLanes = Array.from(new Set([...uniqueNorthLanes, ...extraLanes]))
-    .filter(l => !STANDARD_LANES_NORTH.includes(l));
-
-  const southColumns = [...customSouthLanes, ...STANDARD_LANES_SOUTH];
-  const northColumns = [...STANDARD_LANES_NORTH, ...customNorthLanes];
+  const southColumns = [...customLanes, ...STANDARD_LANES_SOUTH];
+  const northColumns = [...STANDARD_LANES_NORTH, ...customLanes];
 
   // Calculate dynamic legend based on filtered segments
   const getLegendItems = () => {
@@ -167,7 +167,10 @@ export default function MainlineHistory({
     );
   };
 
-  const DEFAULT_LANE_OPTIONS_COUNT = 13;
+  const isDefaultLane = (lane: string) => {
+    return STANDARD_LANES_SOUTH.includes(lane) || STANDARD_LANES_NORTH.includes(lane);
+  };
+
   return (
     <div className="flex flex-col h-[100dvh] bg-[#f7f9fc] relative pb-24">
       {/* Top Navigation Shell */}
@@ -203,7 +206,7 @@ export default function MainlineHistory({
           {highways.map(h => (
             <button 
               key={h.name}
-              onClick={() => setActiveHighway(h.name)}
+              onClick={() => onActiveHighwayChange(h.name)}
               className={cn(
                 "whitespace-nowrap px-4 py-2 rounded-xl font-medium transition-all duration-200 ease-in-out",
                 activeHighway === h.name 
@@ -247,7 +250,7 @@ export default function MainlineHistory({
           </div>
           <div className="flex-1 overflow-hidden">
             <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
-              {laneOptions && laneOptions.slice(DEFAULT_LANE_OPTIONS_COUNT).map(l => (
+              {laneOptions && laneOptions.filter(l => !isDefaultLane(l)).map(l => (
                 <span key={l} className="px-2 py-0.5 bg-slate-100 text-[#1e293b] rounded text-[10px] font-bold border border-slate-200">
                   {l}
                 </span>
@@ -465,9 +468,9 @@ export default function MainlineHistory({
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1 px-1">現有車道清單</p>
                   <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 customize-scrollbar">
-                    {laneOptions.map((lane, idx) => {
-                      const isDefault = idx < DEFAULT_LANE_OPTIONS_COUNT;
-                      const count = segments.filter(s => s.lanes.includes(lane)).length;
+                    {laneOptions.map((lane) => {
+                      const isDefault = isDefaultLane(lane);
+                      const count = segments.filter(s => s.highway === activeHighway && s.lanes.includes(lane)).length;
                       
                       return (
                         <div key={lane} className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm hover:border-blue-200 transition-all group">

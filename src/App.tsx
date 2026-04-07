@@ -147,10 +147,11 @@ const initialRampSegments: RampSegment[] = [
   }
 ];
 
-const DEFAULT_LANE_OPTIONS = [
-  '內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '第五車道', 
-  '外路肩', '機車道', '加速車道', '減速車道', '輔助車道', '避難車道', '爬坡車道'
-];
+const INITIAL_HIGHWAY_LANES: Record<string, string[]> = {
+  '國道1號': ['內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '外路肩', '輔助車道', '機車道', '加速車道', '減速車道', '避難車道', '爬坡車道'],
+  '國道3號': ['內路肩', '第一車道', '第二車道', '第三車道', '外路肩', '輔助車道', '加速車道', '減速車道', '避難車道', '爬坡車道'],
+  '國道4號': ['內路肩', '第一車道', '第二車道', '外路肩', '輔助車道', '加速車道', '減速車道'],
+};
 
 const initialSegments: Segment[] = [
   {
@@ -277,6 +278,7 @@ export default function App() {
   
   const [highwayLine, setHighwayLine] = useState<Feature<LineString> | null>(null);
   const [highwayName, setHighwayName] = useState<string>('國道1號');
+  const [activeHistoryHighway, setActiveHistoryHighway] = useState<string>('國道1號');
   const [mileage, setMileage] = useState<number>(166500);
   const [direction, setDirection] = useState<string>('北上車道');
   
@@ -309,12 +311,20 @@ export default function App() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [autoTracking, setAutoTracking] = useState(true);
-  const [laneOptions, setLaneOptions] = useState<string[]>(() => {
+  const [laneOptions, setLaneOptions] = useState<Record<string, string[]>>(() => {
     try {
-      const saved = localStorage.getItem('laneOptions');
+      const saved = localStorage.getItem('laneOptions_v2');
       if (saved) return JSON.parse(saved);
+      
+      // Migration from old flat array if exists
+      const oldSaved = localStorage.getItem('laneOptions');
+      if (oldSaved) {
+        const flatLanes = JSON.parse(oldSaved);
+        // If it's the old flat array, we just return the initial but could merge if needed
+        // For now, let's just start fresh with V2 to avoid confusion
+      }
     } catch (e) {}
-    return DEFAULT_LANE_OPTIONS;
+    return INITIAL_HIGHWAY_LANES;
   });
 
 
@@ -363,7 +373,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem('segments', JSON.stringify(segments)); }, [segments]);
   useEffect(() => { localStorage.setItem('planningSegments', JSON.stringify(planningSegments)); }, [planningSegments]);
   useEffect(() => { localStorage.setItem('rampSegments', JSON.stringify(rampSegments)); }, [rampSegments]);
-  useEffect(() => { localStorage.setItem('laneOptions', JSON.stringify(laneOptions)); }, [laneOptions]);
+  useEffect(() => { localStorage.setItem('laneOptions_v2', JSON.stringify(laneOptions)); }, [laneOptions]);
 
   const checkOverlap = (id: string, highway: string, direction: string, lanes: string[], start: number, end: number): string | null => {
     // Current UI only uses lanes[0] for mainline segments, but we check all in the array just in case
@@ -378,7 +388,7 @@ export default function App() {
       // Check for mileage overlap
       const isOverlap = (start < segment.endMileage && end > segment.startMileage);
       if (isOverlap) {
-        return `與現有紀錄重疊: ${segment.startMileage} - ${segment.endMileage} (${segment.lanes.join(',')})`;
+        return `此路段已存在色塊: ${segment.constructionYear}年 [${formatMileage(segment.startMileage)} - ${formatMileage(segment.endMileage)}] (${segment.lanes.join(',')})`;
       }
     }
     return null;
@@ -387,28 +397,38 @@ export default function App() {
   const handleAddLane = (newLane: string) => {
     if (!newLane || !newLane.trim()) return;
     const trimmedLane = newLane.trim();
-    if (laneOptions.some(l => l.toLowerCase() === trimmedLane.toLowerCase())) {
-      setToast({ message: '此車道名稱已存在', type: 'error' });
+    const currentLanes = laneOptions[highwayName] || [];
+    
+    if (currentLanes.some(l => l.toLowerCase() === trimmedLane.toLowerCase())) {
+      setToast({ message: '此車道名稱已存在於該國道', type: 'error' });
       return;
     }
-    setLaneOptions([...laneOptions, trimmedLane]);
-    setToast({ message: `已新增車道: ${trimmedLane}`, type: 'success' });
+    
+    setLaneOptions({
+      ...laneOptions,
+      [highwayName]: [...currentLanes, trimmedLane]
+    });
+    setToast({ message: `已於 ${highwayName} 新增車道: ${trimmedLane}`, type: 'success' });
   };
 
   const handleDeleteLane = (laneName: string) => {
-    const affectedSegments = segments.filter(s => s.lanes.includes(laneName));
-    const confirmMsg = `刪除「${laneName}」將連帶刪除 ${affectedSegments.length} 筆施工紀錄。確定要繼續嗎？`;
+    const affectedSegments = segments.filter(s => s.highway === highwayName && s.lanes.includes(laneName));
+    const confirmMsg = `刪除 ${highwayName} 的「${laneName}」將連帶刪除 ${affectedSegments.length} 筆施工紀錄。確定要繼續嗎？`;
     
     if (window.confirm(confirmMsg)) {
       // 1. Delete associated segments from cloud & local
       affectedSegments.forEach(seg => {
         syncGas(MAINLINE_URL, 'deleteMainline', 'Mainline', seg.id, true);
       });
-      setSegments(segments.filter(s => !s.lanes.includes(laneName)));
+      setSegments(segments.filter(s => !(s.highway === highwayName && s.lanes.includes(laneName))));
       
       // 2. Remove lane from options
-      setLaneOptions(laneOptions.filter(l => l !== laneName));
-      setToast({ message: `已刪除車道及相關 ${affectedSegments.length} 筆資料`, type: 'success' });
+      const currentLanes = laneOptions[highwayName] || [];
+      setLaneOptions({
+        ...laneOptions,
+        [highwayName]: currentLanes.filter(l => l !== laneName)
+      });
+      setToast({ message: `已刪除 ${highwayName} 車道及相關 ${affectedSegments.length} 筆資料`, type: 'success' });
     }
   };
 
@@ -739,7 +759,7 @@ export default function App() {
         <EditSegment 
           segment={draftSegment || undefined}
           isPlanning={activeTab === 'planning'}
-          laneOptions={laneOptions}
+          laneOptions={laneOptions[draftSegment?.highway || highwayName] || []}
           onChange={(segment) => setDraftSegment(segment)}
           onSave={(segment) => {
             const overlapError = checkOverlap(segment.id, segment.highway, segment.direction, segment.lanes, segment.startMileage, segment.endMileage);
@@ -938,7 +958,9 @@ export default function App() {
       <div className="min-h-screen bg-[#f7f9fc]">
         <MainlineHistory 
           segments={segments}
-          laneOptions={laneOptions}
+          activeHighway={activeHistoryHighway}
+          onActiveHighwayChange={setActiveHistoryHighway}
+          laneOptions={laneOptions[activeHistoryHighway] || []}
           onAddLane={handleAddLane}
           onDeleteLane={handleDeleteLane}
           onNavigateToEdit={(id) => {
@@ -1296,7 +1318,9 @@ export default function App() {
           <MainlineHistory 
             title="路面整修規劃"
             segments={planningSegments}
-            laneOptions={laneOptions}
+            activeHighway={activeHistoryHighway}
+            onActiveHighwayChange={setActiveHistoryHighway}
+            laneOptions={laneOptions[activeHistoryHighway] || []}
             onAddLane={handleAddLane}
             onDeleteAll={() => setShowConfirmDeleteAll(true)}
             onNavigateToEdit={(id) => {
