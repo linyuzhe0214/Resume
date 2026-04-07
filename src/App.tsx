@@ -1013,6 +1013,28 @@ export default function App() {
             setSubPage('editSegment');
           }} 
         />
+        
+        <ConfirmDialog 
+          isOpen={!!showLaneDeleteConfirm}
+          title="確定要刪除此車道嗎？"
+          message={`刪除 ${showLaneDeleteConfirm?.highway} 的「${showLaneDeleteConfirm?.lane}」將連帶刪除 ${showLaneDeleteConfirm?.count} 筆施工紀錄。此操作無法復原。`}
+          type="danger"
+          onConfirm={confirmDeleteLane}
+          onCancel={() => setShowLaneDeleteConfirm(null)}
+        />
+
+        {toast && (
+          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className={cn(
+              "px-6 py-3 rounded-full shadow-2xl text-white font-bold text-sm",
+              toast.type === 'success' ? "bg-green-500" : 
+              toast.type === 'error' ? "bg-red-500" : "bg-slate-800"
+            )}>
+              {toast.message}
+            </div>
+          </div>
+        )}
+
         {renderBottomNav()}
       </div>
     );

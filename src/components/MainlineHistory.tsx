@@ -77,10 +77,11 @@ export default function MainlineHistory({
   // Use the provided laneOptions for ordering
   // We mirror the order for Northbound to keep Inner-to-Outer consistency if that's what the user wants
   // or simply respect the array order.
-  // Standard logic: Southbound lists lanes in the order provided (e.g. Inner to Outer)
-  // Northbound usually mirrors this.
-  const southColumns = laneOptions;
-  const northColumns = [...laneOptions].reverse();
+  // Standard logic: 
+  // Southbound: Outside to Inside (Reverse of order)
+  // Northbound: Inside to Outside (Order as provided)
+  const southColumns = [...laneOptions].reverse();
+  const northColumns = laneOptions;
 
   // Calculate dynamic legend based on filtered segments
   const getLegendItems = () => {
@@ -515,7 +516,7 @@ export default function MainlineHistory({
                             onClick={() => {
                               if (onDeleteLane) onDeleteLane(lane);
                             }}
-                            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all active:scale-90"
                             title="刪除此車道及其所有資料"
                           >
                             <Trash2 className="w-4.5 h-4.5" />
