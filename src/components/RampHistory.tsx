@@ -516,9 +516,15 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                     {Array.from(new Set<number>(
                       group.segments.flatMap(r => [r.startMileage || 0, r.endMileage || group.length])
                       .concat(group.segments.flatMap(r => r.maintenanceHistory?.flatMap(m => [m.startMileage, m.endMileage]) || []))
-                    )).filter(m => m > 0 && m < group.length).map(m => (
-                      <div key={`marker-${m}`} className="absolute h-full w-[1px] bg-slate-900/40 z-20 pointer-events-none" style={{ left: `${(m / group.length) * 100}%` }}>
-                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[8px] font-black text-slate-800 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] leading-none pb-0.5 whitespace-nowrap">
+                    ))
+                    .sort((a, b) => a - b)
+                    .filter(m => m > 0 && m < group.length)
+                    .map((m, index) => (
+                      <div key={`marker-${m}`} className="absolute h-full w-[1px] bg-slate-900/60 z-30 pointer-events-none" style={{ left: `${(m / group.length) * 100}%` }}>
+                        <span className={cn(
+                          "absolute left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-800 shadow-sm whitespace-nowrap bg-white/95 px-1 py-[2px] rounded leading-none border border-slate-200",
+                          index % 2 === 0 ? "top-0.5" : "bottom-0.5"
+                        )}>
                           {m}
                         </span>
                       </div>
