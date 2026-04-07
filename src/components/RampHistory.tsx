@@ -10,7 +10,7 @@ import { exportComponentAsImage } from '../utils/exportImage';
 interface RampHistoryProps {
   rampSegments: RampSegment[];
   onNavigateToEditDetails: (rampId?: string, defaultHighway?: string, defaultInterchange?: string, prototypeId?: string) => void;
-  onNavigateToEditHistory: (rampId?: string, prototypeId?: string) => void;
+  onNavigateToEditHistory: (rampId?: string, prototypeId?: string, defaultStart?: number, defaultEnd?: number) => void;
   onDeleteRamp?: (rampId: string) => void;
 }
 
@@ -420,7 +420,34 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                     onClick={(e) => {
                       // Only trigger when clicking the empty background track itself, not the populated colored segments
                       if (e.target === e.currentTarget && group.segments[0]) {
-                        onNavigateToEditHistory(undefined, group.segments[0].id);
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const clickX = e.clientX - rect.left;
+                        const clickMileage = (clickX / rect.width) * group.length;
+
+                        let occupied: { start: number, end: number }[] = [];
+                        group.segments.forEach(r => {
+                          const s = r.startMileage || 0;
+                          const e = r.endMileage || group.length;
+                          if (e > s) occupied.push({ start: s, end: e });
+                          r.maintenanceHistory?.forEach(m => {
+                            if (m.endMileage > m.startMileage) occupied.push({ start: m.startMileage, end: m.endMileage });
+                          });
+                        });
+                        
+                        occupied.sort((a, b) => a.start - b.start);
+                        let defaultStart = 0;
+                        let defaultEnd = group.length;
+                        
+                        for (let i = 0; i < occupied.length; i++) {
+                          if (clickMileage < occupied[i].start) {
+                            defaultEnd = occupied[i].start;
+                            break;
+                          } else if (clickMileage >= occupied[i].end) {
+                            defaultStart = occupied[i].end;
+                          }
+                        }
+
+                        onNavigateToEditHistory(undefined, group.segments[0].id, defaultStart, defaultEnd);
                       }
                     }}
                     title="點擊空白處新增目前匝道之新履歷資料"
@@ -484,6 +511,18 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                         );
                       })
                     )}
+
+                    {/* Intersection markers for mileage */}
+                    {Array.from(new Set<number>(
+                      group.segments.flatMap(r => [r.startMileage || 0, r.endMileage || group.length])
+                      .concat(group.segments.flatMap(r => r.maintenanceHistory?.flatMap(m => [m.startMileage, m.endMileage]) || []))
+                    )).filter(m => m > 0 && m < group.length).map(m => (
+                      <div key={`marker-${m}`} className="absolute h-full w-[1px] bg-slate-900/40 z-20 pointer-events-none" style={{ left: `${(m / group.length) * 100}%` }}>
+                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[8px] font-black text-slate-800 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] leading-none pb-0.5 whitespace-nowrap">
+                          {m}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

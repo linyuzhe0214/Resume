@@ -262,27 +262,7 @@ const initialSegments: Segment[] = [
   }
 ];
 
-const initialPlanningSegments: Segment[] = [
-  {
-    id: 'p1',
-    highway: '國道1號',
-    property: '路堤',
-    laneCategory: '一般路段',
-    constructionYear: '114',
-    constructionMonth: '05',
-    startMileage: 166427,
-    endMileage: 168000,
-    direction: 'Southbound',
-    lanes: ['第一車道', '第二車道'],
-    pavementLayers: [
-      { id: 'pl1', type: 'OGAC (開級配瀝青混凝土)', thickness: 2, month: '11405' },
-      { id: 'pl2', type: 'DGAC (密級配瀝青混凝土)', thickness: 22, month: '11405' }
-    ],
-    notes: '預計整修路段',
-    prevConstructionYear: '108',
-    prevConstructionDepth: 24
-  }
-];
+const initialPlanningSegments: Segment[] = [];
 
 export default function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -825,7 +805,7 @@ export default function App() {
             }
             setSubPage('editRamp');
           }} 
-          onNavigateToEditHistory={(id, prototypeId) => {
+          onNavigateToEditHistory={(id, prototypeId, defaultStart, defaultEnd) => {
             setEditingRampId(id || null);
             if (id) {
               const ramp = rampSegments.find(s => s.id === id);
@@ -838,9 +818,10 @@ export default function App() {
                   id: '',
                   pavementLayers: [],
                   maintenanceHistory: [],
-                  notes: '',
                   constructionYear: '114',
-                  constructionMonth: '01'
+                  constructionMonth: '01',
+                  startMileage: defaultStart ?? 0,
+                  endMileage: defaultEnd ?? proto.length
                 });
               } else {
                 setDraftRamp(null);
