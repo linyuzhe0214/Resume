@@ -636,6 +636,47 @@ export default function App() {
     </footer>
   );
 
+  // Helper to render global overlays in all sub-pages/tabs
+  const renderOverlays = () => {
+    return (
+      <>
+        <ConfirmDialog 
+          isOpen={showConfirmDeleteAll}
+          title="確定要刪除所有整修規劃嗎？"
+          message="此操作無法復原，所有規劃路段將被永久移除。"
+          type="danger"
+          onConfirm={() => {
+            setPlanningSegments([]);
+            setShowConfirmDeleteAll(false);
+            setToast({ message: '已成功刪除所有規劃路段', type: 'info' });
+          }}
+          onCancel={() => setShowConfirmDeleteAll(false)}
+        />
+
+        <ConfirmDialog 
+          isOpen={!!showLaneDeleteConfirm}
+          title="確定要刪除此車道嗎？"
+          message={`刪除 ${showLaneDeleteConfirm?.highway} 的「${showLaneDeleteConfirm?.lane}」將連帶刪除 ${showLaneDeleteConfirm?.count} 筆施工紀錄。此操作無法復原。`}
+          type="danger"
+          onConfirm={confirmDeleteLane}
+          onCancel={() => setShowLaneDeleteConfirm(null)}
+        />
+
+        {toast && (
+          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className={cn(
+              "px-6 py-3 rounded-full shadow-2xl text-white font-bold text-sm",
+              toast.type === 'success' ? "bg-green-500" : 
+              toast.type === 'error' ? "bg-red-500" : "bg-slate-800"
+            )}>
+              {toast.message}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
   if (subPage === 'editRamp') {
     return (
       <div className="relative">
@@ -684,6 +725,7 @@ export default function App() {
           }} 
           onNavigateToPavement={() => setSubPage('editRampPavement')}
         />
+        {renderOverlays()}
         {renderBottomNav()}
       </div>
     );
@@ -703,6 +745,7 @@ export default function App() {
           }}
           onBack={() => setSubPage('editRamp')} 
         />
+        {renderOverlays()}
         {renderBottomNav()}
       </div>
     );
@@ -743,6 +786,7 @@ export default function App() {
           }} 
           onNavigateToPavement={() => setSubPage('editRampHistoryPavement')}
         />
+        {renderOverlays()}
         {renderBottomNav()}
       </div>
     );
@@ -762,6 +806,7 @@ export default function App() {
           }}
           onBack={() => setSubPage('editRampHistory')} 
         />
+        {renderOverlays()}
         {renderBottomNav()}
       </div>
     );
@@ -835,6 +880,7 @@ export default function App() {
           }} 
           onNavigateToPavement={() => setSubPage('editPavement')} 
         />
+        {renderOverlays()}
         {renderBottomNav()}
       </div>
     );
@@ -853,6 +899,7 @@ export default function App() {
           }}
           onBack={() => setSubPage('editSegment')} 
         />
+        {renderOverlays()}
         {renderBottomNav()}
       </div>
     );
@@ -962,6 +1009,7 @@ export default function App() {
             setRampSegments(rampSegments.filter(s => s.rampId !== rampId));
           }}
         />
+        {renderOverlays()}
         {renderBottomNav()}
       </div>
     );
@@ -992,7 +1040,6 @@ export default function App() {
               else if (direction === '東向車道') mappedDir = 'Eastbound';
               else if (direction === '西向車道') mappedDir = 'Westbound';
               else if (highwayName === '國道4號' && direction === '雙向') mappedDir = 'Westbound';
-              
               setDraftSegment({
                 id: '',
                 highway: highwayName,
@@ -1014,27 +1061,7 @@ export default function App() {
           }} 
         />
         
-        <ConfirmDialog 
-          isOpen={!!showLaneDeleteConfirm}
-          title="確定要刪除此車道嗎？"
-          message={`刪除 ${showLaneDeleteConfirm?.highway} 的「${showLaneDeleteConfirm?.lane}」將連帶刪除 ${showLaneDeleteConfirm?.count} 筆施工紀錄。此操作無法復原。`}
-          type="danger"
-          onConfirm={confirmDeleteLane}
-          onCancel={() => setShowLaneDeleteConfirm(null)}
-        />
-
-        {toast && (
-          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className={cn(
-              "px-6 py-3 rounded-full shadow-2xl text-white font-bold text-sm",
-              toast.type === 'success' ? "bg-green-500" : 
-              toast.type === 'error' ? "bg-red-500" : "bg-slate-800"
-            )}>
-              {toast.message}
-            </div>
-          </div>
-        )}
-
+        {renderOverlays()}
         {renderBottomNav()}
       </div>
     );
@@ -1330,7 +1357,7 @@ export default function App() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-slate-500 font-bold">槽化區:</span> 
-                          <span className="font-black text-slate-800">{rp.hasChannelization ? `有 (${rp.channelizationWidth.toFixed(3)}m)` : '無'}</span>
+                          <span className="font-black text-slate-800">{rp.hasChannelization ? `有 (${rp.hasChannelization ? rp.channelizationWidth.toFixed(3) : 0}m)` : '無'}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-slate-500 font-bold">與起點距離:</span> 
@@ -1391,41 +1418,10 @@ export default function App() {
         </main>
       )}
 
-      <ConfirmDialog 
-        isOpen={showConfirmDeleteAll}
-        title="確定要刪除所有整修規劃嗎？"
-        message="此操作無法復原，所有規劃路段將被永久移除。"
-        type="danger"
-        onConfirm={() => {
-          setPlanningSegments([]);
-          setShowConfirmDeleteAll(false);
-          setToast({ message: '已成功刪除所有規劃路段', type: 'info' });
-        }}
-        onCancel={() => setShowConfirmDeleteAll(false)}
-      />
+      {/* 全域提示元件 */}
+      {renderOverlays()}
 
-      <ConfirmDialog 
-        isOpen={!!showLaneDeleteConfirm}
-        title="確定要刪除此車道嗎？"
-        message={`刪除 ${showLaneDeleteConfirm?.highway} 的「${showLaneDeleteConfirm?.lane}」將連帶刪除 ${showLaneDeleteConfirm?.count} 筆施工紀錄。此操作無法復原。`}
-        type="danger"
-        onConfirm={confirmDeleteLane}
-        onCancel={() => setShowLaneDeleteConfirm(null)}
-      />
-
-      {toast && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className={cn(
-            "px-6 py-3 rounded-full shadow-2xl text-white font-bold text-sm",
-            toast.type === 'success' ? "bg-green-500" : 
-            toast.type === 'error' ? "bg-red-500" : "bg-slate-800"
-          )}>
-            {toast.message}
-          </div>
-        </div>
-      )}
-
-      {renderBottomNav()}
+      {subPage === 'none' && renderBottomNav()}
     </div>
   );
 }
