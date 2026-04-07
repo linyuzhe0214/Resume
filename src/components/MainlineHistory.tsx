@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, Download } from 'lucide-react';
+import { Plus, Trash2, Download, Settings, X, AlertTriangle } from 'lucide-react';
 import { cn } from '../App';
 import { Segment } from '../types';
 import { getPavementColor, getPavementDisplayInfo } from '../utils/pavement';
@@ -9,14 +9,24 @@ interface MainlineHistoryProps {
   segments: Segment[];
   laneOptions?: string[];
   onAddLane?: (newLane: string) => void;
+  onDeleteLane?: (laneName: string) => void;
   onNavigateToEdit: (segmentId?: string) => void;
   onDeleteAll?: () => void;
   title?: string;
 }
 
-export default function MainlineHistory({ segments, laneOptions = [], onAddLane, onNavigateToEdit, onDeleteAll, title = '路面整修履歷' }: MainlineHistoryProps) {
+export default function MainlineHistory({ 
+  segments, 
+  laneOptions = [], 
+  onAddLane, 
+  onDeleteLane,
+  onNavigateToEdit, 
+  onDeleteAll, 
+  title = '路面整修履歷' 
+}: MainlineHistoryProps) {
   const [activeHighway, setActiveHighway] = React.useState('國道1號');
   const [newLaneName, setNewLaneName] = React.useState('');
+  const [isLaneSettingsOpen, setIsLaneSettingsOpen] = React.useState(false);
 
 
   const highways = [
@@ -195,8 +205,8 @@ export default function MainlineHistory({ segments, laneOptions = [], onAddLane,
               onChange={(e) => setNewLaneName(e.target.value)}
               className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 w-40"
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && newLaneName && onAddLane) {
-                  onAddLane(newLaneName);
+                if (e.key === 'Enter' && newLaneName.trim() && onAddLane) {
+                  onAddLane(newLaneName.trim());
                   setNewLaneName('');
                 }
               }}
@@ -385,6 +395,102 @@ export default function MainlineHistory({ segments, laneOptions = [], onAddLane,
         </button>
       </div>
       </div>
+      {/* Lane Settings Modal */}
+      {isLaneSettingsOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-[#005FB8] px-6 py-5 flex items-center justify-between text-white">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-xl">
+                  <Settings className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg leading-tight">車道配置管理</h3>
+                  <p className="text-blue-100 text-[10px] font-medium opacity-80 uppercase tracking-wider">Lane Configuration Management</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsLaneSettingsOpen(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 transition-all active:scale-90"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex gap-3 text-amber-800">
+                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+                  <div className="text-xs font-semibold leading-relaxed">
+                    <p className="mb-1 text-sm font-bold">警告：級聯刪除風險</p>
+                    刪除車道會<span className="text-red-600 underline underline-offset-2 decoration-2 px-1">連帶刪除該車道的所有施工紀錄</span>。此操作無法復原。
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1 px-1">現有車道清單</p>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 customize-scrollbar">
+                    {laneOptions.map((lane, idx) => {
+                      const isDefault = idx < DEFAULT_LANE_OPTIONS_COUNT;
+                      const count = segments.filter(s => s.lanes.includes(lane)).length;
+                      
+                      return (
+                        <div key={lane} className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm hover:border-blue-200 transition-all group">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-700 flex items-center gap-2">
+                              {lane}
+                              {isDefault && <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md font-black">預設</span>}
+                              {!isDefault && <span className="text-[9px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-md font-black">自定義</span>}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-bold">包含 {count} 筆施工紀錄</span>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              if (onDeleteLane) onDeleteLane(lane);
+                            }}
+                            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                            title="刪除此車道及其所有資料"
+                          >
+                            <Trash2 className="w-4.5 h-4.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="flex-1 relative">
+                    <input 
+                      type="text" 
+                      placeholder="快速新增車道..." 
+                      value={newLaneName}
+                      onChange={(e) => setNewLaneName(e.target.value)}
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 test-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newLaneName.trim() && onAddLane) {
+                          onAddLane(newLaneName.trim());
+                          setNewLaneName('');
+                        }
+                      }}
+                    />
+                    <Plus className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end">
+              <button 
+                onClick={() => setIsLaneSettingsOpen(false)}
+                className="px-6 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-all shadow-md active:scale-95"
+              >
+                完成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

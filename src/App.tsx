@@ -365,6 +365,25 @@ export default function App() {
   useEffect(() => { localStorage.setItem('rampSegments', JSON.stringify(rampSegments)); }, [rampSegments]);
   useEffect(() => { localStorage.setItem('laneOptions', JSON.stringify(laneOptions)); }, [laneOptions]);
 
+  const checkOverlap = (id: string, highway: string, direction: string, lanes: string[], start: number, end: number): string | null => {
+    // Current UI only uses lanes[0] for mainline segments, but we check all in the array just in case
+    for (const segment of segments) {
+      if (segment.id === id) continue; // Skip itself during edit
+      if (segment.highway !== highway || segment.direction !== direction) continue;
+      
+      // Check for any common lanes
+      const hasCommonLane = segment.lanes.some(l => lanes.includes(l));
+      if (!hasCommonLane) continue;
+
+      // Check for mileage overlap
+      const isOverlap = (start < segment.endMileage && end > segment.startMileage);
+      if (isOverlap) {
+        return `與現有紀錄重疊: ${segment.startMileage} - ${segment.endMileage} (${segment.lanes.join(',')})`;
+      }
+    }
+    return null;
+  };
+
   const handleAddLane = (newLane: string) => {
     if (!newLane || !newLane.trim()) return;
     const trimmedLane = newLane.trim();
@@ -374,6 +393,23 @@ export default function App() {
     }
     setLaneOptions([...laneOptions, trimmedLane]);
     setToast({ message: `已新增車道: ${trimmedLane}`, type: 'success' });
+  };
+
+  const handleDeleteLane = (laneName: string) => {
+    const affectedSegments = segments.filter(s => s.lanes.includes(laneName));
+    const confirmMsg = `刪除「${laneName}」將連帶刪除 ${affectedSegments.length} 筆施工紀錄。確定要繼續嗎？`;
+    
+    if (window.confirm(confirmMsg)) {
+      // 1. Delete associated segments from cloud & local
+      affectedSegments.forEach(seg => {
+        syncGas(MAINLINE_URL, 'deleteMainline', 'Mainline', seg.id, true);
+      });
+      setSegments(segments.filter(s => !s.lanes.includes(laneName)));
+      
+      // 2. Remove lane from options
+      setLaneOptions(laneOptions.filter(l => l !== laneName));
+      setToast({ message: `已刪除車道及相關 ${affectedSegments.length} 筆資料`, type: 'success' });
+    }
   };
 
 
@@ -706,6 +742,11 @@ export default function App() {
           laneOptions={laneOptions}
           onChange={(segment) => setDraftSegment(segment)}
           onSave={(segment) => {
+            const overlapError = checkOverlap(segment.id, segment.highway, segment.direction, segment.lanes, segment.startMileage, segment.endMileage);
+            if (overlapError) {
+              setToast({ message: overlapError, type: 'error' });
+              return;
+            }
 
             if (activeTab === 'planning') {
               if (editingSegmentId) {
@@ -854,6 +895,7 @@ export default function App() {
               } else {
                 setDraftRamp(null);
               }
+            } else {
               setDraftRamp({
                 id: '',
                 rampId: '',
@@ -898,6 +940,7 @@ export default function App() {
           segments={segments}
           laneOptions={laneOptions}
           onAddLane={handleAddLane}
+          onDeleteLane={handleDeleteLane}
           onNavigateToEdit={(id) => {
             setEditingSegmentId(id || null);
 
@@ -905,16 +948,24 @@ export default function App() {
               const segment = segments.find(s => s.id === id);
               setDraftSegment(segment ? { ...segment } : null);
             } else {
+              // Map Chinese direction to English constant
+              let mappedDir: 'Northbound' | 'Southbound' | 'Eastbound' | 'Westbound' = 'Southbound';
+              if (direction === '北上車道') mappedDir = highwayName === '國道4號' ? 'Eastbound' : 'Northbound';
+              else if (direction === '南下車道') mappedDir = highwayName === '國道4號' ? 'Westbound' : 'Southbound';
+              else if (direction === '東向車道') mappedDir = 'Eastbound';
+              else if (direction === '西向車道') mappedDir = 'Westbound';
+              else if (highwayName === '國道4號' && direction === '雙向') mappedDir = 'Westbound';
+              
               setDraftSegment({
                 id: '',
-                highway: '國道1號',
+                highway: highwayName,
                 property: '路堤',
                 laneCategory: '一般路段',
-                constructionYear: '113',
-                constructionMonth: '05',
-                startMileage: 166427,
-                endMileage: 166527,
-                direction: 'Southbound',
+                constructionYear: (new Date().getFullYear() - 1911).toString(),
+                constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
+                startMileage: mileage,
+                endMileage: mileage + 100,
+                direction: mappedDir,
                 lanes: ['第一車道'],
                 pavementLayers: [],
                 notes: '',
