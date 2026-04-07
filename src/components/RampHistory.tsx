@@ -529,7 +529,7 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                       <div key={`marker-${m}`} className="absolute top-0 h-9 w-[1px] bg-slate-400/60 z-30 pointer-events-none" style={{ left: `${(m / group.length) * 100}%` }}>
                         <span className={cn(
                           "absolute left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-800 shadow-sm whitespace-nowrap bg-white/95 px-1 py-[1px] rounded leading-none border border-slate-200",
-                          index % 2 === 0 ? "-top-4" : "-top-7"
+                          "-top-4"
                         )}>
                           {m}
                         </span>
