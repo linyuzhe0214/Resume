@@ -366,10 +366,14 @@ export default function App() {
   useEffect(() => { localStorage.setItem('laneOptions', JSON.stringify(laneOptions)); }, [laneOptions]);
 
   const handleAddLane = (newLane: string) => {
-    if (newLane && !laneOptions.includes(newLane)) {
-      setLaneOptions([...laneOptions, newLane]);
-      setToast({ message: `已新增車道：${newLane}`, type: 'success' });
+    if (!newLane || !newLane.trim()) return;
+    const trimmedLane = newLane.trim();
+    if (laneOptions.some(l => l.toLowerCase() === trimmedLane.toLowerCase())) {
+      setToast({ message: '此車道名稱已存在', type: 'error' });
+      return;
     }
+    setLaneOptions([...laneOptions, trimmedLane]);
+    setToast({ message: `已新增車道: ${trimmedLane}`, type: 'success' });
   };
 
 
@@ -850,7 +854,6 @@ export default function App() {
               } else {
                 setDraftRamp(null);
               }
-            } else {
               setDraftRamp({
                 id: '',
                 rampId: '',

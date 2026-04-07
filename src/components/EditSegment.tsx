@@ -169,9 +169,25 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], onC
                   className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 focus:ring-2 focus:ring-[#005fb8]/20 transition-all font-medium outline-none"
                 >
                   <option value="" disabled>選擇車道名稱</option>
-                  {laneOptions.map(option => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
+                  {(() => {
+                    const STANDARD_LANES_SOUTH = formData.highway === '國道4號' 
+                      ? ['內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '第五車道', '外路肩']
+                      : ['外路肩', '第四車道', '第三車道', '第二車道', '第一車道', '內路肩'];
+                    const STANDARD_LANES_NORTH = formData.highway === '國道4號'
+                      ? ['外路肩', '第四車道', '第三車道', '第二車道', '第一車道', '內路肩']
+                      : ['內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '第五車道', '外路肩'];
+                    
+                    const isSouthSide = ['Southbound', 'Westbound'].includes(formData.direction);
+                    const baseLanes = isSouthSide ? STANDARD_LANES_SOUTH : STANDARD_LANES_NORTH;
+                    
+                    // Add any custom lanes that aren't in the standard set
+                    const customLanes = laneOptions.filter(l => !STANDARD_LANES_SOUTH.includes(l) && !STANDARD_LANES_NORTH.includes(l));
+                    const allRelevantLanes = Array.from(new Set([...baseLanes, ...customLanes]));
+                    
+                    return allRelevantLanes.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ));
+                  })()}
                 </select>
                 <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>

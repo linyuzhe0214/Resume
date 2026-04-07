@@ -31,8 +31,14 @@ export default function MainlineHistory({ segments, laneOptions = [], onAddLane,
   const numRows = Math.ceil(totalLength / 100); // 100 meters per row
 
   const filteredSegments = segments.filter(s => s.highway === activeHighway);
-  const southSegments = filteredSegments.filter(s => ['Southbound', 'Westbound'].includes(s.direction));
-  const northSegments = filteredSegments.filter(s => ['Northbound', 'Eastbound'].includes(s.direction));
+  const southSegments = filteredSegments.filter(s => {
+    if (activeHighway === '國道4號') return s.direction === 'Eastbound';
+    return ['Southbound', 'Westbound'].includes(s.direction);
+  });
+  const northSegments = filteredSegments.filter(s => {
+    if (activeHighway === '國道4號') return s.direction === 'Westbound';
+    return ['Northbound', 'Eastbound'].includes(s.direction);
+  });
 
   const uniqueSouthLanes = Array.from(new Set(southSegments.flatMap(s => s.lanes)));
   const uniqueNorthLanes = Array.from(new Set(northSegments.flatMap(s => s.lanes)));
@@ -40,8 +46,14 @@ export default function MainlineHistory({ segments, laneOptions = [], onAddLane,
   const STANDARD_LANES_SOUTH = ['外路肩', '第四車道', '第三車道', '第二車道', '第一車道', '內路肩'];
   const STANDARD_LANES_NORTH = ['內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '第五車道', '外路肩'];
 
-  const customSouthLanes = uniqueSouthLanes.filter(l => !STANDARD_LANES_SOUTH.includes(l));
-  const customNorthLanes = uniqueNorthLanes.filter(l => !STANDARD_LANES_NORTH.includes(l));
+  // Combine lanes from data segments and EXTRA lane options added by user
+  // This ensures that when a user adds a new lane category, a column appears immediately
+  const extraLanes = laneOptions.length > 13 ? laneOptions.slice(13) : [];
+  
+  const customSouthLanes = Array.from(new Set([...uniqueSouthLanes, ...extraLanes]))
+    .filter(l => !STANDARD_LANES_SOUTH.includes(l));
+  const customNorthLanes = Array.from(new Set([...uniqueNorthLanes, ...extraLanes]))
+    .filter(l => !STANDARD_LANES_NORTH.includes(l));
 
   const southColumns = [...customSouthLanes, ...STANDARD_LANES_SOUTH];
   const northColumns = [...STANDARD_LANES_NORTH, ...customNorthLanes];
@@ -250,10 +262,10 @@ export default function MainlineHistory({ segments, laneOptions = [], onAddLane,
               <div className="grid grid-cols-[1fr_100px_1fr] bg-slate-50 border-b border-slate-200 text-center">
                 <div className="py-3 px-2 flex flex-col items-center justify-center border-r border-slate-200">
                   <span className="text-[9px] font-bold text-[#00488d] tracking-[0.1em] uppercase">
-                    {activeHighway === '國道4號' ? 'Westbound' : 'Southbound'}
+                    {activeHighway === '國道4號' ? 'Eastbound' : 'Southbound'}
                   </span>
-                  <span className="font-extrabold text-sm">
-                    {activeHighway === '國道4號' ? '西向' : '南下'}
+                  <span className="text-xl font-black text-slate-800 tracking-tight">
+                    {activeHighway === '國道4號' ? '東向' : '南下'}
                   </span>
                 </div>
                 <div className="py-3 px-2 flex flex-col items-center justify-center bg-blue-50/50">
@@ -262,10 +274,10 @@ export default function MainlineHistory({ segments, laneOptions = [], onAddLane,
                 </div>
                 <div className="py-3 px-2 flex flex-col items-center justify-center border-l border-slate-200">
                   <span className="text-[9px] font-bold text-[#00488d] tracking-[0.1em] uppercase">
-                    {activeHighway === '國道4號' ? 'Eastbound' : 'Northbound'}
+                    {activeHighway === '國道4號' ? 'Westbound' : 'Northbound'}
                   </span>
-                  <span className="font-extrabold text-sm">
-                    {activeHighway === '國道4號' ? '東向' : '北上'}
+                  <span className="text-xl font-black text-slate-800 tracking-tight">
+                    {activeHighway === '國道4號' ? '西向' : '北上'}
                   </span>
                 </div>
               </div>
