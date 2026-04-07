@@ -413,11 +413,15 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                   {scaleMarkers.map(val => (
                     <div key={val} className="absolute top-0 bottom-0 w-[1px] bg-slate-200/40" style={{ left: `${(val / maxLength) * 100}%` }}></div>
                   ))}
-                  {/* Length Bar with Construction History */}
+                  {/* Length Bar with Construction History Container */}
                   <div 
-                    className="h-9 bg-[#e7e6e6]/30 hover:bg-[#e7e6e6]/80 rounded-md shadow-inner relative z-10 overflow-hidden flex border border-slate-200 cursor-pointer transition-colors" 
+                    className="relative z-10 w-full mt-7 mb-2" 
                     style={{ width: `${(group.length / maxLength) * 100}%` }}
-                    onClick={(e) => {
+                  >
+                    {/* The actual colored bar, which is clipped */}
+                    <div
+                      className="h-9 w-full bg-[#e7e6e6]/30 hover:bg-[#e7e6e6]/80 rounded-md shadow-inner relative overflow-hidden flex border border-slate-200 cursor-pointer transition-colors"
+                      onClick={(e) => {
                       // Only trigger when clicking the empty background track itself, not the populated colored segments
                       if (e.target === e.currentTarget && group.segments[0]) {
                         const rect = e.currentTarget.getBoundingClientRect();
@@ -512,7 +516,9 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                       })
                     )}
 
-                    {/* Intersection markers for mileage */}
+                    </div>
+
+                    {/* Intersection markers for mileage (placed above the bar) */}
                     {Array.from(new Set<number>(
                       group.segments.flatMap(r => [r.startMileage || 0, r.endMileage || group.length])
                       .concat(group.segments.flatMap(r => r.maintenanceHistory?.flatMap(m => [m.startMileage, m.endMileage]) || []))
@@ -520,10 +526,10 @@ export default function RampHistory({ rampSegments, onNavigateToEditDetails, onN
                     .sort((a, b) => a - b)
                     .filter(m => m > 0 && m < group.length)
                     .map((m, index) => (
-                      <div key={`marker-${m}`} className="absolute h-full w-[1px] bg-slate-900/60 z-30 pointer-events-none" style={{ left: `${(m / group.length) * 100}%` }}>
+                      <div key={`marker-${m}`} className="absolute top-0 h-9 w-[1px] bg-slate-400/60 z-30 pointer-events-none" style={{ left: `${(m / group.length) * 100}%` }}>
                         <span className={cn(
-                          "absolute left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-800 shadow-sm whitespace-nowrap bg-white/95 px-1 py-[2px] rounded leading-none border border-slate-200",
-                          index % 2 === 0 ? "top-0.5" : "bottom-0.5"
+                          "absolute left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-800 shadow-sm whitespace-nowrap bg-white/95 px-1 py-[1px] rounded leading-none border border-slate-200",
+                          index % 2 === 0 ? "-top-4" : "-top-7"
                         )}>
                           {m}
                         </span>
