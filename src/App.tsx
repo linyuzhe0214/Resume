@@ -22,6 +22,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 const initialRampSegments: RampSegment[] = [
+
   {
     id: 'r1',
     rampId: 'R-01-A',
@@ -143,8 +144,12 @@ const initialRampSegments: RampSegment[] = [
       { id: 'm11', year: '108', startMileage: 360, endMileage: 720, type: 'OG', color: '#fbbf24', label: '2cm OGAC' }
     ],
     prevConstructionYear: '108',
-    prevConstructionDepth: 12
   }
+];
+
+const DEFAULT_LANE_OPTIONS = [
+  '內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '第五車道', 
+  '外路肩', '機車道', '加速車道', '減速車道', '輔助車道', '避難車道', '爬坡車道'
 ];
 
 const initialSegments: Segment[] = [
@@ -304,6 +309,14 @@ export default function App() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [autoTracking, setAutoTracking] = useState(true);
+  const [laneOptions, setLaneOptions] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('laneOptions');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return DEFAULT_LANE_OPTIONS;
+  });
+
 
   // Fetch data from Google Apps Script on mount
   useEffect(() => {
@@ -350,6 +363,15 @@ export default function App() {
   useEffect(() => { localStorage.setItem('segments', JSON.stringify(segments)); }, [segments]);
   useEffect(() => { localStorage.setItem('planningSegments', JSON.stringify(planningSegments)); }, [planningSegments]);
   useEffect(() => { localStorage.setItem('rampSegments', JSON.stringify(rampSegments)); }, [rampSegments]);
+  useEffect(() => { localStorage.setItem('laneOptions', JSON.stringify(laneOptions)); }, [laneOptions]);
+
+  const handleAddLane = (newLane: string) => {
+    if (newLane && !laneOptions.includes(newLane)) {
+      setLaneOptions([...laneOptions, newLane]);
+      setToast({ message: `已新增車道：${newLane}`, type: 'success' });
+    }
+  };
+
 
   // GAS Sync Helpers
   const syncGas = async (url: string, action: string, sheetName: string, recordOrId: any, isDelete = false) => {
@@ -677,8 +699,10 @@ export default function App() {
         <EditSegment 
           segment={draftSegment || undefined}
           isPlanning={activeTab === 'planning'}
+          laneOptions={laneOptions}
           onChange={(segment) => setDraftSegment(segment)}
           onSave={(segment) => {
+
             if (activeTab === 'planning') {
               if (editingSegmentId) {
                 setPlanningSegments(planningSegments.map(s => s.id === editingSegmentId ? segment : s));
@@ -869,8 +893,11 @@ export default function App() {
       <div className="min-h-screen bg-[#f7f9fc]">
         <MainlineHistory 
           segments={segments}
+          laneOptions={laneOptions}
+          onAddLane={handleAddLane}
           onNavigateToEdit={(id) => {
             setEditingSegmentId(id || null);
+
             if (id) {
               const segment = segments.find(s => s.id === id);
               setDraftSegment(segment ? { ...segment } : null);
@@ -1215,8 +1242,11 @@ export default function App() {
           <MainlineHistory 
             title="路面整修規劃"
             segments={planningSegments}
+            laneOptions={laneOptions}
+            onAddLane={handleAddLane}
             onDeleteAll={() => setShowConfirmDeleteAll(true)}
             onNavigateToEdit={(id) => {
+
               setEditingSegmentId(id || null);
               if (id) {
                 const segment = planningSegments.find(s => s.id === id);

@@ -7,13 +7,17 @@ import { exportComponentAsImage } from '../utils/exportImage';
 
 interface MainlineHistoryProps {
   segments: Segment[];
+  laneOptions?: string[];
+  onAddLane?: (newLane: string) => void;
   onNavigateToEdit: (segmentId?: string) => void;
   onDeleteAll?: () => void;
   title?: string;
 }
 
-export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAll, title = '路面整修履歷' }: MainlineHistoryProps) {
+export default function MainlineHistory({ segments, laneOptions = [], onAddLane, onNavigateToEdit, onDeleteAll, title = '路面整修履歷' }: MainlineHistoryProps) {
   const [activeHighway, setActiveHighway] = React.useState('國道1號');
+  const [newLaneName, setNewLaneName] = React.useState('');
+
 
   const highways = [
     { name: '國道1號', start: 166427, end: 192000, label: '國道1號 (166k+427~192k)' },
@@ -125,6 +129,7 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
     );
   };
 
+  const DEFAULT_LANE_OPTIONS_COUNT = 13;
   return (
     <div className="flex flex-col h-[100dvh] bg-[#f7f9fc] relative pb-24">
       {/* Top Navigation Shell */}
@@ -166,7 +171,48 @@ export default function MainlineHistory({ segments, onNavigateToEdit, onDeleteAl
             </button>
           ))}
         </div>
+
+        {/* Global Settings / Add Lane Section */}
+        <div className="flex items-center gap-3 py-3 border-t border-slate-100 mt-1">
+          <div className="flex items-center gap-2 bg-blue-50/50 px-3 py-1.5 rounded-lg border border-blue-100">
+            <Plus className="w-3.5 h-3.5 text-[#005FB8]" />
+            <input 
+              type="text" 
+              placeholder="新增車道名稱 (如: 第六車道)" 
+              value={newLaneName}
+              onChange={(e) => setNewLaneName(e.target.value)}
+              className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 w-40"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newLaneName && onAddLane) {
+                  onAddLane(newLaneName);
+                  setNewLaneName('');
+                }
+              }}
+            />
+            <button 
+              onClick={() => {
+                if (newLaneName && onAddLane) {
+                  onAddLane(newLaneName);
+                  setNewLaneName('');
+                }
+              }}
+              className="text-[10px] font-black text-[#005FB8] hover:underline"
+            >
+              新增
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
+              {laneOptions && laneOptions.slice(DEFAULT_LANE_OPTIONS_COUNT).map(l => (
+                <span key={l} className="px-2 py-0.5 bg-slate-100 text-[#1e293b] rounded text-[10px] font-bold border border-slate-200">
+                  {l}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       </header>
+
 
       <div id="mainline-export-container" className="flex-1 flex flex-col bg-[#f7f9fc] overflow-hidden pt-4">
         {/* Legend Section */}

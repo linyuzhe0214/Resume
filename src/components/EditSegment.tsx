@@ -9,6 +9,7 @@ import MileageInput from './MileageInput';
 interface EditSegmentProps {
   segment?: Segment;
   isPlanning?: boolean;
+  laneOptions?: string[];
   onChange: (segment: Segment) => void;
   onSave: (segment: Segment) => void;
   onDelete?: (id: string) => void;
@@ -17,7 +18,7 @@ interface EditSegmentProps {
   onNavigateToPavement: () => void;
 }
 
-export default function EditSegment({ segment, isPlanning, onChange, onSave, onDelete, onMoveToPlanning, onBack, onNavigateToPavement }: EditSegmentProps) {
+export default function EditSegment({ segment, isPlanning, laneOptions = [], onChange, onSave, onDelete, onMoveToPlanning, onBack, onNavigateToPavement }: EditSegmentProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [lockLength, setLockLength] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -162,22 +163,17 @@ export default function EditSegment({ segment, isPlanning, onChange, onSave, onD
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold uppercase tracking-[0.05rem] text-slate-500 ml-1">Lane Category 車道別</label>
               <div className="relative">
-                <input 
-                  list="lane-options"
+                <select 
                   value={formData.lanes[0] || ''}
                   onChange={(e) => handleChange({...formData, lanes: [e.target.value]})}
-                  placeholder="選擇或輸入車道名稱"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 focus:ring-2 focus:ring-[#005fb8]/20 transition-all font-medium outline-none"
-                />
-                <datalist id="lane-options">
-                  <option value="內路肩" />
-                  <option value="第一車道" />
-                  <option value="第二車道" />
-                  <option value="第三車道" />
-                  <option value="第四車道" />
-                  <option value="第五車道" />
-                  <option value="外路肩" />
-                </datalist>
+                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 focus:ring-2 focus:ring-[#005fb8]/20 transition-all font-medium outline-none"
+                >
+                  <option value="" disabled>選擇車道名稱</option>
+                  {laneOptions.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
             </div>
           </div>
