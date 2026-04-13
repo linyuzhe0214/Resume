@@ -449,6 +449,21 @@ export default function App() {
   };
 
 
+  const handleUpdateRampOrder = (newOrder: string[]) => {
+    setRampSegments(prev => {
+      const sorted = [...prev].sort((a, b) => {
+        const idxA = newOrder.indexOf(a.rampId);
+        const idxB = newOrder.indexOf(b.rampId);
+        if (idxA === -1 && idxB === -1) return 0;
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      });
+      return sorted;
+    });
+    setToast({ message: '匝道排序已更新', type: 'success' });
+  };
+
   // GAS Sync Helpers
   const syncGas = async (url: string, action: string, sheetName: string, recordOrId: any, isDelete = false) => {
     try {
@@ -923,6 +938,7 @@ export default function App() {
           onActiveHighwayChange={setActiveRampHighway}
           activeInterchange={activeRampInterchange}
           onActiveInterchangeChange={setActiveRampInterchange}
+          onUpdateRampOrder={handleUpdateRampOrder}
           onNavigateToEditDetails={(id, defaultHighway, defaultInterchange, prototypeId) => {
             setEditingRampId(id || null);
             if (id) {

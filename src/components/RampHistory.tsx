@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Download, Plus, Layers, ChevronDown, MapPin } from 'lucide-react';
+import { Download, Plus, Layers, ChevronDown, MapPin, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
@@ -16,21 +16,18 @@ interface RampHistoryProps {
   onNavigateToEditDetails: (rampId?: string, defaultHighway?: string, defaultInterchange?: string, prototypeId?: string) => void;
   onNavigateToEditHistory: (rampId?: string, prototypeId?: string, defaultStart?: number, defaultEnd?: number) => void;
   onDeleteRamp?: (rampId: string) => void;
+  onUpdateRampOrder?: (newOrder: string[]) => void;
 }
 
-export default function RampHistory({ 
-  rampSegments, 
-  activeHighway: selectedHighway,
-  onActiveHighwayChange: setSelectedHighway,
-  activeInterchange: selectedInterchange,
-  onActiveInterchangeChange: setSelectedInterchange,
   onNavigateToEditDetails, 
   onNavigateToEditHistory, 
-  onDeleteRamp 
+  onDeleteRamp,
+  onUpdateRampOrder
 }: RampHistoryProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingRampId, setDeletingRampId] = useState<string | null>(null);
   const [selectedRampId, setSelectedRampId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const highways = Object.keys(HIGHWAY_INTERCHANGE_MAP);
 
@@ -78,6 +75,16 @@ export default function RampHistory({
 
     return Object.values(groups);
   }, [filteredRamps]);
+
+  const displayRamps = useMemo(() => {
+    if (!searchTerm.trim()) return groupedRamps;
+    const term = searchTerm.toLowerCase();
+    return groupedRamps.filter(g => 
+      g.rampId.toLowerCase().includes(term) || 
+      g.rampName.toLowerCase().includes(term) ||
+      (g.segments[0]?.rampNo || '').toLowerCase().includes(term)
+    );
+  }, [groupedRamps, searchTerm]);
 
   const selectedRampData = useMemo(() => {
     const raw = selectedRampId 
@@ -278,20 +285,41 @@ export default function RampHistory({
             </button>
           </div>
         </div>
-        <div id="ramp-details-export" className="overflow-x-auto bg-white">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50">
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝道編碼</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝道名稱</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝環道名稱</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">匝道長度 (m)</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">備註</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">操作</th>
+        <div id="ramp-details-export" className="bg-white">
+          <div className="p-4 border-b border-slate-100 flex items-center gap-3">
+             <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="text"
+                  placeholder="搜尋匝道編碼或名稱..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#005fb8]/20 outline-none transition-all"
+                />
+             </div>
+             {searchTerm && (
+               <button 
+                 onClick={() => setSearchTerm('')}
+                 className="text-[10px] font-bold text-slate-400 hover:text-slate-600"
+               >
+                 清除過濾
+               </button>
+             )}
+          </div>
+          <div className="overflow-auto max-h-[450px] customize-scrollbar">
+          <table className="w-full text-left border-separate border-spacing-0">
+            <thead className="sticky top-0 z-20">
+              <tr className="bg-slate-50/90 backdrop-blur-sm">
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝道編碼</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝道名稱</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝環道名稱</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝道長度 (m)</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">備註</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center border-b border-slate-200">操作 / 排序</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {groupedRamps.map((group) => {
+              {displayRamps.map((group, index) => {
                 const ramp = group.segments[0];
                 if (!ramp) return null;
                 return (
@@ -315,6 +343,34 @@ export default function RampHistory({
                   </td>
                   <td className="px-6 py-5 text-center">
                     <div className="flex items-center justify-center gap-3">
+                      <div className="flex flex-col gap-1 mr-2 border-r border-slate-100 pr-3">
+                        <button 
+                          disabled={index === 0 || !!searchTerm}
+                          onClick={() => {
+                            if (onUpdateRampOrder) {
+                              const newOrder = groupedRamps.map(g => g.rampId);
+                              [newOrder[index-1], newOrder[index]] = [newOrder[index], newOrder[index-1]];
+                              onUpdateRampOrder(newOrder);
+                            }
+                          }}
+                          className="p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors"
+                        >
+                          <ArrowUp className="w-3 h-3 text-slate-400" />
+                        </button>
+                        <button 
+                          disabled={index === displayRamps.length - 1 || !!searchTerm}
+                          onClick={() => {
+                            if (onUpdateRampOrder) {
+                              const newOrder = groupedRamps.map(g => g.rampId);
+                              [newOrder[index+1], newOrder[index]] = [newOrder[index], newOrder[index+1]];
+                              onUpdateRampOrder(newOrder);
+                            }
+                          }}
+                          className="p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors"
+                        >
+                          <ArrowDown className="w-3 h-3 text-slate-400" />
+                        </button>
+                      </div>
                       <button 
                         onClick={() => onNavigateToEditDetails(ramp.id)}
                         className="text-[#005fb8] font-black text-xs hover:underline"
@@ -336,6 +392,7 @@ export default function RampHistory({
               )})}
             </tbody>
           </table>
+          </div>
         </div>
       </section>
 
