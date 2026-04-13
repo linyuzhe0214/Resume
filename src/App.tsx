@@ -15,7 +15,7 @@ import ConfirmDialog from './components/ConfirmDialog';
 
 import { Segment, RampSegment, PavementLayer } from './types';
 import type { Feature, LineString } from 'geojson';
-import { parseKmlToPoints, buildKmlIndex, findNearestPoint, DIRECTION_REVERSE_MAP, type KmlIndex, type KmlPoint, type KmlMainlinePoint, type KmlRampPoint } from './utils/kmlParser';
+import { parseKmlToPoints, buildKmlIndex, findNearestPoint, findNearestPointByGps, DIRECTION_REVERSE_MAP, type KmlIndex, type KmlPoint, type KmlMainlinePoint, type KmlRampPoint } from './utils/kmlParser';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -276,6 +276,7 @@ export default function App() {
   const [gpsStatus, setGpsStatus] = useState<'locating' | 'active' | 'error'>('locating');
   const [accuracy, setAccuracy] = useState<number | null>(null);
   
+  // highwayLine 僅保留以備將來地圖繪圖用，GPS 定位已改用 Haversine 直查
   const [highwayLine, setHighwayLine] = useState<Feature<LineString> | null>(null);
   const [highwayName, setHighwayName] = useState<string>('國道1號');
   const [activeHistoryHighway, setActiveHistoryHighway] = useState<string>('國道1號');
@@ -533,22 +534,20 @@ export default function App() {
         const points = parseKmlToPoints(kmlText);
         const index = buildKmlIndex(points);
         setKmlIndex(index);
-        
-        // 從主線點建構 LineString for GPS 定位
-        // 按國道分組，只取每個國道的第一個方向來建 line
+
+        // 將第一個國道的某方向建成 LineString 備用（地圖繪圖），不再用於里程計算
         for (const hw of Object.keys(index.mainline)) {
           const dirs = Object.values(index.mainline[hw]);
           if (dirs.length > 0 && dirs[0].length >= 2) {
             const coords = dirs[0].map(p => [p.lon, p.lat]);
-            const line = turf.lineString(coords);
-            setHighwayLine(line);
-            break; // 先用第一個國道的 line
+            setHighwayLine(turf.lineString(coords));
+            break;
           }
         }
-        
+
         console.log(`KML 資料庫載入完成: ${points.length} 個測量點`);
-        console.log(`Available highways in Mainline:`, Object.keys(index.mainline));
-        console.log(`Available highways in Ramp:`, Object.keys(index.ramp));
+        console.log('主線國道:', Object.keys(index.mainline));
+        console.log('匝道國道:', Object.keys(index.ramp));
       })
       .catch(err => console.error('Failed to load local KML routing database:', err))
       .finally(() => setKmlLoading(false));
@@ -566,7 +565,7 @@ export default function App() {
     setCurrentKmlType(result.type);
   }, [kmlIndex, highwayName, direction, mileage]);
 
-  // Geolocation
+  // Geolocation — 用 Haversine 直接從 KML 點找最近的，自動推算國道+里程+方向
   useEffect(() => {
     if (!navigator.geolocation) {
       setGpsStatus('error');
@@ -578,25 +577,29 @@ export default function App() {
         setLocation(pos);
         setAccuracy(pos.coords.accuracy);
         setGpsStatus('active');
-        
-        // If we have a highway line and auto tracking is enabled, calculate mileage
-        if (highwayLine && autoTracking) {
-          const pt = turf.point([pos.coords.longitude, pos.coords.latitude]);
-          const snapped = turf.nearestPointOnLine(highwayLine, pt);
-          
-          // Calculate distance from start of line to snapped point
-          const sliced = turf.lineSlice(
-            turf.point(highwayLine.geometry.coordinates[0]), 
-            snapped, 
-            highwayLine
+
+        if (!autoTracking) return;
+
+        if (kmlIndex && kmlIndex.allMainlinePoints.length > 0) {
+          // 優先用 KML 主線點直接比對 GPS 座標
+          const result = findNearestPointByGps(
+            kmlIndex,
+            pos.coords.longitude,
+            pos.coords.latitude,
+            500, // 500 公尺容許誤差
           );
-          const distMeters = turf.length(sliced, { units: 'meters' });
-          setMileage(distMeters);
-          
-          // Basic direction mock based on bearing
-          if (pos.coords.heading !== null) {
-            setDirection(pos.coords.heading < 180 ? '北上車道' : '南下車道');
+          if (result) {
+            const { point } = result;
+            setMileage(point.mileage);
+            setHighwayName(point.highway);   // ← 自動更新國道別
+            setDirection(point.direction);    // ← 自動更新行進方向
+            return;
           }
+        }
+
+        // fallback：若 KML 尚未載入或超出範圍，改用 heading 估算方向
+        if (pos.coords.heading !== null) {
+          setDirection(pos.coords.heading < 180 ? '北上車道' : '南下車道');
         }
       },
       (err) => {
@@ -607,7 +610,7 @@ export default function App() {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [highwayLine, autoTracking]);
+  }, [kmlIndex, autoTracking]);
 
   const formatMileage = (meters: number) => {
     const km = Math.floor(meters / 1000);

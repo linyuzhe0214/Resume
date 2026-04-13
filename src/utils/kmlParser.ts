@@ -422,3 +422,42 @@ export function findNearestPoint(
 
   return { point: null, type: null };
 }
+
+// ── Haversine 距離 (公尺) ──────────────────────────────────────────
+function haversineMeters(lon1: number, lat1: number, lon2: number, lat2: number): number {
+  const R = 6371000;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * 從 GPS 經緯度，在所有主線點中找最近的，
+ * 自動推算 highway / direction / mileage。
+ * @param maxDistanceMeters GPS 可接受的最大距離（公尺），預設 500m
+ */
+export function findNearestPointByGps(
+  index: KmlIndex,
+  lon: number,
+  lat: number,
+  maxDistanceMeters = 500,
+): { point: KmlMainlinePoint; distanceM: number } | null {
+  let best: KmlMainlinePoint | null = null;
+  let bestDist = Infinity;
+
+  for (const pt of index.allMainlinePoints) {
+    const d = haversineMeters(lon, lat, pt.lon, pt.lat);
+    if (d < bestDist) {
+      bestDist = d;
+      best = pt;
+    }
+  }
+
+  if (best && bestDist <= maxDistanceMeters) {
+    return { point: best, distanceM: bestDist };
+  }
+  return null;
+}
