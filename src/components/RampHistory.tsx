@@ -9,27 +9,38 @@ import { exportComponentAsImage } from '../utils/exportImage';
 
 interface RampHistoryProps {
   rampSegments: RampSegment[];
+  activeHighway: string;
+  onActiveHighwayChange: (highway: string) => void;
+  activeInterchange: string;
+  onActiveInterchangeChange: (interchange: string) => void;
   onNavigateToEditDetails: (rampId?: string, defaultHighway?: string, defaultInterchange?: string, prototypeId?: string) => void;
   onNavigateToEditHistory: (rampId?: string, prototypeId?: string, defaultStart?: number, defaultEnd?: number) => void;
   onDeleteRamp?: (rampId: string) => void;
 }
 
-export default function RampHistory({ rampSegments, onNavigateToEditDetails, onNavigateToEditHistory, onDeleteRamp }: RampHistoryProps) {
+export default function RampHistory({ 
+  rampSegments, 
+  activeHighway: selectedHighway,
+  onActiveHighwayChange: setSelectedHighway,
+  activeInterchange: selectedInterchange,
+  onActiveInterchangeChange: setSelectedInterchange,
+  onNavigateToEditDetails, 
+  onNavigateToEditHistory, 
+  onDeleteRamp 
+}: RampHistoryProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingRampId, setDeletingRampId] = useState<string | null>(null);
   const [selectedRampId, setSelectedRampId] = useState<string | null>(null);
 
   const highways = Object.keys(HIGHWAY_INTERCHANGE_MAP);
-  const [selectedHighway, setSelectedHighway] = useState<string>('國道1號');
 
   const interchanges = HIGHWAY_INTERCHANGE_MAP[selectedHighway] || [];
-  const [selectedInterchange, setSelectedInterchange] = useState<string>(interchanges[0] || '');
 
   React.useEffect(() => {
     if (interchanges.length > 0 && !interchanges.includes(selectedInterchange)) {
       setSelectedInterchange(interchanges[0]);
     }
-  }, [selectedHighway, interchanges, selectedInterchange]);
+  }, [selectedHighway, interchanges, selectedInterchange, setSelectedInterchange]);
 
   const filteredRamps = useMemo(() => {
     return rampSegments.filter(ramp => {

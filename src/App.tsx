@@ -280,6 +280,8 @@ export default function App() {
   const [highwayLine, setHighwayLine] = useState<Feature<LineString> | null>(null);
   const [highwayName, setHighwayName] = useState<string>('國道1號');
   const [activeHistoryHighway, setActiveHistoryHighway] = useState<string>('國道1號');
+  const [activeRampHighway, setActiveRampHighway] = useState<string>('國道1號');
+  const [activeRampInterchange, setActiveRampInterchange] = useState<string>('');
   const [mileage, setMileage] = useState<number>(166500);
   const [direction, setDirection] = useState<string>('北上車道');
   
@@ -709,6 +711,8 @@ export default function App() {
               setRampSegments(prev => [...prev, newRamp]);
               syncGas(RAMP_URL, 'saveRamp', newRamp.interchange, newRamp);
             }
+            setActiveRampHighway(ramp.highway);
+            setActiveRampInterchange(ramp.interchange);
             setDraftRamp(null);
             setEditingRampId(null);
             setSubPage('none');
@@ -770,6 +774,8 @@ export default function App() {
               setRampSegments([...rampSegments, newRamp]);
             }
             syncGas(RAMP_URL, 'saveRamp', ramp.interchange, ramp);
+            setActiveRampHighway(ramp.highway);
+            setActiveRampInterchange(ramp.interchange);
             setDraftRamp(null);
             setEditingRampId(null);
             setSubPage('none');
@@ -913,6 +919,10 @@ export default function App() {
       <div className="min-h-screen bg-[#f7f9fc]">
         <RampHistory 
           rampSegments={rampSegments}
+          activeHighway={activeRampHighway}
+          onActiveHighwayChange={setActiveRampHighway}
+          activeInterchange={activeRampInterchange}
+          onActiveInterchangeChange={setActiveRampInterchange}
           onNavigateToEditDetails={(id, defaultHighway, defaultInterchange, prototypeId) => {
             setEditingRampId(id || null);
             if (id) {
