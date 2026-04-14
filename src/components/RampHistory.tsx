@@ -314,7 +314,7 @@ export default function RampHistory(props: RampHistoryProps) {
                </button>
              )}
           </div>
-          <div className="overflow-auto max-h-[450px] customize-scrollbar">
+          <div className="overflow-auto max-h-[700px] customize-scrollbar shadow-inner rounded-xl border border-slate-100">
           <table className="w-full text-left border-separate border-spacing-0">
             <thead className="sticky top-0 z-20">
               <tr className="bg-slate-50/90 backdrop-blur-sm">
