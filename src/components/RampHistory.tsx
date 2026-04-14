@@ -19,17 +19,19 @@ interface RampHistoryProps {
   onUpdateRampOrder?: (newOrder: string[]) => void;
 }
 
-export default function RampHistory({
-  rampSegments,
-  activeHighway: selectedHighway,
-  onActiveHighwayChange: setSelectedHighway,
-  activeInterchange: selectedInterchange,
-  onActiveInterchangeChange: setSelectedInterchange,
-  onNavigateToEditDetails, 
-  onNavigateToEditHistory, 
-  onDeleteRamp,
-  onUpdateRampOrder
-}: RampHistoryProps) {
+export default function RampHistory(props: RampHistoryProps) {
+  const {
+    rampSegments,
+    activeHighway: selectedHighway,
+    onActiveHighwayChange: setSelectedHighway,
+    activeInterchange: selectedInterchange,
+    onActiveInterchangeChange: setSelectedInterchange,
+    onNavigateToEditDetails, 
+    onNavigateToEditHistory, 
+    onDeleteRamp,
+    onUpdateRampOrder
+  } = props;
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingRampId, setDeletingRampId] = useState<string | null>(null);
   const [selectedRampId, setSelectedRampId] = useState<string | null>(null);
