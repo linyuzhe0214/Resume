@@ -328,76 +328,86 @@ export default function RampHistory(props: RampHistoryProps) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {displayRamps.map((group, index) => {
-                const ramp = group.segments[0];
-                if (!ramp) return null;
-                return (
-                <tr key={group.rampId} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="px-6 py-5">
-                    <span className="font-black text-[#00488d]">{ramp.rampId}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="font-bold text-slate-700">{ramp.rampName}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="font-bold text-slate-600">{ramp.rampNo}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="font-mono font-bold text-slate-800">{ramp.length}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="text-xs font-medium text-slate-500 italic">
-                      {ramp.notes || '無備註'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <div className="flex items-center justify-center gap-3">
-                      <div className="flex flex-col gap-1 mr-2 border-r border-slate-100 pr-3">
+                return group.segments.map((ramp, sIdx) => {
+                  if (!ramp) return null;
+                  return (
+                  <tr key={ramp.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <td className="px-6 py-5">
+                      <span className="font-black text-[#00488d]">
+                        {ramp.rampId}
+                        {group.segments.length > 1 ? ` (段${sIdx + 1})` : ''}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className="font-bold text-slate-700">{ramp.rampName}</span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className="font-bold text-slate-600">{ramp.rampNo}</span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className="font-mono font-bold text-slate-800">{ramp.length}</span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className="text-xs font-medium text-slate-500 italic">
+                        {ramp.notes || '無備註'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5 text-center">
+                      <div className="flex items-center justify-center gap-3">
+                        <div className="flex flex-col gap-1 mr-2 border-r border-slate-100 pr-3">
+                          <button 
+                            disabled={index === 0 || !!searchTerm || sIdx > 0}
+                            onClick={() => {
+                              if (onUpdateRampOrder && sIdx === 0) {
+                                const newOrder = groupedRamps.map(g => g.rampId);
+                                [newOrder[index-1], newOrder[index]] = [newOrder[index], newOrder[index-1]];
+                                onUpdateRampOrder(newOrder);
+                              }
+                            }}
+                            className={cn(
+                              "p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors",
+                              sIdx > 0 && "invisible"
+                            )}
+                          >
+                            <ArrowUp className="w-3 h-3 text-slate-400" />
+                          </button>
+                          <button 
+                            disabled={index === displayRamps.length - 1 || !!searchTerm || sIdx > 0}
+                            onClick={() => {
+                              if (onUpdateRampOrder && sIdx === 0) {
+                                const newOrder = groupedRamps.map(g => g.rampId);
+                                [newOrder[index+1], newOrder[index]] = [newOrder[index], newOrder[index+1]];
+                                onUpdateRampOrder(newOrder);
+                              }
+                            }}
+                            className={cn(
+                              "p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors",
+                              sIdx > 0 && "invisible"
+                            )}
+                          >
+                            <ArrowDown className="w-3 h-3 text-slate-400" />
+                          </button>
+                        </div>
                         <button 
-                          disabled={index === 0 || !!searchTerm}
-                          onClick={() => {
-                            if (onUpdateRampOrder) {
-                              const newOrder = groupedRamps.map(g => g.rampId);
-                              [newOrder[index-1], newOrder[index]] = [newOrder[index], newOrder[index-1]];
-                              onUpdateRampOrder(newOrder);
-                            }
-                          }}
-                          className="p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors"
+                          onClick={() => onNavigateToEditDetails(ramp.id)}
+                          className="text-[#005fb8] font-black text-xs hover:underline"
                         >
-                          <ArrowUp className="w-3 h-3 text-slate-400" />
+                          修改
                         </button>
                         <button 
-                          disabled={index === displayRamps.length - 1 || !!searchTerm}
                           onClick={() => {
-                            if (onUpdateRampOrder) {
-                              const newOrder = groupedRamps.map(g => g.rampId);
-                              [newOrder[index+1], newOrder[index]] = [newOrder[index], newOrder[index+1]];
-                              onUpdateRampOrder(newOrder);
-                            }
+                            setDeletingRampId(ramp.id);
+                            setShowDeleteConfirm(true);
                           }}
-                          className="p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors"
+                          className="text-red-600 font-black text-xs hover:underline"
                         >
-                          <ArrowDown className="w-3 h-3 text-slate-400" />
+                          刪除
                         </button>
                       </div>
-                      <button 
-                        onClick={() => onNavigateToEditDetails(ramp.id)}
-                        className="text-[#005fb8] font-black text-xs hover:underline"
-                      >
-                        修改
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setDeletingRampId(ramp.rampId);
-                          setShowDeleteConfirm(true);
-                        }}
-                        className="text-red-600 font-black text-xs hover:underline"
-                      >
-                        刪除
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )})}
+                    </td>
+                  </tr>
+                )
+              })})}
             </tbody>
           </table>
           </div>
