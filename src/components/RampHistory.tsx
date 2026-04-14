@@ -19,6 +19,12 @@ interface RampHistoryProps {
   onUpdateRampOrder?: (newOrder: string[]) => void;
 }
 
+export default function RampHistory({
+  rampSegments,
+  activeHighway: selectedHighway,
+  onActiveHighwayChange: setSelectedHighway,
+  activeInterchange: selectedInterchange,
+  onActiveInterchangeChange: setSelectedInterchange,
   onNavigateToEditDetails, 
   onNavigateToEditHistory, 
   onDeleteRamp,
