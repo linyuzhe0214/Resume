@@ -26,8 +26,8 @@ export default function RampHistory(props: RampHistoryProps) {
     onActiveHighwayChange: setSelectedHighway,
     activeInterchange: selectedInterchange,
     onActiveInterchangeChange: setSelectedInterchange,
-    onNavigateToEditDetails, 
-    onNavigateToEditHistory, 
+    onNavigateToEditDetails,
+    onNavigateToEditHistory,
     onDeleteRamp,
     onUpdateRampOrder
   } = props;
