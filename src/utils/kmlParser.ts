@@ -407,7 +407,19 @@ export function findNearestPoint(
   highway: string,
   direction: string,
   mileage: number,
+  mode: 'auto' | 'mainline' | 'ramp' = 'auto'
 ): { point: KmlPoint | null; type: 'mainline' | 'ramp' | null } {
+  if (mode === 'mainline') {
+    const mainPtLoose = findNearestMainlinePoint(index, highway, direction, mileage, 500);
+    if (mainPtLoose) return { point: mainPtLoose, type: 'mainline' };
+    return { point: null, type: null };
+  }
+
+  if (mode === 'ramp') {
+    const rampPtLoose = findNearestRampPoint(index, highway, mileage, 500);
+    if (rampPtLoose) return { point: rampPtLoose, type: 'ramp' };
+    return { point: null, type: null };
+  }
   // 先查主線
   const mainPt = findNearestMainlinePoint(index, highway, direction, mileage, 50);
   if (mainPt) return { point: mainPt, type: 'mainline' };

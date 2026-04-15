@@ -290,6 +290,7 @@ export default function App() {
   const [kmlLoading, setKmlLoading] = useState(true);
   const [currentKmlPoint, setCurrentKmlPoint] = useState<KmlPoint | null>(null);
   const [currentKmlType, setCurrentKmlType] = useState<'mainline' | 'ramp' | null>(null);
+  const [searchMode, setSearchMode] = useState<'auto' | 'mainline' | 'ramp'>('auto');
   const [activeTab, setActiveTab] = useState<'surface' | 'mainline' | 'ramp' | 'planning'>('surface');
   const [subPage, setSubPage] = useState<'none' | 'editSegment' | 'editPavement' | 'editRamp' | 'editRampHistory' | 'editRampHistoryPavement'>('none');
 
@@ -570,17 +571,17 @@ export default function App() {
       .finally(() => setKmlLoading(false));
   }, []);
 
-  // 當 mileage / highway / direction 改變時，查詢 KML 對應的測量點
+  // 當 mileage / highway / direction / searchMode 改變時，查詢 KML 對應的測量點
   useEffect(() => {
     if (!kmlIndex) {
       setCurrentKmlPoint(null);
       setCurrentKmlType(null);
       return;
     }
-    const result = findNearestPoint(kmlIndex, highwayName, direction, mileage);
+    const result = findNearestPoint(kmlIndex, highwayName, direction, mileage, searchMode);
     setCurrentKmlPoint(result.point);
     setCurrentKmlType(result.type);
-  }, [kmlIndex, highwayName, direction, mileage]);
+  }, [kmlIndex, highwayName, direction, mileage, searchMode]);
 
   // Geolocation — 用 Haversine 直接從 KML 點找最近的，自動推算國道+里程+方向
   useEffect(() => {
@@ -1186,6 +1187,28 @@ export default function App() {
               <div className="inline-block mt-2 px-3 py-1 rounded-full bg-slate-100 text-xs font-bold text-slate-600 border border-slate-200">
                 {direction}
               </div>
+            </div>
+
+            {/* Search Mode Toggle */}
+            <div className="mt-4 flex bg-slate-100 p-1 rounded-xl">
+              <button
+                className={cn("flex-1 py-1.5 text-xs font-bold rounded-lg transition-all", searchMode === 'auto' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                onClick={() => setSearchMode('auto')}
+              >
+                自動偵測
+              </button>
+              <button
+                className={cn("flex-1 py-1.5 text-xs font-bold rounded-lg transition-all", searchMode === 'mainline' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                onClick={() => setSearchMode('mainline')}
+              >
+                主線模式
+              </button>
+              <button
+                className={cn("flex-1 py-1.5 text-xs font-bold rounded-lg transition-all", searchMode === 'ramp' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+                onClick={() => setSearchMode('ramp')}
+              >
+                匝道模式
+              </button>
             </div>
           </section>
 
