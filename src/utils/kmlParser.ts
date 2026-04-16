@@ -281,6 +281,8 @@ export interface KmlIndex {
   ramp: Record<string, KmlRampPoint[]>;
   /** 所有主線點 (for GPS line building) */
   allMainlinePoints: KmlMainlinePoint[];
+  /** 所有匝道點 */
+  allRampPoints: KmlRampPoint[];
 }
 
 /**
@@ -290,12 +292,14 @@ export function buildKmlIndex(points: KmlPoint[]): KmlIndex {
   const mainline: Record<string, Record<string, KmlMainlinePoint[]>> = {};
   const ramp: Record<string, KmlRampPoint[]> = {};
   const allMainlinePoints: KmlMainlinePoint[] = [];
+  const allRampPoints: KmlRampPoint[] = [];
 
   for (const pt of points) {
     if (pt.isRamp) {
       const rampPt = pt as KmlRampPoint;
       if (!ramp[rampPt.highway]) ramp[rampPt.highway] = [];
       ramp[rampPt.highway].push(rampPt);
+      allRampPoints.push(rampPt);
     } else {
       const mainPt = pt as KmlMainlinePoint;
       if (!mainline[mainPt.highway]) mainline[mainPt.highway] = {};
@@ -315,7 +319,7 @@ export function buildKmlIndex(points: KmlPoint[]): KmlIndex {
     ramp[key].sort((a, b) => a.mileage - b.mileage);
   }
 
-  return { mainline, ramp, allMainlinePoints };
+  return { mainline, ramp, allMainlinePoints, allRampPoints };
 }
 
 /**
@@ -447,8 +451,7 @@ function haversineMeters(lon1: number, lat1: number, lon2: number, lat2: number)
 }
 
 /**
- * 從 GPS 經緯度，在所有主線點中找最近的，
- * 自動推算 highway / direction / mileage。
+ * 從 GPS 經緯度，在所有主線(或匝道)點中找最近的，並透過鄰近點計算更精確的里程。
  * @param maxDistanceMeters GPS 可接受的最大距離（公尺），預設 500m
  */
 export function findNearestPointByGps(
@@ -456,20 +459,87 @@ export function findNearestPointByGps(
   lon: number,
   lat: number,
   maxDistanceMeters = 500,
-): { point: KmlMainlinePoint; distanceM: number } | null {
-  let best: KmlMainlinePoint | null = null;
+  mode: 'auto' | 'mainline' | 'ramp' = 'auto'
+): { point: KmlPoint; distanceM: number; exactMileage: number } | null {
+  let pointsToSearch: KmlPoint[] = [];
+  
+  if (mode === 'ramp') {
+    pointsToSearch = index.allRampPoints;
+  } else if (mode === 'mainline') {
+    pointsToSearch = index.allMainlinePoints;
+  } else {
+    // auto 預設先看所有點，找出最近的
+    pointsToSearch = [...index.allMainlinePoints, ...index.allRampPoints];
+  }
+
+  if (pointsToSearch.length === 0) return null;
+
+  let bestIndex = -1;
   let bestDist = Infinity;
 
-  for (const pt of index.allMainlinePoints) {
+  // 1. 找出絕對最近的樁點
+  for (let i = 0; i < pointsToSearch.length; i++) {
+    const pt = pointsToSearch[i];
     const d = haversineMeters(lon, lat, pt.lon, pt.lat);
     if (d < bestDist) {
       bestDist = d;
-      best = pt;
+      bestIndex = i;
     }
   }
 
-  if (best && bestDist <= maxDistanceMeters) {
-    return { point: best, distanceM: bestDist };
+  const bestPt = pointsToSearch[bestIndex];
+  if (!bestPt || bestDist > maxDistanceMeters) {
+    return null;
   }
-  return null;
+
+  // 2. 為了更精準的里程，找出屬於同一國道/方向的相鄰樁點的集合進行內插
+  // 取出同 highway 與 同 direction 的點列
+  let sameLineArr: KmlPoint[] = [];
+  if (bestPt.isRamp && index.ramp[bestPt.highway]) {
+    sameLineArr = index.ramp[bestPt.highway]; // 匝道僅依 highway 排序
+  } else if (!bestPt.isRamp && index.mainline[bestPt.highway] && index.mainline[bestPt.highway][bestPt.direction]) {
+    sameLineArr = index.mainline[bestPt.highway][bestPt.direction] as KmlPoint[];
+  }
+
+  let exactMileage = bestPt.mileage;
+
+  if (sameLineArr.length > 1) {
+    // 在 sameLineArr 中找到 bestPt 的位置
+    const idx = sameLineArr.findIndex(p => p === bestPt);
+    if (idx !== -1) {
+      // 查看前一個與後一個點，找與目前 GPS 點最近的那個構成線段
+      const prev = idx > 0 ? sameLineArr[idx - 1] : null;
+      const next = idx < sameLineArr.length - 1 ? sameLineArr[idx + 1] : null;
+
+      let partner: KmlPoint | null = null;
+      if (prev && next) {
+        const distPrev = haversineMeters(lon, lat, prev.lon, prev.lat);
+        const distNext = haversineMeters(lon, lat, next.lon, next.lat);
+        partner = distPrev < distNext ? prev : next;
+      } else {
+        partner = prev || next;
+      }
+
+      if (partner) {
+        // 使用簡單向量投影計算比例 t
+        const dx = partner.lon - bestPt.lon;
+        const dy = partner.lat - bestPt.lat;
+        const segLenSq = dx * dx + dy * dy;
+
+        if (segLenSq > 1e-12) { // 避免重合點
+          const vx = lon - bestPt.lon;
+          const vy = lat - bestPt.lat;
+          // 投影比例 t
+          let t = (vx * dx + vy * dy) / segLenSq;
+          
+          // 由於最佳點為 bestPt，GPS 點投影到連線上，t理應在 0 到 0.5 之間 (大於0.5這點就不會是bestPt)
+          t = Math.max(0, Math.min(1, t));
+          
+          exactMileage = bestPt.mileage + t * (partner.mileage - bestPt.mileage);
+        }
+      }
+    }
+  }
+
+  return { point: bestPt, distanceM: bestDist, exactMileage };
 }

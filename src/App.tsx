@@ -605,12 +605,13 @@ export default function App() {
             pos.coords.longitude,
             pos.coords.latitude,
             500, // 500 公尺容許誤差
+            searchMode
           );
           if (result) {
-            const { point } = result;
-            setMileage(point.mileage);
+            const { point, exactMileage } = result;
+            setMileage(Math.round(exactMileage));
             setHighwayName(point.highway);   // ← 自動更新國道別
-            setDirection(point.direction);    // ← 自動更新行進方向
+            if (point.direction) setDirection(point.direction);    // ← 自動更新行進方向
             return;
           }
         }
@@ -628,7 +629,7 @@ export default function App() {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [kmlIndex, autoTracking]);
+  }, [kmlIndex, autoTracking, searchMode]);
 
   const formatMileage = (meters: number) => {
     const km = Math.floor(meters / 1000);
