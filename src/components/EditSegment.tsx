@@ -203,23 +203,36 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], onC
           </div>
           <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
             <div className="space-y-1.5 w-full">
-              <label className="text-[10px] font-bold uppercase tracking-[0.05rem] text-slate-500 ml-1">End Date 結束日期</label>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-medium flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-colors">
-                <input 
-                  type="month" 
-                  value={`${Number(formData.constructionYear) + 1911}-${formData.constructionMonth}`}
-                  onChange={(e) => {
-                    const [year, month] = e.target.value.split('-');
-                    if (year && month) {
-                      handleChange({
-                        ...formData,
-                        constructionYear: (Number(year) - 1911).toString(),
-                        constructionMonth: month
-                      });
-                    }
-                  }}
-                  className="bg-transparent outline-none w-full"
-                />
+              <label className="text-[10px] font-bold uppercase tracking-[0.05rem] text-slate-500 ml-1">End Date 結束日期 (民國年/月)</label>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 relative">
+                  <select 
+                    value={formData.constructionYear}
+                    onChange={(e) => handleChange({ ...formData, constructionYear: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-bold focus:ring-2 focus:ring-[#005fb8]/20 transition-all outline-none appearance-none"
+                  >
+                    <option value="" disabled>年份</option>
+                    {Array.from({length: 60}, (_, i) => 125 - i).map(y => (
+                      <option key={y} value={y.toString()}>{y}</option>
+                    ))}
+                  </select>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-bold pointer-events-none">年</span>
+                  <ChevronDown className="absolute right-8 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+                <div className="flex-1 relative">
+                  <select 
+                    value={formData.constructionMonth}
+                    onChange={(e) => handleChange({ ...formData, constructionMonth: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-bold focus:ring-2 focus:ring-[#005fb8]/20 transition-all outline-none appearance-none"
+                  >
+                    <option value="" disabled>月份</option>
+                    {Array.from({length: 12}, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-bold pointer-events-none">月</span>
+                  <ChevronDown className="absolute right-8 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
               </div>
             </div>
           </div>

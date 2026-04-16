@@ -199,28 +199,20 @@ export default function EditRampHistory({ segment, availableRamps, onChange, onS
 
             {/* Completion Time */}
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400">完工時間 (COMPLETION TIME)</label>
-              <div className="relative">
-                <input 
-                  className="w-full bg-slate-50 border-none h-12 px-4 pr-10 rounded-xl focus:ring-2 focus:ring-[#005fb8]/20 font-black text-slate-800" 
-                  type="month" 
-                  value={(() => {
-                    if (!formData.completionTime) return '';
-                    const parts = formData.completionTime.split('/');
-                    if (parts.length < 2) return '';
-                    const year = Number(parts[0]) + 1911;
-                    const month = parts[1].padStart(2, '0');
-                    return `${year}-${month}`;
-                  })()}
-                  onChange={(e) => {
-                    const [year, month] = e.target.value.split('-');
-                    if (year && month) {
-                      const minguoYear = Number(year) - 1911;
-                      const newCompletionTime = `${minguoYear}/${month}`;
-                      const newCompMonth = `${minguoYear}${month}`;
+              <label className="text-[10px] font-black uppercase tracking-[0.05rem] text-slate-400">完工時間 (COMPLETION TIME) (民國年/月)</label>
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <select 
+                    value={formData.completionTime ? formData.completionTime.split('/')[0] : ''}
+                    onChange={(e) => {
+                      const newYear = e.target.value;
+                      const oldParts = (formData.completionTime || '/').split('/');
+                      const month = oldParts.length > 1 && oldParts[1] ? oldParts[1].padStart(2, '0') : '01';
+                      
+                      const newCompletionTime = `${newYear}/${month}`;
+                      const newCompMonth = `${newYear}${month}`;
                       const oldCompMonth = formData.completionTime ? formData.completionTime.replace('/', '') : '';
                       
-                      // Update layers that matched the old completion time to the new one
                       const updatedLayers = formData.pavementLayers.map(layer => 
                         layer.month === oldCompMonth ? { ...layer, month: newCompMonth } : layer
                       );
@@ -230,12 +222,50 @@ export default function EditRampHistory({ segment, availableRamps, onChange, onS
                         completionTime: newCompletionTime,
                         pavementLayers: updatedLayers
                       });
-                    }
-                  }}
-                />
-                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    }}
+                    className="w-full bg-slate-50 border-none h-12 px-4 rounded-xl focus:ring-2 focus:ring-[#005fb8]/20 font-black text-slate-800 appearance-none"
+                  >
+                    <option value="" disabled>年份</option>
+                    {Array.from({length: 60}, (_, i) => 125 - i).map(y => (
+                      <option key={y} value={y.toString()}>{y}</option>
+                    ))}
+                  </select>
+                  <span className="absolute right-7 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold pointer-events-none">年</span>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+                <div className="flex-1 relative">
+                  <select 
+                    value={formData.completionTime ? formData.completionTime.split('/')[1] : ''}
+                    onChange={(e) => {
+                      const monthStr = e.target.value;
+                      const oldParts = (formData.completionTime || '/').split('/');
+                      const year = oldParts[0] || '113';
+                      
+                      const newCompletionTime = `${year}/${monthStr}`;
+                      const newCompMonth = `${year}${monthStr}`;
+                      const oldCompMonth = formData.completionTime ? formData.completionTime.replace('/', '') : '';
+                      
+                      const updatedLayers = formData.pavementLayers.map(layer => 
+                        layer.month === oldCompMonth ? { ...layer, month: newCompMonth } : layer
+                      );
+                      
+                      handleChange({
+                        ...formData, 
+                        completionTime: newCompletionTime,
+                        pavementLayers: updatedLayers
+                      });
+                    }}
+                    className="w-full bg-slate-50 border-none h-12 px-4 rounded-xl focus:ring-2 focus:ring-[#005fb8]/20 font-black text-slate-800 appearance-none"
+                  >
+                    <option value="" disabled>月份</option>
+                    {Array.from({length: 12}, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <span className="absolute right-7 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold pointer-events-none">月</span>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
               </div>
-              <p className="text-[9px] text-slate-400 italic pl-1">完工時間精確到月份</p>
             </div>
 
             {/* Pavement Cross-Section Visualization */}

@@ -119,19 +119,44 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">施作月份 MONTH</label>
-                    <div className="relative">
-                      <input 
-                        className="w-full bg-slate-50 border-none rounded-xl py-3 px-4 text-slate-800 font-bold focus:ring-2 focus:ring-[#005fb8]/20" 
-                        type="month" 
-                        value={`${Number(layer.month.substring(0, 3)) + 1911}-${layer.month.substring(3, 5)}`}
-                        onChange={(e) => {
-                          const [year, month] = e.target.value.split('-');
-                          if (year && month) {
-                            handleLayerChange(layer.id, 'month', `${Number(year) - 1911}${month}`);
-                          }
-                        }}
-                      />
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">施作月份 MONTH (民國年月)</label>
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <select 
+                          className="w-full bg-slate-50 border-none rounded-xl py-3 px-4 text-slate-800 font-bold focus:ring-2 focus:ring-[#005fb8]/20 appearance-none" 
+                          value={layer.month.substring(0, 3)}
+                          onChange={(e) => {
+                            const year = e.target.value.padStart(3, '0');
+                            const month = layer.month.substring(3, 5);
+                            handleLayerChange(layer.id, 'month', `${year}${month}`);
+                          }}
+                        >
+                          <option value="" disabled>年份</option>
+                          {Array.from({length: 60}, (_, i) => 125 - i).map(y => (
+                            <option key={y} value={y.toString().padStart(3, '0')}>{y}</option>
+                          ))}
+                        </select>
+                        <span className="absolute right-7 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold pointer-events-none">年</span>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                      </div>
+                      <div className="flex-1 relative">
+                        <select 
+                          className="w-full bg-slate-50 border-none rounded-xl py-3 px-4 text-slate-800 font-bold focus:ring-2 focus:ring-[#005fb8]/20 appearance-none" 
+                          value={layer.month.substring(3, 5)}
+                          onChange={(e) => {
+                            const year = layer.month.substring(0, 3);
+                            const monthStr = e.target.value;
+                            handleLayerChange(layer.id, 'month', `${year}${monthStr}`);
+                          }}
+                        >
+                          <option value="" disabled>月份</option>
+                          {Array.from({length: 12}, (_, i) => (i + 1).toString().padStart(2, '0')).map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <span className="absolute right-7 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold pointer-events-none">月</span>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
                 </div>

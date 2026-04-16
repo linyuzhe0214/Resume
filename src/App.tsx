@@ -379,25 +379,6 @@ export default function App() {
   useEffect(() => { localStorage.setItem('rampSegments', JSON.stringify(rampSegments)); }, [rampSegments]);
   useEffect(() => { localStorage.setItem('laneOptions_v2', JSON.stringify(laneOptions)); }, [laneOptions]);
 
-  const checkOverlap = (id: string, highway: string, direction: string, lanes: string[], start: number, end: number): string | null => {
-    // Current UI only uses lanes[0] for mainline segments, but we check all in the array just in case
-    for (const segment of segments) {
-      if (segment.id === id) continue; // Skip itself during edit
-      if (segment.highway !== highway || segment.direction !== direction) continue;
-      
-      // Check for any common lanes
-      const hasCommonLane = segment.lanes.some(l => lanes.includes(l));
-      if (!hasCommonLane) continue;
-
-      // Check for mileage overlap
-      const isOverlap = (start < segment.endMileage && end > segment.startMileage);
-      if (isOverlap) {
-        return `此路段已存在色塊: ${segment.constructionYear}年 [${formatMileage(segment.startMileage)} - ${formatMileage(segment.endMileage)}] (${segment.lanes.join(',')})`;
-      }
-    }
-    return null;
-  };
-
   const handleAddLane = (newLane: string, targetHighway: string = highwayName) => {
     if (!newLane || !newLane.trim()) return;
     const trimmedLane = newLane.trim();
@@ -847,11 +828,6 @@ export default function App() {
           laneOptions={laneOptions[draftSegment?.highway || highwayName] || []}
           onChange={(segment) => setDraftSegment(segment)}
           onSave={(segment) => {
-            const overlapError = checkOverlap(segment.id, segment.highway, segment.direction, segment.lanes, segment.startMileage, segment.endMileage);
-            if (overlapError) {
-              setToast({ message: overlapError, type: 'error' });
-              return;
-            }
 
             if (activeTab === 'planning') {
               if (editingSegmentId) {
