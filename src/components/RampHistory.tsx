@@ -62,26 +62,13 @@ export default function RampHistory(props: RampHistoryProps) {
   };
 
   const groupedRamps = useMemo(() => {
-    const groups: Record<string, {
-      rampId: string;
-      rampName: string;
-      length: number;
-      segments: RampSegment[];
-    }> = {};
-
-    filteredRamps.forEach(ramp => {
-      if (!groups[ramp.rampId]) {
-        groups[ramp.rampId] = {
-          rampId: ramp.rampId,
-          rampName: ramp.rampName,
-          length: ramp.length,
-          segments: []
-        };
-      }
-      groups[ramp.rampId].segments.push(ramp);
-    });
-
-    return Object.values(groups);
+    return filteredRamps.map(ramp => ({
+      groupId: ramp.id, // Generate a unique group id per segment
+      rampId: ramp.rampId,
+      rampName: ramp.rampName,
+      length: ramp.length,
+      segments: [ramp]
+    }));
   }, [filteredRamps]);
 
   const displayRamps = useMemo(() => {
@@ -96,7 +83,7 @@ export default function RampHistory(props: RampHistoryProps) {
 
   const selectedRampData = useMemo(() => {
     const raw = selectedRampId 
-      ? groupedRamps.find(g => g.rampId === selectedRampId) || groupedRamps[0] || null
+      ? groupedRamps.find(g => g.groupId === selectedRampId) || groupedRamps[0] || null
       : groupedRamps[0] || null;
     
     if (!raw) return null;
@@ -119,8 +106,8 @@ export default function RampHistory(props: RampHistoryProps) {
 
   // Update selectedRampId if the current selection is no longer in the filtered list
   React.useEffect(() => {
-    if (selectedRampData && selectedRampId !== selectedRampData.rampId) {
-       setSelectedRampId(selectedRampData.rampId);
+    if (selectedRampData && selectedRampId !== selectedRampData.groupId) {
+       setSelectedRampId(selectedRampData.groupId);
     }
   }, [selectedRampData, selectedRampId]);
 
@@ -328,14 +315,13 @@ export default function RampHistory(props: RampHistoryProps) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {displayRamps.map((group, index) => {
-                return group.segments.map((ramp, sIdx) => {
-                  if (!ramp) return null;
-                  return (
+                const ramp = group.segments[0];
+                if (!ramp) return null;
+                return (
                   <tr key={ramp.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="px-6 py-5">
                       <span className="font-black text-[#00488d]">
                         {ramp.rampId}
-                        {group.segments.length > 1 ? ` (段${sIdx + 1})` : ''}
                       </span>
                     </td>
                     <td className="px-6 py-5">
@@ -356,33 +342,31 @@ export default function RampHistory(props: RampHistoryProps) {
                       <div className="flex items-center justify-center gap-3">
                         <div className="flex flex-col gap-1 mr-2 border-r border-slate-100 pr-3">
                           <button 
-                            disabled={index === 0 || !!searchTerm || sIdx > 0}
+                            disabled={index === 0 || !!searchTerm}
                             onClick={() => {
-                              if (onUpdateRampOrder && sIdx === 0) {
-                                const newOrder = groupedRamps.map(g => g.rampId);
+                              if (onUpdateRampOrder) {
+                                const newOrder = displayRamps.map(g => g.groupId);
                                 [newOrder[index-1], newOrder[index]] = [newOrder[index], newOrder[index-1]];
                                 onUpdateRampOrder(newOrder);
                               }
                             }}
                             className={cn(
-                              "p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors",
-                              sIdx > 0 && "invisible"
+                              "p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors"
                             )}
                           >
                             <ArrowUp className="w-3 h-3 text-slate-400" />
                           </button>
                           <button 
-                            disabled={index === displayRamps.length - 1 || !!searchTerm || sIdx > 0}
+                            disabled={index === displayRamps.length - 1 || !!searchTerm}
                             onClick={() => {
-                              if (onUpdateRampOrder && sIdx === 0) {
-                                const newOrder = groupedRamps.map(g => g.rampId);
+                              if (onUpdateRampOrder) {
+                                const newOrder = displayRamps.map(g => g.groupId);
                                 [newOrder[index+1], newOrder[index]] = [newOrder[index], newOrder[index+1]];
                                 onUpdateRampOrder(newOrder);
                               }
                             }}
                             className={cn(
-                              "p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors",
-                              sIdx > 0 && "invisible"
+                              "p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors"
                             )}
                           >
                             <ArrowDown className="w-3 h-3 text-slate-400" />
@@ -406,8 +390,8 @@ export default function RampHistory(props: RampHistoryProps) {
                       </div>
                     </td>
                   </tr>
-                )
-              })})}
+                );
+              })}
             </tbody>
           </table>
           </div>
@@ -474,9 +458,9 @@ export default function RampHistory(props: RampHistoryProps) {
             </div>
 
             {/* Data Rows */}
-            {groupedRamps.map((group, idx) => (
+            {displayRamps.map((group, idx) => (
               <div 
-                key={group.rampId} 
+                key={group.groupId} 
                 className="grid grid-cols-[180px_100px_1fr] items-stretch group transition-colors"
               >
                 <div className={cn(

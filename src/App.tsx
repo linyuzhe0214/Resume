@@ -453,8 +453,8 @@ export default function App() {
   const handleUpdateRampOrder = (newOrder: string[]) => {
     setRampSegments(prev => {
       const sorted = [...prev].sort((a, b) => {
-        const idxA = newOrder.indexOf(a.rampId);
-        const idxB = newOrder.indexOf(b.rampId);
+        const idxA = newOrder.indexOf(a.id);
+        const idxB = newOrder.indexOf(b.id);
         if (idxA === -1 && idxB === -1) return 0;
         if (idxA === -1) return 1;
         if (idxB === -1) return -1;
