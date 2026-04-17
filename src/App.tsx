@@ -507,6 +507,7 @@ export default function App() {
   const [showConfirmDeleteAll, setShowConfirmDeleteAll] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
   const [showLaneDeleteConfirm, setShowLaneDeleteConfirm] = useState<{ highway: string, lane: string, count: number } | null>(null);
+  const [highlightSegmentId, setHighlightSegmentId] = useState<string | null>(null);
 
   // Update clock
   useEffect(() => {
@@ -844,25 +845,33 @@ export default function App() {
           allSegments={allSegsForCopy}
           onChange={(segment) => setDraftSegment(segment)}
           onSave={(segment) => {
-
+            let savedId = segment.id;
             if (activeTab === 'planning') {
               if (editingSegmentId) {
                 setPlanningSegments(planningSegments.map(s => s.id === editingSegmentId ? segment : s));
                 if (PLANNING_URL) syncGas(PLANNING_URL, 'savePlanning', segment.highway + ' (規劃)', { ...segment, type: 'planning' });
+                savedId = editingSegmentId;
               } else {
                 const newSeg = { ...segment, id: Math.random().toString(36).substr(2, 9), type: 'planning' };
                 setPlanningSegments(prev => [...prev, newSeg]);
                 if (PLANNING_URL) syncGas(PLANNING_URL, 'savePlanning', segment.highway + ' (規劃)', newSeg);
+                savedId = newSeg.id;
               }
             } else {
               if (editingSegmentId) {
                 setSegments(segments.map(s => s.id === editingSegmentId ? segment : s));
                 syncGas(MAINLINE_URL, 'saveMainline', segment.highway, segment);
+                savedId = editingSegmentId;
               } else {
                 const newSeg = { ...segment, id: Math.random().toString(36).substr(2, 9) };
                 setSegments(prev => [...prev, newSeg]);
                 syncGas(MAINLINE_URL, 'saveMainline', segment.highway, newSeg);
+                savedId = newSeg.id;
               }
+              // 切到主線履歷並 highlight 剛存的路段
+              setActiveHistoryHighway(segment.highway);
+              setHighlightSegmentId(savedId);
+              setActiveTab('mainline');
             }
             setDraftSegment(null);
             setEditingSegmentId(null);
@@ -1068,6 +1077,8 @@ export default function App() {
           onAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
           onDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
           onUpdateLaneOrder={(newLanes) => handleUpdateLaneOrder(activeHistoryHighway, newLanes)}
+          highlightSegmentId={highlightSegmentId}
+          onHighlightClear={() => setHighlightSegmentId(null)}
           onNavigateToEdit={(id) => {
             setEditingSegmentId(id || null);
 
@@ -1084,7 +1095,7 @@ export default function App() {
               else if (highwayName === '國道4號' && direction === '雙向') mappedDir = 'Westbound';
               setDraftSegment({
                 id: '',
-                highway: highwayName,
+                highway: activeHistoryHighway,
                 property: '路堤',
                 laneCategory: '一般路段',
                 constructionYear: (new Date().getFullYear() - 1911).toString(),

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Plus, Trash2, Download, Settings, X, AlertTriangle } from 'lucide-react';
 import { cn } from '../App';
 import { Segment } from '../types';
@@ -15,6 +15,8 @@ interface MainlineHistoryProps {
   onUpdateLaneOrder?: (newLanes: string[]) => void;
   onNavigateToEdit: (segmentId?: string) => void;
   onDeleteAll?: () => void;
+  highlightSegmentId?: string | null;
+  onHighlightClear?: () => void;
   title?: string;
 }
 
@@ -28,10 +30,34 @@ export default function MainlineHistory({
   onUpdateLaneOrder,
   onNavigateToEdit, 
   onDeleteAll, 
-  title = '路面整修履歷' 
+  highlightSegmentId,
+  onHighlightClear,
+  title = '路面整修歷史' 
 }: MainlineHistoryProps) {
   const [newLaneName, setNewLaneName] = React.useState('');
   const [isLaneSettingsOpen, setIsLaneSettingsOpen] = React.useState(false);
+  const [flashingId, setFlashingId] = React.useState<string | null>(null);
+  const segmentRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // 儲存後自動捲動至目標色塊並闪爍
+  useEffect(() => {
+    if (!highlightSegmentId) return;
+    const tryScroll = () => {
+      const el = segmentRefs.current[highlightSegmentId];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setFlashingId(highlightSegmentId);
+        setTimeout(() => {
+          setFlashingId(null);
+          if (onHighlightClear) onHighlightClear();
+        }, 2000);
+      }
+    };
+    // 等一小段讓 DOM 渲染
+    const t = setTimeout(tryScroll, 150);
+    return () => clearTimeout(t);
+  }, [highlightSegmentId]);
 
 
   const highways = [
@@ -123,7 +149,6 @@ export default function MainlineHistory({
     let combinedType = info.combinedType;
     
     if (thickness === 0 && segment.pavementLayers.length > 0) {
-      // Fallback for older data or different month logic
       const latestMonth = [...segment.pavementLayers].sort((a, b) => b.month.localeCompare(a.month))[0].month;
       const latestInfo = getPavementDisplayInfo(segment.pavementLayers, latestMonth);
       thickness = latestInfo.thickness;
@@ -133,19 +158,28 @@ export default function MainlineHistory({
       bgColor = '#ffffff';
     }
 
-
     const formatMileage = (m: number) => {
       const km = Math.floor(m / 1000);
       const meters = m % 1000;
       return `${km}k+${meters.toString().padStart(3, '0')}`;
     };
 
+    const isFlashing = flashingId === segment.id;
+
     return (
       <div
         key={`${segment.id}-${lane}`}
+        ref={el => { if (!segmentRefs.current[segment.id]) segmentRefs.current[segment.id] = el; }}
         onClick={() => onNavigateToEdit(segment.id)}
-        className="absolute w-full border border-black/10 flex flex-col items-center justify-center leading-none cursor-pointer hover:opacity-90 overflow-hidden group"
-        style={{ top: `${top}px`, height: `${height}px`, backgroundColor: bgColor }}
+        className={cn(
+          "absolute w-full border border-black/10 flex flex-col items-center justify-center leading-none cursor-pointer hover:opacity-90 overflow-hidden group transition-all",
+          isFlashing && "segment-flashing z-20"
+        )}
+        style={{
+          top: `${top}px`,
+          height: `${height}px`,
+          backgroundColor: bgColor,
+        }}
       >
         <span className="font-black text-[11px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
           {segment.constructionYear}
