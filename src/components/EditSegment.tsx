@@ -27,20 +27,45 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
   const [showCopyPavementModal, setShowCopyPavementModal] = useState(false);
   const [copyTargetIds, setCopyTargetIds] = useState<string[]>([]);
   const [lockLength, setLockLength] = useState(!!segment?.id);
-  const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Segment>(segment || {
-    id: '',
-    highway: '國道1號',
-    property: '路堤',
-    laneCategory: '一般路段',
-    constructionYear: '113',
-    constructionMonth: '05',
-    startMileage: 166427,
-    endMileage: 166527,
-    direction: 'Southbound',
-    lanes: ['第一車道'],
-    pavementLayers: []
   });
+
+  const validationError = React.useMemo(() => {
+    const errors: string[] = [];
+    if (formData.startMileage > formData.endMileage) {
+      errors.push('起點里程不可大於終點里程');
+    }
+    const limits = HIGHWAY_MILEAGE_LIMITS[formData.highway];
+    if (limits) {
+      if (formData.startMileage < limits.min || formData.startMileage > limits.max) {
+        errors.push(`${formData.highway} 起點里程需介於 ${formatMileage(limits.min)} ~ ${formatMileage(limits.max)}`);
+      }
+      if (formData.endMileage < limits.min || formData.endMileage > limits.max) {
+        errors.push(`${formData.highway} 終點里程需介於 ${formatMileage(limits.min)} ~ ${formatMileage(limits.max)}`);
+      }
+    }
+
+    const fStart = Math.round(formData.startMileage);
+    const fEnd = Math.round(formData.endMileage);
+
+    const overlaps = allSegments.filter(s => {
+      if (s.id === formData.id) return false;
+      if (s.highway !== formData.highway) return false;
+      if (s.direction !== formData.direction) return false;
+      if (!s.lanes.some(l => formData.lanes.includes(l))) return false;
+      
+      const sStart = Math.round(s.startMileage);
+      const sEnd = Math.round(s.endMileage);
+      return sStart < fEnd && sEnd > fStart;
+    });
+
+    if (overlaps.length > 0) {
+      const overlapMsgs = overlaps.slice(0, 2).map(o => `(${o.lanes.join(',')} ${formatMileage(o.startMileage)}~${formatMileage(o.endMileage)})`);
+      errors.push(`區間與現有路段重疊 ${overlapMsgs.join(', ')}${overlaps.length > 2 ? ' 等' : ''}`);
+    }
+
+    return errors.length > 0 ? errors.join('；') : null;
+  }, [formData, allSegments]);
+
 
   useEffect(() => {
     if (segment) {
@@ -49,36 +74,6 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
   }, [segment]);
 
   const handleChange = (newData: Segment) => {
-    const errors: string[] = [];
-    if (newData.startMileage > newData.endMileage) {
-      errors.push('起點里程不可大於終點里程');
-    }
-    const limits = HIGHWAY_MILEAGE_LIMITS[newData.highway];
-    if (limits) {
-      if (newData.startMileage < limits.min || newData.startMileage > limits.max) {
-        errors.push(`${newData.highway} 起點里程需介於 ${formatMileage(limits.min)} ~ ${formatMileage(limits.max)}`);
-      }
-      if (newData.endMileage < limits.min || newData.endMileage > limits.max) {
-        errors.push(`${newData.highway} 終點里程需介於 ${formatMileage(limits.min)} ~ ${formatMileage(limits.max)}`);
-      }
-    }
-
-    // Overlap mapping validation
-    const overlaps = allSegments.filter(s => 
-      s.id !== newData.id &&
-      s.highway === newData.highway &&
-      s.direction === newData.direction &&
-      s.lanes.some(l => newData.lanes.includes(l)) &&
-      s.startMileage < newData.endMileage &&
-      s.endMileage > newData.startMileage
-    );
-
-    if (overlaps.length > 0) {
-      const overlapMsgs = overlaps.slice(0, 2).map(o => `(${o.lanes.join(',')} ${formatMileage(o.startMileage)}~${formatMileage(o.endMileage)})`);
-      errors.push(`區間與現有路段重疊 ${overlapMsgs.join(', ')}${overlaps.length > 2 ? ' 等' : ''}`);
-    }
-
-    setError(errors.length > 0 ? errors.join('；') : null);
     setFormData(newData);
     onChange(newData);
   };
@@ -102,7 +97,7 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
   };
 
   const handleSave = () => {
-    if (error) return;
+    if (validationError) return;
     onSave(formData);
   };
 
@@ -145,8 +140,8 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
           )}
           <button 
             onClick={handleSave} 
-            disabled={!!error}
-            className={cn("px-4 py-1.5 rounded-full text-sm font-bold shadow-sm transition-all duration-150", error ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-[#00488d] text-white active:scale-95 hover:bg-[#003d7a]")}
+            disabled={!!validationError}
+            className={cn("px-4 py-1.5 rounded-full text-sm font-bold shadow-sm transition-all duration-150", validationError ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-[#00488d] text-white active:scale-95 hover:bg-[#003d7a]")}
           >
             儲存
           </button>
@@ -289,9 +284,9 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
             </button>
           </div>
           <div className="bg-white rounded-xl p-5 shadow-sm space-y-4 border border-slate-100">
-            {error && (
+            {validationError && (
               <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-xs font-bold animate-in fade-in slide-in-from-top-1">
-                ⚠️ {error}
+                ⚠️ {validationError}
               </div>
             )}
             <div className="flex gap-4">

@@ -41,38 +41,26 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
     length: 0,
     status: 'Optimal'
   });
-  const [error, setError] = useState<string | null>(null);
+  const validationError = React.useMemo(() => {
+    const errors: string[] = [];
+    if (formData.startMileage > formData.endMileage) {
+      errors.push('起點里程不可大於終點里程');
+    }
+
+    return errors.length > 0 ? errors.join('；') : null;
+  }, [formData]);
 
   useEffect(() => {
     if (segment) setFormData(segment);
   }, [segment]);
 
   const handleChange = (newData: RampSegment) => {
-    const errors: string[] = [];
-    if (newData.startMileage > newData.endMileage) {
-      errors.push('起點里程不可大於終點里程');
-    }
-
-    // Overlap validation for Ramp History
-    const overlaps = allRampSegs.filter(s => 
-      s.id !== newData.id &&
-      s.rampId === newData.rampId &&
-      s.startMileage < newData.endMileage &&
-      s.endMileage > newData.startMileage
-    );
-
-    if (overlaps.length > 0) {
-      const overlapMsgs = overlaps.slice(0, 2).map(o => `(${o.startMileage}m~${o.endMileage}m)`);
-      errors.push(`區間與現有歷史重疊 ${overlapMsgs.join(', ')}${overlaps.length > 2 ? ' 等' : ''}`);
-    }
-
-    setError(errors.length > 0 ? errors.join('；') : null);
     setFormData(newData);
     onChange(newData);
   };
 
   const handleSave = () => {
-    if (error) return;
+    if (validationError) return;
     onSave(formData);
   };
 
@@ -105,8 +93,8 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
           )}
           <button 
             onClick={handleSave}
-            disabled={!!error}
-            className={cn("px-4 py-1.5 rounded-full text-sm font-bold shadow-sm transition-all duration-150", error ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-[#005fb8] text-white active:scale-95 hover:bg-[#00488d]")}
+            disabled={!!validationError}
+            className={cn("px-4 py-1.5 rounded-full text-sm font-bold shadow-sm transition-all duration-150", validationError ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-[#005fb8] text-white active:scale-95 hover:bg-[#00488d]")}
           >
             儲存
           </button>
@@ -118,9 +106,9 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
         <section className="space-y-3">
           <h2 className="font-black text-sm uppercase tracking-wider text-slate-500 ml-2">施工履歷內容</h2>
           <div className="bg-white p-6 rounded-2xl space-y-5 shadow-sm border border-slate-100">
-            {error && (
+            {validationError && (
               <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-xs font-bold animate-in fade-in slide-in-from-top-1 mb-2">
-                ⚠️ {error}
+                ⚠️ {validationError}
               </div>
             )}
             {/* Ramp Select */}
