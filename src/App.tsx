@@ -1087,7 +1087,7 @@ export default function App() {
               setDraftSegment(segment ? { ...segment } : null);
             } else {
               // Map Chinese direction to English constant
-              let mappedDir: 'Northbound' | 'Southbound' | 'Eastbound' | 'Westbound' = 'Southbound';
+              let mappedDir: 'Northbound' | 'Southbound' | 'Eastbound' | 'Westbound' = activeHistoryHighway === '國道4號' ? 'Westbound' : 'Southbound';
               if (direction === '北上車道') mappedDir = activeHistoryHighway === '國道4號' ? 'Eastbound' : 'Northbound';
               else if (direction === '南下車道') mappedDir = activeHistoryHighway === '國道4號' ? 'Westbound' : 'Southbound';
               else if (direction === '東向車道') mappedDir = 'Eastbound';
