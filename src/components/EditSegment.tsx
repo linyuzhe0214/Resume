@@ -192,21 +192,10 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
                 >
                   <option value="" disabled>選擇車道名稱</option>
                   {(() => {
-                    const STANDARD_LANES_SOUTH = formData.highway === '國道4號' 
-                      ? ['內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '外路肩']
-                      : ['外路肩', '第四車道', '第三車道', '第二車道', '第一車道', '內路肩'];
-                    const STANDARD_LANES_NORTH = formData.highway === '國道4號'
-                      ? ['外路肩', '第四車道', '第三車道', '第二車道', '第一車道', '內路肩']
-                      : ['內路肩', '第一車道', '第二車道', '第三車道', '第四車道', '外路肩'];
-                    
                     const isSouthSide = ['Southbound', 'Westbound'].includes(formData.direction);
-                    const baseLanes = isSouthSide ? STANDARD_LANES_SOUTH : STANDARD_LANES_NORTH;
+                    const displayLanes = isSouthSide ? [...laneOptions].reverse() : laneOptions;
                     
-                    // Add any custom lanes that aren't in the standard set
-                    const customLanes = laneOptions.filter(l => !STANDARD_LANES_SOUTH.includes(l) && !STANDARD_LANES_NORTH.includes(l));
-                    const allRelevantLanes = Array.from(new Set([...baseLanes, ...customLanes]));
-                    
-                    return allRelevantLanes.map(option => (
+                    return displayLanes.map(option => (
                       <option key={option} value={option}>{option}</option>
                     ));
                   })()}
