@@ -1088,11 +1088,11 @@ export default function App() {
             } else {
               // Map Chinese direction to English constant
               let mappedDir: 'Northbound' | 'Southbound' | 'Eastbound' | 'Westbound' = 'Southbound';
-              if (direction === '北上車道') mappedDir = highwayName === '國道4號' ? 'Eastbound' : 'Northbound';
-              else if (direction === '南下車道') mappedDir = highwayName === '國道4號' ? 'Westbound' : 'Southbound';
+              if (direction === '北上車道') mappedDir = activeHistoryHighway === '國道4號' ? 'Eastbound' : 'Northbound';
+              else if (direction === '南下車道') mappedDir = activeHistoryHighway === '國道4號' ? 'Westbound' : 'Southbound';
               else if (direction === '東向車道') mappedDir = 'Eastbound';
               else if (direction === '西向車道') mappedDir = 'Westbound';
-              else if (highwayName === '國道4號' && direction === '雙向') mappedDir = 'Westbound';
+              else if (activeHistoryHighway === '國道4號' && direction === '雙向') mappedDir = 'Westbound';
               setDraftSegment({
                 id: '',
                 highway: activeHistoryHighway,
