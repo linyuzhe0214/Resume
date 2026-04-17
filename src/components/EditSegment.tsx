@@ -62,6 +62,22 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
         errors.push(`${newData.highway} 終點里程需介於 ${formatMileage(limits.min)} ~ ${formatMileage(limits.max)}`);
       }
     }
+
+    // Overlap mapping validation
+    const overlaps = allSegments.filter(s => 
+      s.id !== newData.id &&
+      s.highway === newData.highway &&
+      s.direction === newData.direction &&
+      s.lanes.some(l => newData.lanes.includes(l)) &&
+      s.startMileage < newData.endMileage &&
+      s.endMileage > newData.startMileage
+    );
+
+    if (overlaps.length > 0) {
+      const overlapMsgs = overlaps.slice(0, 2).map(o => `(${o.lanes.join(',')} ${formatMileage(o.startMileage)}~${formatMileage(o.endMileage)})`);
+      errors.push(`區間與現有路段重疊 ${overlapMsgs.join(', ')}${overlaps.length > 2 ? ' 等' : ''}`);
+    }
+
     setError(errors.length > 0 ? errors.join('；') : null);
     setFormData(newData);
     onChange(newData);
@@ -86,6 +102,7 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
   };
 
   const handleSave = () => {
+    if (error) return;
     onSave(formData);
   };
 
@@ -126,7 +143,11 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
               <Trash2 className="w-5 h-5" />
             </button>
           )}
-          <button onClick={handleSave} className="bg-[#00488d] text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-sm active:scale-95 duration-150 hover:bg-[#003d7a]">
+          <button 
+            onClick={handleSave} 
+            disabled={!!error}
+            className={cn("px-4 py-1.5 rounded-full text-sm font-bold shadow-sm transition-all duration-150", error ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-[#00488d] text-white active:scale-95 hover:bg-[#003d7a]")}
+          >
             儲存
           </button>
         </div>
