@@ -27,7 +27,21 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
   const [showCopyPavementModal, setShowCopyPavementModal] = useState(false);
   const [copyTargetIds, setCopyTargetIds] = useState<string[]>([]);
   const [lockLength, setLockLength] = useState(!!segment?.id);
-  });
+  const [formData, setFormData] = useState<Segment>(
+    segment || {
+      id: crypto.randomUUID(),
+      highway: '國道1號',
+      property: '路堤',
+      laneCategory: '',
+      constructionYear: '',
+      constructionMonth: '',
+      startMileage: 0,
+      endMileage: 0,
+      direction: 'Southbound',
+      lanes: [],
+      pavementLayers: []
+    }
+  );
 
   const validationError = React.useMemo(() => {
     const errors: string[] = [];
