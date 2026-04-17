@@ -1,25 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronDown, Calendar, Edit2, Trash2, Lock, Unlock } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Calendar, Edit2, Trash2, Lock, Unlock, Copy } from 'lucide-react';
 import { Segment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
 import { parseMileage, formatMileage } from '../utils/mileage';
 import MileageInput from './MileageInput';
+import { HIGHWAY_MILEAGE_LIMITS } from '../constants';
 
 interface EditSegmentProps {
   segment?: Segment;
   isPlanning?: boolean;
   laneOptions?: string[];
+  allSegments?: Segment[];   // 用於複製鋪面功能
   onChange: (segment: Segment) => void;
   onSave: (segment: Segment) => void;
   onDelete?: (id: string) => void;
+  onCopy?: () => void;
   onMoveToPlanning?: (segment: Segment) => void;
+  onCopyPavement?: (targetIds: string[], layers: Segment['pavementLayers']) => void;
   onBack: () => void;
   onNavigateToPavement: () => void;
 }
 
-export default function EditSegment({ segment, isPlanning, laneOptions = [], onChange, onSave, onDelete, onMoveToPlanning, onBack, onNavigateToPavement }: EditSegmentProps) {
+export default function EditSegment({ segment, isPlanning, laneOptions = [], allSegments = [], onChange, onSave, onDelete, onCopy, onMoveToPlanning, onCopyPavement, onBack, onNavigateToPavement }: EditSegmentProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCopyPavementModal, setShowCopyPavementModal] = useState(false);
+  const [copyTargetIds, setCopyTargetIds] = useState<string[]>([]);
   const [lockLength, setLockLength] = useState(!!segment?.id);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<Segment>(segment || {
@@ -43,12 +49,20 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], onC
   }, [segment]);
 
   const handleChange = (newData: Segment) => {
-    // Validation
+    const errors: string[] = [];
     if (newData.startMileage > newData.endMileage) {
-      setError('起點里程不可大於終點里程');
-    } else {
-      setError(null);
+      errors.push('起點里程不可大於終點里程');
     }
+    const limits = HIGHWAY_MILEAGE_LIMITS[newData.highway];
+    if (limits) {
+      if (newData.startMileage < limits.min || newData.startMileage > limits.max) {
+        errors.push(`${newData.highway} 起點里程需介於 ${formatMileage(limits.min)} ~ ${formatMileage(limits.max)}`);
+      }
+      if (newData.endMileage < limits.min || newData.endMileage > limits.max) {
+        errors.push(`${newData.highway} 終點里程需介於 ${formatMileage(limits.min)} ~ ${formatMileage(limits.max)}`);
+      }
+    }
+    setError(errors.length > 0 ? errors.join('；') : null);
     setFormData(newData);
     onChange(newData);
   };
@@ -94,6 +108,14 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], onC
               className="text-[#005FB8] bg-[#005FB8]/10 px-3 py-1.5 rounded-full text-xs font-bold active:scale-95 duration-150 hover:bg-[#005FB8]/20"
             >
               移至整修規劃
+            </button>
+          )}
+          {segment && onCopy && (
+            <button 
+              onClick={onCopy} 
+              className="text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full text-xs font-bold active:scale-95 duration-150 hover:bg-emerald-100"
+            >
+              複製新增
             </button>
           )}
           {segment && onDelete && (
@@ -298,12 +320,23 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], onC
               <div className="w-1.5 h-6 bg-[#005fb8] rounded-sm"></div>
               <h2 className="font-bold text-lg text-slate-800">Pavement Cross-section (鋪面斷面圖說)</h2>
             </div>
-            <button 
-              onClick={onNavigateToPavement}
-              className="text-[#005fb8] font-bold text-sm flex items-center gap-1 hover:underline"
-            >
-              調整斷面 <Edit2 className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {onCopyPavement && formData.pavementLayers.length > 0 && (
+                <button
+                  onClick={() => { setCopyTargetIds([]); setShowCopyPavementModal(true); }}
+                  className="text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full text-xs font-bold active:scale-95 duration-150 hover:bg-emerald-100 flex items-center gap-1"
+                >
+                  <Copy className="w-3 h-3" />
+                  複製斷面
+                </button>
+              )}
+              <button
+                onClick={onNavigateToPavement}
+                className="text-[#005fb8] font-bold text-sm flex items-center gap-1 hover:underline"
+              >
+                調整斷面 <Edit2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
           <div 
             onClick={() => {
@@ -399,6 +432,97 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], onC
           </div>
         </section>
       </main>
+
+      {/* Copy Pavement Modal */}
+      {showCopyPavementModal && (
+        <div className="fixed inset-0 z-[300] flex items-end justify-center" onClick={() => setShowCopyPavementModal(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md bg-white rounded-t-3xl p-6 pb-10 shadow-2xl animate-in slide-in-from-bottom-4 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-lg text-slate-900">複製鋪面斷面至</h3>
+              <button onClick={() => setShowCopyPavementModal(false)} className="text-slate-400 hover:text-slate-600 text-xs font-bold px-2 py-1 rounded-lg hover:bg-slate-100">✕ 關閉</button>
+            </div>
+            <p className="text-xs text-slate-500 mb-4">選擇要套用相同鋪面斷面的路段（同國道，排除當前路段）</p>
+
+            {/* 對向同里程快捷 */}
+            {(() => {
+              const oppositeDir = ['Northbound', 'Eastbound'].includes(formData.direction)
+                ? (['Southbound', 'Westbound'] as const)
+                : (['Northbound', 'Eastbound'] as const);
+              const opposites = allSegments.filter(s =>
+                s.id !== formData.id &&
+                s.highway === formData.highway &&
+                oppositeDir.includes(s.direction as any) &&
+                s.startMileage < formData.endMileage &&
+                s.endMileage > formData.startMileage
+              );
+              if (opposites.length === 0) return null;
+              return (
+                <div className="mb-3">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">對向重疊路段</p>
+                  {opposites.map(s => (
+                    <label key={s.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-emerald-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-emerald-600"
+                        checked={copyTargetIds.includes(s.id)}
+                        onChange={e => setCopyTargetIds(prev => e.target.checked ? [...prev, s.id] : prev.filter(id => id !== s.id))}
+                      />
+                      <div>
+                        <span className="font-bold text-sm text-slate-800 mr-2">{s.lanes[0]}</span>
+                        <span className="text-xs text-slate-500">{s.direction === 'Northbound' || s.direction === 'Eastbound' ? '北上/東向' : '南下/西向'}</span>
+                        <span className="text-[10px] text-slate-400 ml-2">{Math.floor(s.startMileage/1000)}k+{String(s.startMileage%1000).padStart(3,'0')} ~ {Math.floor(s.endMileage/1000)}k+{String(s.endMileage%1000).padStart(3,'0')}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* 其他同國道路段 */}
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">其他同國道路段</p>
+              <div className="max-h-48 overflow-y-auto space-y-0.5">
+                {allSegments
+                  .filter(s => s.id !== formData.id && s.highway === formData.highway)
+                  .map(s => (
+                    <label key={s.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-slate-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-[#005fb8]"
+                        checked={copyTargetIds.includes(s.id)}
+                        onChange={e => setCopyTargetIds(prev => e.target.checked ? [...prev, s.id] : prev.filter(id => id !== s.id))}
+                      />
+                      <div>
+                        <span className="font-bold text-sm text-slate-800 mr-2">{s.lanes[0]}</span>
+                        <span className="text-xs text-slate-500">{s.direction === 'Northbound' || s.direction === 'Eastbound' ? '北上/東向' : '南下/西向'}</span>
+                        <span className="text-[10px] text-slate-400 ml-2">{Math.floor(s.startMileage/1000)}k+{String(s.startMileage%1000).padStart(3,'0')} ~ {Math.floor(s.endMileage/1000)}k+{String(s.endMileage%1000).padStart(3,'0')}</span>
+                      </div>
+                    </label>
+                  ))}
+                {allSegments.filter(s => s.id !== formData.id && s.highway === formData.highway).length === 0 && (
+                  <p className="text-sm text-slate-400 text-center py-4">無其他同國道路段</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button onClick={() => setShowCopyPavementModal(false)} className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold text-sm">取消</button>
+              <button
+                disabled={copyTargetIds.length === 0}
+                onClick={() => {
+                  if (onCopyPavement) onCopyPavement(copyTargetIds, formData.pavementLayers);
+                  setShowCopyPavementModal(false);
+                  setCopyTargetIds([]);
+                }}
+                className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-all"
+              >
+                套用至 {copyTargetIds.length} 個路段
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog 
         isOpen={showDeleteConfirm}

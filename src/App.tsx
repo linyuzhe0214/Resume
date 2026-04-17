@@ -762,6 +762,7 @@ export default function App() {
         <EditRampHistory 
           segment={draftRamp || undefined}
           availableRamps={rampSegments}
+          allRampSegs={rampSegments}
           onChange={(ramp) => setDraftRamp(ramp)}
           onSave={(ramp) => {
             if (editingRampId) {
@@ -777,6 +778,19 @@ export default function App() {
             setDraftRamp(null);
             setEditingRampId(null);
             setSubPage('none');
+          }}
+          onCopy={() => {
+            if (draftRamp) {
+              setDraftRamp({ ...draftRamp, id: '' });
+              setEditingRampId(null);
+              setToast({ message: '已複製資料為新草稿，請修改後儲存', type: 'success' });
+            }
+          }}
+          onCopyPavement={(targetIds, layers) => {
+            setRampSegments(prev => prev.map(s =>
+              targetIds.includes(s.id) ? { ...s, pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })) } : s
+            ));
+            setToast({ message: `已成功複製鋪面斷面至 ${targetIds.length} 個施工歷史`, type: 'success' });
           }}
           onDelete={(id) => {
             const seg = rampSegments.find(s => s.id === id);
@@ -820,12 +834,14 @@ export default function App() {
   }
 
   if (subPage === 'editSegment') {
+    const allSegsForCopy = activeTab === 'planning' ? planningSegments : segments;
     return (
       <div className="relative">
         <EditSegment 
           segment={draftSegment || undefined}
           isPlanning={activeTab === 'planning'}
           laneOptions={laneOptions[draftSegment?.highway || highwayName] || []}
+          allSegments={allSegsForCopy}
           onChange={(segment) => setDraftSegment(segment)}
           onSave={(segment) => {
 
@@ -851,6 +867,25 @@ export default function App() {
             setDraftSegment(null);
             setEditingSegmentId(null);
             setSubPage('none');
+          }}
+          onCopy={() => {
+            if (draftSegment) {
+              setDraftSegment({ ...draftSegment, id: '' });
+              setEditingSegmentId(null);
+              setToast({ message: '已複製資料為新草稿，請修改後儲存', type: 'success' });
+            }
+          }}
+          onCopyPavement={(targetIds, layers) => {
+            if (activeTab === 'planning') {
+              setPlanningSegments(prev => prev.map(s =>
+                targetIds.includes(s.id) ? { ...s, pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })) } : s
+              ));
+            } else {
+              setSegments(prev => prev.map(s =>
+                targetIds.includes(s.id) ? { ...s, pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })) } : s
+              ));
+            }
+            setToast({ message: `已成功複製鋪面斷面至 ${targetIds.length} 個路段`, type: 'success' });
           }}
           onDelete={(id) => {
             if (activeTab === 'planning') {
