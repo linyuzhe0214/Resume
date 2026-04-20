@@ -434,8 +434,8 @@ export default function App() {
   const handleUpdateRampOrder = (newOrder: string[]) => {
     setRampSegments(prev => {
       const sorted = [...prev].sort((a, b) => {
-        const idxA = newOrder.indexOf(a.id);
-        const idxB = newOrder.indexOf(b.id);
+        const idxA = newOrder.indexOf(a.rampId);
+        const idxB = newOrder.indexOf(b.rampId);
         if (idxA === -1 && idxB === -1) return 0;
         if (idxA === -1) return 1;
         if (idxB === -1) return -1;
@@ -560,10 +560,13 @@ export default function App() {
       setCurrentKmlType(null);
       return;
     }
+    // 若處於 GPS 自動跟隨模式，不要用單一 mileage 去覆蓋精確擷取到的點 (特別是匝道模式下)
+    if (autoTracking) return;
+
     const result = findNearestPoint(kmlIndex, highwayName, direction, mileage, searchMode);
     setCurrentKmlPoint(result.point);
     setCurrentKmlType(result.type);
-  }, [kmlIndex, highwayName, direction, mileage, searchMode]);
+  }, [kmlIndex, highwayName, direction, mileage, searchMode, autoTracking]);
 
   // Geolocation — 用 Haversine 直接從 KML 點找最近的，自動推算國道+里程+方向
   useEffect(() => {
@@ -591,6 +594,11 @@ export default function App() {
           );
           if (result) {
             const { point, exactMileage } = result;
+            
+            // 直接由 GPS 供應最精準的點 (包含內部匝道點)
+            setCurrentKmlPoint(point);
+            setCurrentKmlType(point.isRamp ? 'ramp' : 'mainline');
+
             setMileage(Math.round(exactMileage));
             setHighwayName(point.highway);   // ← 自動更新國道別
             if (point.direction) setDirection(point.direction);    // ← 自動更新行進方向

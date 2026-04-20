@@ -62,13 +62,26 @@ export default function RampHistory(props: RampHistoryProps) {
   };
 
   const groupedRamps = useMemo(() => {
-    return filteredRamps.map(ramp => ({
-      groupId: ramp.id, // Generate a unique group id per segment
-      rampId: ramp.rampId,
-      rampName: ramp.rampName,
-      length: ramp.length,
-      segments: [ramp]
-    }));
+    const map = new Map<string, { groupId: string, rampId: string, rampName: string, length: number, segments: RampSegment[] }>();
+    
+    filteredRamps.forEach(ramp => {
+      if (!ramp.rampId) return;
+      if (!map.has(ramp.rampId)) {
+        map.set(ramp.rampId, {
+          groupId: ramp.rampId,
+          rampId: ramp.rampId,
+          rampName: ramp.rampName || '',
+          length: ramp.length || 0,
+          segments: []
+        });
+      }
+      const group = map.get(ramp.rampId)!;
+      group.segments.push(ramp);
+      if (ramp.length > group.length) group.length = ramp.length;
+      if (!group.rampName && ramp.rampName) group.rampName = ramp.rampName;
+    });
+    
+    return Array.from(map.values());
   }, [filteredRamps]);
 
   const displayRamps = useMemo(() => {
@@ -380,7 +393,7 @@ export default function RampHistory(props: RampHistoryProps) {
                         </button>
                         <button 
                           onClick={() => {
-                            setDeletingRampId(ramp.id);
+                            setDeletingRampId(ramp.rampId);
                             setShowDeleteConfirm(true);
                           }}
                           className="text-red-600 font-black text-xs hover:underline"
