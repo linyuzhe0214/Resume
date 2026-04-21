@@ -350,8 +350,14 @@ export default function App() {
         
         if (Array.isArray(mainlineData) && mainlineData.length > 0) {
           // 向後相容：先從 mainline 取出資料
-          const main = mainlineData.filter((s: any) => s.type !== 'planning');
+          const main = mainlineData.filter((s: any) => s.type !== 'planning' && s.id !== 'LANE_OPTIONS_CONFIG');
           if (main.length > 0) setSegments(main);
+
+          // 讀取同步的車道配置
+          const settingsRecord = mainlineData.find((s: any) => s.id === 'LANE_OPTIONS_CONFIG');
+          if (settingsRecord && settingsRecord.data) {
+            setLaneOptions(settingsRecord.data);
+          }
         }
         
         if (PLANNING_URL && Array.isArray(planningData) && planningData.length > 0) {
@@ -389,10 +395,12 @@ export default function App() {
       return;
     }
     
-    setLaneOptions({
+    const newOptions = {
       ...laneOptions,
       [targetHighway]: [...currentLanes, trimmedLane]
-    });
+    };
+    setLaneOptions(newOptions);
+    syncGas(MAINLINE_URL, 'saveMainline', '系統設定', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
     setToast({ message: `已於 ${targetHighway} 新增車道: ${trimmedLane}`, type: 'success' });
   };
 
@@ -414,19 +422,23 @@ export default function App() {
     
     // 2. Remove lane from options
     const currentLanes = laneOptions[targetHighway] || [];
-    setLaneOptions({
+    const newOptions = {
       ...laneOptions,
       [targetHighway]: currentLanes.filter(l => l !== laneName)
-    });
+    };
+    setLaneOptions(newOptions);
+    syncGas(MAINLINE_URL, 'saveMainline', '系統設定', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
     setToast({ message: `已刪除 ${targetHighway} 車道及相關 ${affectedSegments.length} 筆資料`, type: 'success' });
     setShowLaneDeleteConfirm(null);
   };
 
   const handleUpdateLaneOrder = (targetHighway: string, newLanesOrder: string[]) => {
-    setLaneOptions({
+    const newOptions = {
       ...laneOptions,
       [targetHighway]: newLanesOrder
-    });
+    };
+    setLaneOptions(newOptions);
+    syncGas(MAINLINE_URL, 'saveMainline', '系統設定', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
     setToast({ message: `已更新 ${targetHighway} 車道排序`, type: 'success' });
   };
 
