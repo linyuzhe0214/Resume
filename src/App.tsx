@@ -353,10 +353,14 @@ export default function App() {
           const main = mainlineData.filter((s: any) => s.type !== 'planning' && s.id !== 'LANE_OPTIONS_CONFIG');
           if (main.length > 0) setSegments(main);
 
-          // 讀取同步的車道配置
-          const settingsRecord = mainlineData.find((s: any) => s.id === 'LANE_OPTIONS_CONFIG');
+          // 讀取同步的車道配置 (取最後一筆，避免重複造成舊資料覆蓋新資料)
+          const settingsRecords = mainlineData.filter((s: any) => s.id === 'LANE_OPTIONS_CONFIG');
+          const settingsRecord = settingsRecords[settingsRecords.length - 1];
           if (settingsRecord && settingsRecord.data) {
-            setLaneOptions(settingsRecord.data);
+            setLaneOptions({
+              ...INITIAL_HIGHWAY_LANES,
+              ...settingsRecord.data
+            });
           }
         }
         
@@ -400,7 +404,7 @@ export default function App() {
       [targetHighway]: [...currentLanes, trimmedLane]
     };
     setLaneOptions(newOptions);
-    syncGas(MAINLINE_URL, 'saveMainline', '系統設定', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
+    syncGas(MAINLINE_URL, 'saveMainline', 'Mainline', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
     setToast({ message: `已於 ${targetHighway} 新增車道: ${trimmedLane}`, type: 'success' });
   };
 
@@ -427,7 +431,7 @@ export default function App() {
       [targetHighway]: currentLanes.filter(l => l !== laneName)
     };
     setLaneOptions(newOptions);
-    syncGas(MAINLINE_URL, 'saveMainline', '系統設定', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
+    syncGas(MAINLINE_URL, 'saveMainline', 'Mainline', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
     setToast({ message: `已刪除 ${targetHighway} 車道及相關 ${affectedSegments.length} 筆資料`, type: 'success' });
     setShowLaneDeleteConfirm(null);
   };
@@ -438,7 +442,7 @@ export default function App() {
       [targetHighway]: newLanesOrder
     };
     setLaneOptions(newOptions);
-    syncGas(MAINLINE_URL, 'saveMainline', '系統設定', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
+    syncGas(MAINLINE_URL, 'saveMainline', 'Mainline', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
     setToast({ message: `已更新 ${targetHighway} 車道排序`, type: 'success' });
   };
 
