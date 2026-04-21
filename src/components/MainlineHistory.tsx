@@ -191,7 +191,7 @@ export default function MainlineHistory({
         )}
         {height >= 52 && (segment.prevConstructionYear || segment.prevConstructionDepth) && (
           <span className="truncate w-full text-center text-[9px] text-slate-950/70 leading-none mt-0.5 px-1">
-            {segment.prevConstructionYear}{segment.prevConstructionDepth != null ? `  ${segment.prevConstructionDepth}cm` : ''}
+            EX：{segment.prevConstructionYear}{segment.prevConstructionDepth ? `  ${segment.prevConstructionDepth}cm` : ''}
           </span>
         )}
         

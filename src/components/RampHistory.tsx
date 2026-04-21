@@ -567,7 +567,7 @@ export default function RampHistory(props: RampHistoryProps) {
                           </span>
                           {(ramp.prevConstructionYear || ramp.prevConstructionDepth) && (
                             <span className="text-[9px] leading-none mt-0.5 text-slate-950/70 truncate px-1 max-w-full">
-                              {ramp.prevConstructionYear}{ramp.prevConstructionDepth != null ? `  ${ramp.prevConstructionDepth}cm` : ''}
+                              EX：{ramp.prevConstructionYear}{ramp.prevConstructionDepth ? `  ${ramp.prevConstructionDepth}cm` : ''}
                             </span>
                           )}
                         </div>
