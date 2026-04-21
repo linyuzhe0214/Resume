@@ -189,6 +189,11 @@ export default function MainlineHistory({
             {thickness}cm
           </span>
         )}
+        {height >= 52 && (segment.prevConstructionYear || segment.prevConstructionDepth) && (
+          <span className="truncate w-full text-center text-[9px] text-slate-950/70 leading-none mt-0.5 px-1">
+            {segment.prevConstructionYear}{segment.prevConstructionDepth != null ? `  ${segment.prevConstructionDepth}cm` : ''}
+          </span>
+        )}
         
         {/* Tooltip */}
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">

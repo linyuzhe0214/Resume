@@ -565,6 +565,11 @@ export default function RampHistory(props: RampHistoryProps) {
                           <span className="text-[10px] font-black leading-none mt-0.5 text-slate-950">
                             {segmentData.depth}cm
                           </span>
+                          {(ramp.prevConstructionYear || ramp.prevConstructionDepth) && (
+                            <span className="text-[9px] leading-none mt-0.5 text-slate-950/70 truncate px-1 max-w-full">
+                              {ramp.prevConstructionYear}{ramp.prevConstructionDepth != null ? `  ${ramp.prevConstructionDepth}cm` : ''}
+                            </span>
+                          )}
                         </div>
                       );
                     })}
