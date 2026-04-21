@@ -409,7 +409,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
               <h3 className="font-black text-lg text-slate-900">複製鋪面斷面至</h3>
               <button onClick={() => setShowCopyPavementModal(false)} className="text-slate-400 hover:text-slate-600 text-xs font-bold px-2 py-1 rounded-lg hover:bg-slate-100">✕ 關閉</button>
             </div>
-            <p className="text-xs text-slate-500 mb-4">選擇要套用相同鋪面斷面的其他施工歷史（同匹道，排除當前歷史）</p>
+            <p className="text-xs text-slate-500 mb-4">選擇要套用相同鋪面斷面的其他施工歷史（同匝道，排除當前歷史）</p>
             <div className="max-h-64 overflow-y-auto space-y-0.5">
               {allRampSegs
                 .filter(s => s.id !== formData.id && s.rampId === formData.rampId)
@@ -429,7 +429,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                   </label>
                 ))}
               {allRampSegs.filter(s => s.id !== formData.id && s.rampId === formData.rampId).length === 0 && (
-                <p className="text-sm text-slate-400 text-center py-4">無其他同匹道施工歷史</p>
+                <p className="text-sm text-slate-400 text-center py-4">無其他同匝道施工歷史</p>
               )}
             </div>
             <div className="mt-5 flex gap-3">

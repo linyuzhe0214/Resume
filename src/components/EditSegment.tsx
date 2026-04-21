@@ -463,6 +463,38 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
             </div>
             <p className="text-xs text-slate-500 mb-4">選擇要套用相同鋪面斷面的路段（同國道，排除當前路段）</p>
 
+            {/* 同向其他車道快捷 */}
+            {(() => {
+              const sameDirOverlaps = allSegments.filter(s =>
+                s.id !== formData.id &&
+                s.highway === formData.highway &&
+                s.direction === formData.direction &&
+                s.startMileage < formData.endMileage &&
+                s.endMileage > formData.startMileage
+              );
+              if (sameDirOverlaps.length === 0) return null;
+              return (
+                <div className="mb-3">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">同向其他車道</p>
+                  {sameDirOverlaps.map(s => (
+                    <label key={s.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-blue-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-[#005fb8]"
+                        checked={copyTargetIds.includes(s.id)}
+                        onChange={e => setCopyTargetIds(prev => e.target.checked ? [...prev, s.id] : prev.filter(id => id !== s.id))}
+                      />
+                      <div>
+                        <span className="font-bold text-sm text-slate-800 mr-2">{s.lanes[0]}</span>
+                        <span className="text-xs text-slate-500">{s.direction === 'Northbound' || s.direction === 'Eastbound' ? '北上/東向' : '南下/西向'}</span>
+                        <span className="text-[10px] text-slate-400 ml-2">{Math.floor(s.startMileage/1000)}k+{String(s.startMileage%1000).padStart(3,'0')} ~ {Math.floor(s.endMileage/1000)}k+{String(s.endMileage%1000).padStart(3,'0')}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              );
+            })()}
+
             {/* 對向同里程快捷 */}
             {(() => {
               const oppositeDir = ['Northbound', 'Eastbound'].includes(formData.direction)
