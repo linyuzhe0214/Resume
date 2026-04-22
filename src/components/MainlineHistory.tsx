@@ -60,6 +60,9 @@ export default function MainlineHistory({
   }, [highlightSegmentId]);
 
 
+  // 每公尺對應的像素比例尺
+  const SCALE = 0.6;
+
   const highways = [
     { name: '國道1號', start: 166427, end: 192000, label: '國道1號 (166k+427~192k)' },
     { name: '國道3號', start: 183587, end: 198217, label: '國道3號 (183k+587~198k+217)' },
@@ -96,6 +99,24 @@ export default function MainlineHistory({
     if (activeHighway === '國道4號') return s.direction === 'Westbound';
     return ['Northbound', 'Eastbound'].includes(s.direction);
   });
+
+  // 收集所有 segment 的邊界里程（用於中間欄標記）
+  const formatMileage = (m: number) => {
+    const km = Math.floor(m / 1000);
+    const meters = m % 1000;
+    return `${km}k+${meters.toString().padStart(3, '0')}`;
+  };
+
+  const collectBoundaryMarkers = () => {
+    const markerSet = new Set<number>();
+    filteredSegments.forEach(s => {
+      markerSet.add(s.startMileage);
+      markerSet.add(s.endMileage);
+    });
+    // 去除跟 100m 格線完全重合的點（避免重複標記）
+    const markers = Array.from(markerSet).filter(m => m % 100 !== 0).sort((a, b) => a - b);
+    return markers;
+  };
 
   const uniqueSouthLanes = Array.from(new Set(southSegments.flatMap(s => s.lanes)));
   const uniqueNorthLanes = Array.from(new Set(northSegments.flatMap(s => s.lanes)));
@@ -138,8 +159,8 @@ export default function MainlineHistory({
   const renderSegment = (segment: Segment, lane: string) => {
     if (!segment.lanes.includes(lane)) return null;
 
-    const top = (segment.startMileage - baseMileage) * 0.4;
-    const height = (segment.endMileage - segment.startMileage) * 0.4;
+    const top = (segment.startMileage - baseMileage) * SCALE;
+    const height = (segment.endMileage - segment.startMileage) * SCALE;
 
     const targetMonth = segment.constructionYear + segment.constructionMonth;
     const info = getPavementDisplayInfo(segment.pavementLayers, targetMonth);
@@ -158,12 +179,6 @@ export default function MainlineHistory({
       bgColor = '#ffffff';
     }
 
-    const formatMileage = (m: number) => {
-      const km = Math.floor(m / 1000);
-      const meters = m % 1000;
-      return `${km}k+${meters.toString().padStart(3, '0')}`;
-    };
-
     const isFlashing = flashingId === segment.id;
 
     return (
@@ -181,17 +196,32 @@ export default function MainlineHistory({
           backgroundColor: bgColor,
         }}
       >
+        {/* 頂部起始里程標記 */}
+        {height >= 30 && (
+          <span className="absolute top-[1px] left-0 text-[7px] font-bold text-black/40 leading-none px-[2px] pointer-events-none">
+            {formatMileage(segment.startMileage)}
+          </span>
+        )}
+
+        {/* 主要資訊 */}
         <span className="font-black text-[11px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
           {segment.constructionYear}
         </span>
-        {height >= 35 && (
+        {height >= 45 && (
           <span className="truncate w-full text-center font-black text-[10px] text-slate-950 leading-none mt-0.5">
             {thickness}cm
           </span>
         )}
-        {height >= 52 && segment.prevConstructionYear && (
+        {height >= 68 && segment.prevConstructionYear && (
           <span className="truncate w-full text-center text-[9px] text-slate-950/70 leading-none mt-0.5 px-1">
             EX：{segment.prevConstructionYear}{segment.prevConstructionDepth ? `  ${segment.prevConstructionDepth}cm` : ''}
+          </span>
+        )}
+
+        {/* 底部結束里程標記 */}
+        {height >= 30 && (
+          <span className="absolute bottom-[1px] right-0 text-[7px] font-bold text-black/40 leading-none px-[2px] pointer-events-none">
+            {formatMileage(segment.endMileage)}
           </span>
         )}
         
@@ -333,7 +363,7 @@ export default function MainlineHistory({
             {/* Sticky Headers Wrapper */}
             <div className="sticky top-0 z-40 flex flex-col shadow-sm">
               {/* Grid Header */}
-              <div className="grid grid-cols-[1fr_100px_1fr] bg-slate-50 border-b border-slate-200 text-center">
+              <div className="grid grid-cols-[1fr_120px_1fr] bg-slate-50 border-b border-slate-200 text-center">
                 <div className="py-3 px-2 flex flex-col items-center justify-center border-r border-slate-200">
                   <span className="text-[9px] font-bold text-[#00488d] tracking-[0.1em] uppercase">
                     {activeHighway === '國道4號' ? 'Eastbound' : 'Southbound'}
@@ -357,7 +387,7 @@ export default function MainlineHistory({
               </div>
 
               {/* Lane Sub-headers */}
-              <div className="grid grid-cols-[1fr_100px_1fr] bg-slate-100/50 text-[9px] font-bold text-slate-500 text-center border-b border-slate-200">
+              <div className="grid grid-cols-[1fr_120px_1fr] bg-slate-100/50 text-[9px] font-bold text-slate-500 text-center border-b border-slate-200">
                 {/* Southbound/Westbound Lanes */}
                 <div 
                   className="grid border-r border-slate-200 divide-x divide-slate-200"
@@ -387,7 +417,7 @@ export default function MainlineHistory({
                 className="absolute inset-0 grid divide-y divide-slate-100 pointer-events-none"
                 style={{ 
                   gridTemplateRows: gridIntervals.map(interval => {
-                    return `${(interval.endM - interval.startM) * 0.4}px`;
+                    return `${(interval.endM - interval.startM) * SCALE}px`;
                   }).join(' ') 
                 }}
               >
@@ -395,7 +425,7 @@ export default function MainlineHistory({
               </div>
 
               {/* Layout Content */}
-              <div className="grid grid-cols-[1fr_100px_1fr] text-[9px]">
+              <div className="grid grid-cols-[1fr_120px_1fr] text-[9px]">
                 {/* Southbound Side */}
                 <div 
                   className="grid border-r border-slate-200 relative"
@@ -409,21 +439,22 @@ export default function MainlineHistory({
                 </div>
 
                 {/* Mileage Center Column */}
-                <div className="bg-blue-50/10 divide-y divide-slate-100 text-center font-mono font-bold text-slate-500 text-[10px] z-20">
+                <div className="bg-blue-50/10 text-center font-mono font-bold text-slate-500 text-[10px] z-20 relative">
+                  {/* 100m 格線里程標記 */}
                   {gridIntervals.map((interval, i) => {
                     const currentM = interval.startM;
                     const endM = interval.endM;
-                    const rowHeight = (endM - currentM) * 0.4;
+                    const rowHeight = (endM - currentM) * SCALE;
                     const km = Math.floor(currentM / 1000);
                     const m = currentM % 1000;
                     const endKm = Math.floor(endM / 1000);
                     const endMStr = endM % 1000;
                     return (
-                      <div key={i} className="flex flex-col items-center justify-center leading-none overflow-hidden relative" style={{ height: `${rowHeight}px` }}>
-                        {rowHeight >= 25 ? (
+                      <div key={i} className="flex flex-col items-center justify-center leading-none overflow-hidden relative border-b border-slate-100" style={{ height: `${rowHeight}px` }}>
+                        {rowHeight >= 30 ? (
                           <>
                             <span>{km}k+{m.toString().padStart(3, '0')}</span>
-                            {rowHeight >= 35 && <span className="text-[8px] text-slate-400">~</span>}
+                            {rowHeight >= 45 && <span className="text-[8px] text-slate-400">~</span>}
                             <span>{endKm}k+{endMStr.toString().padStart(3, '0')}</span>
                           </>
                         ) : (
@@ -431,6 +462,23 @@ export default function MainlineHistory({
                             ~{endKm}k+{endMStr.toString().padStart(3, '0')}
                           </span>
                         )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Segment 邊界里程標記（非 100m 整數的起訖點） */}
+                  {collectBoundaryMarkers().map((m, i) => {
+                    const topPx = (m - baseMileage) * SCALE;
+                    return (
+                      <div
+                        key={`marker-${i}`}
+                        className="absolute left-0 right-0 flex items-center pointer-events-none"
+                        style={{ top: `${topPx}px` }}
+                      >
+                        <div className="w-full border-t border-dashed border-red-400/60" />
+                        <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-white/90 px-1 text-[8px] font-bold text-red-500/80 whitespace-nowrap leading-none rounded">
+                          {formatMileage(m)}
+                        </span>
                       </div>
                     );
                   })}
