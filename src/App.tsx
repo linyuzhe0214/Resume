@@ -812,9 +812,25 @@ export default function App() {
             }
           }}
           onCopyPavement={(targetIds, layers) => {
-            setRampSegments(prev => prev.map(s =>
-              targetIds.includes(s.id) ? { ...s, pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })) } : s
-            ));
+            const updatedRamps = rampSegments.map(s =>
+              targetIds.includes(s.id) ? { 
+                ...s, 
+                pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })),
+                constructionYear: draftRamp?.constructionYear || s.constructionYear,
+                constructionMonth: draftRamp?.constructionMonth || s.constructionMonth,
+                completionTime: draftRamp?.completionTime || s.completionTime
+              } : s
+            );
+            setRampSegments(updatedRamps);
+            
+            // Sync each updated segment to GAS
+            targetIds.forEach(id => {
+              const updated = updatedRamps.find(r => r.id === id);
+              if (updated) {
+                syncGas(RAMP_URL, 'saveRamp', updated.interchange, updated);
+              }
+            });
+
             setToast({ message: `已成功複製鋪面斷面至 ${targetIds.length} 個施工歷史`, type: 'success' });
           }}
           onDelete={(id) => {
@@ -909,14 +925,43 @@ export default function App() {
             }
           }}
           onCopyPavement={(targetIds, layers) => {
+            const copyFrom = draftSegment;
             if (activeTab === 'planning') {
-              setPlanningSegments(prev => prev.map(s =>
-                targetIds.includes(s.id) ? { ...s, pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })) } : s
-              ));
+              const updatedPlanning = planningSegments.map(s =>
+                targetIds.includes(s.id) ? { 
+                  ...s, 
+                  pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })),
+                  constructionYear: copyFrom?.constructionYear || s.constructionYear,
+                  constructionMonth: copyFrom?.constructionMonth || s.constructionMonth
+                } : s
+              );
+              setPlanningSegments(updatedPlanning);
+              
+              // Sync to GAS
+              targetIds.forEach(id => {
+                const updated = updatedPlanning.find(seg => seg.id === id);
+                if (updated && PLANNING_URL) {
+                  syncGas(PLANNING_URL, 'savePlanning', updated.highway + ' (規劃)', { ...updated, type: 'planning' });
+                }
+              });
             } else {
-              setSegments(prev => prev.map(s =>
-                targetIds.includes(s.id) ? { ...s, pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })) } : s
-              ));
+              const updatedSegments = segments.map(s =>
+                targetIds.includes(s.id) ? { 
+                  ...s, 
+                  pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })),
+                  constructionYear: copyFrom?.constructionYear || s.constructionYear,
+                  constructionMonth: copyFrom?.constructionMonth || s.constructionMonth
+                } : s
+              );
+              setSegments(updatedSegments);
+
+              // Sync to GAS
+              targetIds.forEach(id => {
+                const updated = updatedSegments.find(seg => seg.id === id);
+                if (updated) {
+                  syncGas(MAINLINE_URL, 'saveMainline', updated.highway, updated);
+                }
+              });
             }
             setToast({ message: `已成功複製鋪面斷面至 ${targetIds.length} 個路段`, type: 'success' });
           }}
@@ -938,10 +983,14 @@ export default function App() {
             const newPlanningSegment = { 
               ...segment, 
               id: Math.random().toString(36).substr(2, 9),
+              type: 'planning' as const,
               notes: segment.notes ? `${segment.notes} (從履歷複製)` : '從履歷複製'
             };
             setPlanningSegments([...planningSegments, newPlanningSegment]);
-            setToast({ message: '已成功複製到整修規劃頁面', type: 'success' });
+            if (PLANNING_URL) {
+              syncGas(PLANNING_URL, 'savePlanning', segment.highway + ' (規劃)', newPlanningSegment);
+            }
+            setToast({ message: '已成功複製到整修規劃頁面並存檔', type: 'success' });
           }}
           onBack={() => {
             setDraftSegment(null);
