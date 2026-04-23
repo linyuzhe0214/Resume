@@ -816,9 +816,9 @@ export default function App() {
               targetIds.includes(s.id) ? { 
                 ...s, 
                 pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })),
-                constructionYear: draftRamp?.constructionYear || s.constructionYear,
-                constructionMonth: draftRamp?.constructionMonth || s.constructionMonth,
-                completionTime: draftRamp?.completionTime || s.completionTime
+                constructionYear: (s.direction === draftRamp?.direction) ? (draftRamp?.constructionYear || s.constructionYear) : s.constructionYear,
+                constructionMonth: (s.direction === draftRamp?.direction) ? (draftRamp?.constructionMonth || s.constructionMonth) : s.constructionMonth,
+                completionTime: (s.direction === draftRamp?.direction) ? (draftRamp?.completionTime || s.completionTime) : s.completionTime
               } : s
             );
             setRampSegments(updatedRamps);
@@ -931,8 +931,8 @@ export default function App() {
                 targetIds.includes(s.id) ? { 
                   ...s, 
                   pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })),
-                  constructionYear: copyFrom?.constructionYear || s.constructionYear,
-                  constructionMonth: copyFrom?.constructionMonth || s.constructionMonth
+                  constructionYear: (s.direction === copyFrom?.direction) ? (copyFrom?.constructionYear || s.constructionYear) : s.constructionYear,
+                  constructionMonth: (s.direction === copyFrom?.direction) ? (copyFrom?.constructionMonth || s.constructionMonth) : s.constructionMonth
                 } : s
               );
               setPlanningSegments(updatedPlanning);
@@ -949,8 +949,8 @@ export default function App() {
                 targetIds.includes(s.id) ? { 
                   ...s, 
                   pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })),
-                  constructionYear: copyFrom?.constructionYear || s.constructionYear,
-                  constructionMonth: copyFrom?.constructionMonth || s.constructionMonth
+                  constructionYear: (s.direction === copyFrom?.direction) ? (copyFrom?.constructionYear || s.constructionYear) : s.constructionYear,
+                  constructionMonth: (s.direction === copyFrom?.direction) ? (copyFrom?.constructionMonth || s.constructionMonth) : s.constructionMonth
                 } : s
               );
               setSegments(updatedSegments);
