@@ -101,9 +101,7 @@ export default function RampHistory(props: RampHistoryProps) {
     
     if (!raw) return null;
 
-    // Determine unique lanes across all segments of this ramp
     const allLanes: string[] = Array.from(new Set(raw.segments.flatMap(s => s.lanes)));
-    // Sort lanes to keep them consistent (e.g. 第一, 第二, ..., 外路肩)
     const sortedLanes = allLanes.sort((a, b) => {
        const order = ['第一車道', '第二車道', '第三車道', '第四車道', '內路肩', '外路肩', '路肩'];
        const idxA = order.indexOf(a);
@@ -117,7 +115,6 @@ export default function RampHistory(props: RampHistoryProps) {
     return { ...raw, lanes: sortedLanes.length > 0 ? sortedLanes : ['第一車道'] };
   }, [groupedRamps, selectedRampId]);
 
-  // Update selectedRampId if the current selection is no longer in the filtered list
   React.useEffect(() => {
     if (selectedRampData && selectedRampId !== selectedRampData.groupId) {
        setSelectedRampId(selectedRampData.groupId);
@@ -190,11 +187,10 @@ export default function RampHistory(props: RampHistoryProps) {
 
   const scaleMarkers = useMemo(() => {
     const markers = [];
-    const step = 200; // Every 200m for cleaner look
+    const step = 200;
     for (let i = 0; i <= maxLength; i += step) {
       markers.push(i);
     }
-    // Always include max length if not there
     if (markers[markers.length - 1] !== maxLength && maxLength - markers[markers.length - 1] > 50) {
        markers.push(maxLength);
     }
@@ -246,7 +242,7 @@ export default function RampHistory(props: RampHistoryProps) {
         </div>
       </header>
 
-            {/* Section 2: Road Network Map */}
+      {/* Section 2: Road Network Map */}
       <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
         <div className="p-6 border-b border-slate-100 bg-slate-50/30">
           <h3 className="font-black text-lg tracking-tight text-slate-800 flex items-center gap-2">
@@ -315,7 +311,6 @@ export default function RampHistory(props: RampHistoryProps) {
              </div>
           </div>
           <div className="overflow-hidden shadow-inner">
-            {/* Desktop Table View */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left border-separate border-spacing-0">
                 <thead>
@@ -373,7 +368,6 @@ export default function RampHistory(props: RampHistoryProps) {
               </table>
             </div>
 
-            {/* Mobile Card View */}
             <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 bg-slate-50/50">
               {displayRamps.map((group) => {
                 const ramp = group.segments[0];
@@ -428,7 +422,7 @@ export default function RampHistory(props: RampHistoryProps) {
         </div>
       </section>
 
-      {/* Section 2: Construction History (Refined Table/Bar View) */}
+      {/* Section 4: Construction History */}
       <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -454,198 +448,184 @@ export default function RampHistory(props: RampHistoryProps) {
           </div>
         </div>
 
-        {/* Legend */}
         <div id="ramp-export-container" className="bg-white">
-        <div className="px-6 py-3 bg-slate-50/50 flex flex-wrap gap-4 border-y border-slate-100">
-          {legendItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div 
-                className="w-6 h-3 border border-black/10 rounded-sm shadow-sm"
-                style={{ backgroundColor: item.color }}
-              ></div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{item.label}</span>
-            </div>
-          ))}
-          {legendItems.length === 0 && (
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-3 bg-[#e7e6e6] border border-black/10 rounded-sm"></div>
-              <span className="text-[10px] font-bold text-slate-500">其他/舊有</span>
-            </div>
-          )}
-        </div>
-        
-        <div className="p-6 overflow-x-auto">
-          <div className="min-w-[800px] space-y-1">
-            {/* Header Row */}
-            <div className="grid grid-cols-[180px_100px_1fr] items-center text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">
-              <div className="text-center">匝道編碼</div>
-              <div className="text-center border-l border-slate-200">車道長度 (m)</div>
-              <div className="relative h-6 flex items-center px-4">
-                {scaleMarkers.map(val => (
-                  <span key={val} className="absolute text-slate-900 text-[10px] font-black" style={{ left: `${(val / maxLength) * 100}%`, transform: 'translateX(-50%)' }}>{val}</span>
-                ))}
-              </div>
-            </div>
-
-            {/* Data Rows */}
-            {displayRamps.map((group, idx) => (
-              <div 
-                key={group.groupId} 
-                className="grid grid-cols-[180px_100px_1fr] items-stretch group transition-colors"
-              >
-                <div className={cn(
-                  "flex flex-col items-center justify-center py-4 border-b border-white rounded-l-md transition-shadow",
-                  idx % 4 === 0 ? "bg-[#a3f69c]/40" :
-                  idx % 4 === 1 ? "bg-[#cbe7f5]" :
-                  idx % 4 === 2 ? "bg-[#ffdad6]" :
-                  "bg-[#d6e3ff]"
-                )}>
-                  <span className="font-black text-xs text-slate-950 drop-shadow-sm">{group.rampName}</span>
-                  <span className="text-[10px] font-black tracking-widest uppercase mt-0.5 text-black">
-                    {group.rampId}
-                  </span>
-                </div>
-                <div className="flex items-center justify-center bg-yellow-50/50 font-bold text-sm text-slate-800 border-l border-slate-100 border-b border-white">
-                  {group.length}
-                </div>
-                <div className="relative bg-yellow-50/50 flex items-center px-4 border-b border-white rounded-r-md">
-                  {/* Grid Lines */}
-                  {scaleMarkers.map(val => (
-                    <div key={val} className="absolute top-0 bottom-0 w-[1px] bg-slate-200/40" style={{ left: `${(val / maxLength) * 100}%` }}></div>
-                  ))}
-                  {/* Length Bar with Construction History Container */}
-                  <div 
-                    className="relative z-10 w-full mt-7 mb-2" 
-                    style={{ width: `${(group.length / maxLength) * 100}%` }}
-                  >
-                    {/* The actual colored bar, which is clipped */}
-                    <div
-                      className="h-9 w-full bg-[#e7e6e6]/30 hover:bg-[#e7e6e6]/80 rounded-md shadow-inner relative overflow-hidden flex border border-slate-200 cursor-pointer transition-colors"
-                      onClick={(e) => {
-                      // Only trigger when clicking the empty background track itself, not the populated colored segments
-                      if (e.target === e.currentTarget && group.segments[0]) {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const clickX = e.clientX - rect.left;
-                        const clickMileage = (clickX / rect.width) * group.length;
-
-                        let occupied: { start: number, end: number }[] = [];
-                        group.segments.forEach(r => {
-                          const s = r.startMileage || 0;
-                          const e = r.endMileage || group.length;
-                          if (e > s) occupied.push({ start: s, end: e });
-                          r.maintenanceHistory?.forEach(m => {
-                            if (m.endMileage > m.startMileage) occupied.push({ start: m.startMileage, end: m.endMileage });
-                          });
-                        });
-                        
-                        occupied.sort((a, b) => a.start - b.start);
-                        let defaultStart = 0;
-                        let defaultEnd = group.length;
-                        
-                        for (let i = 0; i < occupied.length; i++) {
-                          if (clickMileage < occupied[i].start) {
-                            defaultEnd = occupied[i].start;
-                            break;
-                          } else if (clickMileage >= occupied[i].end) {
-                            defaultStart = occupied[i].end;
-                          }
-                        }
-
-                        onNavigateToEditHistory(undefined, group.segments[0].id, defaultStart, defaultEnd);
-                      }
-                    }}
-                    title="點擊空白處新增目前匝道之新履歷資料"
-                  >
-                     {/* Render all segments for this ramp */}
-                    {group.segments.map(ramp => {
-                      const segmentData = getSegmentData(ramp);
-                      const start = ramp.startMileage || 0;
-                      const end = ramp.endMileage || group.length;
-                      if (end <= start) return null;
-                      
-                      const segmentColor = segmentData.color;
-                      
-                      return (
-                        <div
-                          key={ramp.id}
-                          onClick={() => onNavigateToEditHistory(ramp.id)}
-                          className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10"
-                          style={{ 
-                            left: `${(start / group.length) * 100}%`, 
-                            width: `${((end - start) / group.length) * 100}%`, 
-                            backgroundColor: segmentColor 
-                          }}
-                        >
-                          <span className="drop-shadow-sm truncate px-1 text-[11px] font-black leading-none text-slate-950">
-                            {ramp.constructionYear}
-                          </span>
-                          <span className="text-[10px] font-black leading-none mt-0.5 text-slate-950">
-                            {segmentData.depth}cm
-                          </span>
-                          {ramp.prevConstructionYear && (
-                            <span className="text-[9px] leading-none mt-0.5 text-slate-950/70 truncate px-1 max-w-full">
-                              EX：{ramp.prevConstructionYear}{ramp.prevConstructionDepth ? `  ${ramp.prevConstructionDepth}cm` : ''}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {/* Render maintenance history if any */}
-                    {group.segments.map(ramp => 
-                      ramp.maintenanceHistory?.map((event) => {
-                        const left = (event.startMileage / group.length) * 100;
-                        const width = ((event.endMileage - event.startMileage) / group.length) * 100;
-                        if (width <= 0) return null;
-                        
-                        const eventColor = getColorFromLabel(event.label);
-                        
-                        return (
-                          <div
-                            key={event.id}
-                            onClick={() => onNavigateToEditHistory(ramp.id)}
-                            className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10"
-                            style={{ left: `${left}%`, width: `${width}%`, backgroundColor: eventColor }}
-                          >
-                            <span className="drop-shadow-sm truncate px-1 text-[11px] font-black leading-none text-slate-950">
-                              {event.year}
-                            </span>
-                            
-                            {event.depth && (
-                               <span className="text-[10px] font-black leading-none mt-0.5 text-slate-950">
-                                 {event.depth}cm
-                               </span>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-
-                    </div>
-
-                    {/* Intersection markers for mileage (placed above the bar) */}
-                    {Array.from(new Set<number>(
-                      group.segments.flatMap(r => [r.startMileage || 0, r.endMileage || group.length])
-                      .concat(group.segments.flatMap(r => r.maintenanceHistory?.flatMap(m => [m.startMileage, m.endMileage]) || []))
-                    ))
-                    .sort((a, b) => a - b)
-                    .filter(m => m > 0 && m < group.length)
-                    .map((m, index) => (
-                      <div key={`marker-${m}`} className="absolute top-0 h-9 w-[1px] bg-slate-400/60 z-30 pointer-events-none" style={{ left: `${(m / group.length) * 100}%` }}>
-                        <span className={cn(
-                          "absolute left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-800 shadow-sm whitespace-nowrap bg-white/95 px-1 py-[1px] rounded leading-none border border-slate-200",
-                          "-top-4"
-                        )}>
-                          {m}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          <div className="px-6 py-3 bg-slate-50/50 flex flex-wrap gap-4 border-y border-slate-100">
+            {legendItems.map((item, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div 
+                  className="w-6 h-3 border border-black/10 rounded-sm shadow-sm"
+                  style={{ backgroundColor: item.color }}
+                ></div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{item.label}</span>
               </div>
             ))}
+            {legendItems.length === 0 && (
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-3 bg-[#e7e6e6] border border-black/10 rounded-sm"></div>
+                <span className="text-[10px] font-bold text-slate-500">其他/舊有</span>
+              </div>
+            )}
           </div>
-        </div>
+          
+          <div className="p-6 overflow-x-auto">
+            <div className="min-w-[800px] space-y-1">
+              <div className="grid grid-cols-[180px_100px_1fr] items-center text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">
+                <div className="text-center">匝道編碼</div>
+                <div className="text-center border-l border-slate-200">車道長度 (m)</div>
+                <div className="relative h-6 flex items-center px-4">
+                  {scaleMarkers.map(val => (
+                    <span key={val} className="absolute text-slate-900 text-[10px] font-black" style={{ left: `${(val / maxLength) * 100}%`, transform: 'translateX(-50%)' }}>{val}</span>
+                  ))}
+                </div>
+              </div>
+
+              {displayRamps.map((group, idx) => (
+                <div 
+                  key={group.groupId} 
+                  className="grid grid-cols-[180px_100px_1fr] items-stretch group transition-colors"
+                >
+                  <div className={cn(
+                    "flex flex-col items-center justify-center py-4 border-b border-white rounded-l-md transition-shadow",
+                    idx % 4 === 0 ? "bg-[#a3f69c]/40" :
+                    idx % 4 === 1 ? "bg-[#cbe7f5]" :
+                    idx % 4 === 2 ? "bg-[#ffdad6]" :
+                    "bg-[#d6e3ff]"
+                  )}>
+                    <span className="font-black text-xs text-slate-950 drop-shadow-sm">{group.rampName}</span>
+                    <span className="text-[10px] font-black tracking-widest uppercase mt-0.5 text-black">
+                      {group.rampId}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-center bg-yellow-50/50 font-bold text-sm text-slate-800 border-l border-slate-100 border-b border-white">
+                    {group.length}
+                  </div>
+                  <div className="relative bg-yellow-50/50 flex items-center px-4 border-b border-white rounded-r-md">
+                    {scaleMarkers.map(val => (
+                      <div key={val} className="absolute top-0 bottom-0 w-[1px] bg-slate-200/40" style={{ left: `${(val / maxLength) * 100}%` }}></div>
+                    ))}
+                    <div 
+                      className="relative z-10 w-full mt-7 mb-2" 
+                      style={{ width: `${(group.length / maxLength) * 100}%` }}
+                    >
+                      <div
+                        className="h-9 w-full bg-[#e7e6e6]/30 hover:bg-[#e7e6e6]/80 rounded-md shadow-inner relative overflow-hidden flex border border-slate-200 cursor-pointer transition-colors"
+                        onClick={(e) => {
+                          if (e.target === e.currentTarget && group.segments[0]) {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const clickX = e.clientX - rect.left;
+                            const clickMileage = (clickX / rect.width) * group.length;
+
+                            let occupied: { start: number, end: number }[] = [];
+                            group.segments.forEach(r => {
+                              const s = r.startMileage || 0;
+                              const e = r.endMileage || group.length;
+                              if (e > s) occupied.push({ start: s, end: e });
+                              r.maintenanceHistory?.forEach(m => {
+                                if (m.endMileage > m.startMileage) occupied.push({ start: m.startMileage, end: m.endMileage });
+                              });
+                            });
+                            
+                            occupied.sort((a, b) => a.start - b.start);
+                            let defaultStart = 0;
+                            let defaultEnd = group.length;
+                            
+                            for (let i = 0; i < occupied.length; i++) {
+                              if (clickMileage < occupied[i].start) {
+                                defaultEnd = occupied[i].start;
+                                break;
+                              } else if (clickMileage >= occupied[i].end) {
+                                defaultStart = occupied[i].end;
+                              }
+                            }
+
+                            onNavigateToEditHistory(undefined, group.segments[0].id, defaultStart, defaultEnd);
+                          }
+                        }}
+                        title="點擊空白處新增目前匝道之新履歷資料"
+                      >
+                        {group.segments.map(ramp => {
+                          const segmentData = getSegmentData(ramp);
+                          const start = ramp.startMileage || 0;
+                          const end = ramp.endMileage || group.length;
+                          if (end <= start) return null;
+                          const segmentColor = segmentData.color;
+                          
+                          return (
+                            <div
+                              key={ramp.id}
+                              onClick={() => onNavigateToEditHistory(ramp.id)}
+                              className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10"
+                              style={{ 
+                                left: `${(start / group.length) * 100}%`, 
+                                width: `${((end - start) / group.length) * 100}%`, 
+                                backgroundColor: segmentColor 
+                              }}
+                            >
+                              <span className="drop-shadow-sm truncate px-1 text-[11px] font-black leading-none text-slate-950">
+                                {ramp.constructionYear}
+                              </span>
+                              <span className="text-[10px] font-black leading-none mt-0.5 text-slate-950">
+                                {segmentData.depth}cm
+                              </span>
+                              {ramp.prevConstructionYear && (
+                                <span className="text-[9px] leading-none mt-0.5 text-slate-950/70 truncate px-1 max-w-full">
+                                  EX：{ramp.prevConstructionYear}{ramp.prevConstructionDepth ? `  ${ramp.prevConstructionDepth}cm` : ''}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {group.segments.map(ramp => 
+                          ramp.maintenanceHistory?.map((event) => {
+                            const left = (event.startMileage / group.length) * 100;
+                            const width = ((event.endMileage - event.startMileage) / group.length) * 100;
+                            if (width <= 0) return null;
+                            const eventColor = getColorFromLabel(event.label);
+                            
+                            return (
+                              <div
+                                key={event.id}
+                                onClick={() => onNavigateToEditHistory(ramp.id)}
+                                className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10"
+                                style={{ left: `${left}%`, width: `${width}%`, backgroundColor: eventColor }}
+                              >
+                                <span className="drop-shadow-sm truncate px-1 text-[11px] font-black leading-none text-slate-950">
+                                  {event.year}
+                                </span>
+                                {event.depth && (
+                                   <span className="text-[10px] font-black leading-none mt-0.5 text-slate-950">
+                                     {event.depth}cm
+                                   </span>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {Array.from(new Set<number>(
+                        group.segments.flatMap(r => [r.startMileage || 0, r.endMileage || group.length])
+                        .concat(group.segments.flatMap(r => r.maintenanceHistory?.flatMap(m => [m.startMileage, m.endMileage]) || []))
+                      ))
+                      .sort((a, b) => a - b)
+                      .filter(m => m > 0 && m < group.length)
+                      .map((m, index) => (
+                        <div key={`marker-${m}`} className="absolute top-0 h-9 w-[1px] bg-slate-400/60 z-30 pointer-events-none" style={{ left: `${(m / group.length) * 100}%` }}>
+                          <span className={cn(
+                            "absolute left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-800 shadow-sm whitespace-nowrap bg-white/95 px-1 py-[1px] rounded leading-none border border-slate-200",
+                            "-top-4"
+                          )}>
+                            {m}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
