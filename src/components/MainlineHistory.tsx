@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Plus, Trash2, Download, Settings, X, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Download, Settings, X, AlertTriangle, Route } from 'lucide-react';
 import { cn } from '../App';
 import { Segment } from '../types';
 import { getPavementColor, getPavementDisplayInfo } from '../utils/pavement';

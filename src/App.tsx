@@ -1228,7 +1228,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-28 flex flex-col items-center">
       <div className="responsive-container flex flex-col gap-4 py-4">
         {/* Header */}
-        <header className="flex flex-col gap-4 p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-blue-900 to-indigo-900 shadow-xl shadow-blue-900/20 relative overflow-hidden">
+        <header className="flex flex-col gap-4 p-5 sm:p-6 rounded-3xl bg-[#00488d] shadow-xl shadow-[#00488d]/20 relative overflow-hidden">
           {/* Subtle background decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
           
