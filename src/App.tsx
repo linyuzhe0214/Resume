@@ -13,6 +13,37 @@ import EditRampHistory from './components/EditRampHistory';
 import EditPavement from './components/EditPavement';
 import ConfirmDialog from './components/ConfirmDialog';
 
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '20px', background: 'red', color: 'white', whiteSpace: 'pre-wrap' }}>
+          <h2>Something went wrong.</h2>
+          <details>
+            <summary>Click for error details</summary>
+            {this.state.error?.toString()}
+            <br />
+            {this.state.error?.stack}
+          </details>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export { ErrorBoundary };
+
 import { Segment, RampSegment, PavementLayer } from './types';
 import type { Feature, LineString } from 'geojson';
 import { parseKmlToPoints, buildKmlIndex, findNearestPoint, findNearestPointByGps, DIRECTION_REVERSE_MAP, type KmlIndex, type KmlPoint, type KmlMainlinePoint, type KmlRampPoint } from './utils/kmlParser';
