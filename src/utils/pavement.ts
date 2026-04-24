@@ -71,3 +71,19 @@ export function getColorFromLabel(label: string): string {
   const cleanLabel = label.replace(/\d+cm/gi, '').replace(/局部|銑削|刨除|加鋪|milling|REINFORCE|REINFORCEMENT/gi, '').trim().toUpperCase();
   return getPavementColor(cleanLabel, thickness);
 }
+
+/**
+ * 格式化月份字串 (例如: 11305 -> 113/05)
+ */
+export function formatMonth(monthStr: string): string {
+  if (!monthStr) return '';
+  if (monthStr.includes('/')) return monthStr;
+  
+  if (monthStr.length === 5) {
+    return `${monthStr.substring(0, 3)}/${monthStr.substring(3, 5)}`;
+  }
+  if (monthStr.length === 4) {
+    return `${monthStr.substring(0, 2)}/${monthStr.substring(2, 4)}`;
+  }
+  return monthStr;
+}

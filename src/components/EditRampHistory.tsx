@@ -3,6 +3,7 @@ import { ArrowLeft, Edit2, Calendar, ChevronDown, Trash2, Copy } from 'lucide-re
 import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
+import { formatMonth } from '../utils/pavement';
 
 interface EditRampHistoryProps {
   segment?: RampSegment;
@@ -356,7 +357,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                           
                           <div className="absolute right-3 bg-white/20 backdrop-blur-sm rounded px-2 py-1 flex items-center">
                             <span className="text-xs font-medium text-white">
-                              施工: {layer.month}
+                              施工: {formatMonth(layer.month)}
                             </span>
                           </div>
 

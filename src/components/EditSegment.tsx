@@ -5,6 +5,7 @@ import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
 import { parseMileage, formatMileage } from '../utils/mileage';
 import MileageInput from './MileageInput';
+import { formatMonth } from '../utils/pavement';
 import { HIGHWAY_MILEAGE_LIMITS } from '../constants';
 
 interface EditSegmentProps {
@@ -391,6 +392,9 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
                         <span className="text-[10px] font-black text-white/50 uppercase tracking-widest leading-none mb-1">LAYER {index + 1}</span>
                         <span className="font-black text-lg text-white leading-none">
                           {typeAbbr}
+                        </span>
+                        <span className="text-[10px] font-bold text-white/60 mt-1">
+                          施作: {formatMonth(layer.month)}
                         </span>
                       </div>
                       
