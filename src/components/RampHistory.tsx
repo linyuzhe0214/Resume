@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Download, Plus, Layers, ChevronDown, MapPin, Search, ArrowUp, ArrowDown } from 'lucide-react';
+import { Download, Plus, Layers, ChevronDown, MapPin, Search, ArrowUp, ArrowDown, Edit2, Trash2 } from 'lucide-react';
 import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
@@ -425,8 +425,6 @@ export default function RampHistory(props: RampHistoryProps) {
               })}
             </div>
           </div>
-        </div>
-      </section>
         </div>
       </section>
 
