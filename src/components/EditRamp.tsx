@@ -102,7 +102,7 @@ export default function EditRamp({ segment, onChange, onSave, onDelete, onBack, 
         </div>
       </header>
 
-      <main className="pt-24 px-4 max-w-md mx-auto space-y-6">
+      <main className="pt-24 px-4 max-w-md md:max-w-2xl mx-auto space-y-6 md:space-y-8">
         {/* Basic Path Info Section */}
         <section className="space-y-3">
           <h2 className="font-black text-sm uppercase tracking-wider text-slate-500 ml-2">匝道詳細資料</h2>

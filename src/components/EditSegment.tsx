@@ -156,7 +156,7 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-md md:max-w-2xl mx-auto px-4 py-6 space-y-6 md:space-y-8">
         {/* Basic Path Info Section */}
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
