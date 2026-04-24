@@ -384,13 +384,29 @@ export default function App() {
           const main = mainlineData.filter((s: any) => s.type !== 'planning' && s.id !== 'LANE_OPTIONS_CONFIG');
           if (main.length > 0) setSegments(main);
 
-          // 讀取同步的車道配置 (取最後一筆，避免重複造成舊資料覆蓋新資料)
+          // 讀取同步的車道配置 (從所有紀錄中找出時間戳記最新的一筆)
           const settingsRecords = mainlineData.filter((s: any) => s.id === 'LANE_OPTIONS_CONFIG');
-          const settingsRecord = settingsRecords[settingsRecords.length - 1];
+          const settingsRecord = settingsRecords.reduce((latest: any, current: any) => {
+            if (!latest) return current;
+            const latestTs = latest.timestamp || 0;
+            const currentTs = current.timestamp || 0;
+            return currentTs > latestTs ? current : latest;
+          }, null);
+
           if (settingsRecord && settingsRecord.data) {
-            setLaneOptions({
-              ...INITIAL_HIGHWAY_LANES,
-              ...settingsRecord.data
+            setLaneOptions(prev => {
+              const cloudTimestamp = settingsRecord.timestamp || 0;
+              const localTimestamp = (prev as any)._timestamp || 0;
+              
+              // 只有當雲端資料明顯較新時才覆蓋
+              if (cloudTimestamp > localTimestamp + 2000) {
+                return {
+                  ...INITIAL_HIGHWAY_LANES,
+                  ...settingsRecord.data,
+                  _timestamp: cloudTimestamp
+                } as any;
+              }
+              return prev;
             });
           }
         }
@@ -430,12 +446,14 @@ export default function App() {
       return;
     }
     
+    const now = Date.now();
     const newOptions = {
       ...laneOptions,
-      [targetHighway]: [...currentLanes, trimmedLane]
+      [targetHighway]: [...currentLanes, trimmedLane],
+      _timestamp: now
     };
     setLaneOptions(newOptions);
-    syncGas(MAINLINE_URL, 'saveMainline', 'Mainline', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
+    syncGas(MAINLINE_URL, 'saveMainline', 'Mainline', { id: 'LANE_OPTIONS_CONFIG', data: newOptions, timestamp: now });
     setToast({ message: `已於 ${targetHighway} 新增車道: ${trimmedLane}`, type: 'success' });
   };
 
@@ -456,24 +474,28 @@ export default function App() {
     setSegments(segments.filter(s => !(s.highway === targetHighway && s.lanes.includes(laneName))));
     
     // 2. Remove lane from options
+    const now = Date.now();
     const currentLanes = laneOptions[targetHighway] || [];
     const newOptions = {
       ...laneOptions,
-      [targetHighway]: currentLanes.filter(l => l !== laneName)
+      [targetHighway]: currentLanes.filter(l => l !== laneName),
+      _timestamp: now
     };
     setLaneOptions(newOptions);
-    syncGas(MAINLINE_URL, 'saveMainline', 'Mainline', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
+    syncGas(MAINLINE_URL, 'saveMainline', 'Mainline', { id: 'LANE_OPTIONS_CONFIG', data: newOptions, timestamp: now });
     setToast({ message: `已刪除 ${targetHighway} 車道及相關 ${affectedSegments.length} 筆資料`, type: 'success' });
     setShowLaneDeleteConfirm(null);
   };
 
   const handleUpdateLaneOrder = (targetHighway: string, newLanesOrder: string[]) => {
+    const now = Date.now();
     const newOptions = {
       ...laneOptions,
-      [targetHighway]: newLanesOrder
+      [targetHighway]: newLanesOrder,
+      _timestamp: now
     };
     setLaneOptions(newOptions);
-    syncGas(MAINLINE_URL, 'saveMainline', 'Mainline', { id: 'LANE_OPTIONS_CONFIG', data: newOptions });
+    syncGas(MAINLINE_URL, 'saveMainline', 'Mainline', { id: 'LANE_OPTIONS_CONFIG', data: newOptions, timestamp: now });
     setToast({ message: `已更新 ${targetHighway} 車道排序`, type: 'success' });
   };
 
@@ -1237,35 +1259,37 @@ export default function App() {
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-md">
                 高速公路路巡系統
               </h1>
-              <div 
-                className="flex items-center gap-2.5 mt-2 cursor-pointer hover:bg-white/10 px-3 py-1.5 rounded-full w-max -ml-1 transition-all border border-transparent hover:border-white/10 group"
-                onClick={() => {
-                  setAutoTracking(!autoTracking);
-                  if (!autoTracking) {
-                    setToast({ message: '已恢復 GPS 自動追蹤', type: 'success' });
-                  }
-                }}
-              >
-                <div className="relative flex h-2.5 w-2.5">
-                  <span className={cn(
-                    "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
-                    !autoTracking ? "bg-slate-400" :
-                    gpsStatus === 'active' ? "bg-green-400" : 
-                    gpsStatus === 'locating' ? "bg-yellow-400" : "bg-red-400"
-                  )}></span>
-                  <span className={cn(
-                    "relative inline-flex rounded-full h-2.5 w-2.5",
-                    !autoTracking ? "bg-slate-400" :
-                    gpsStatus === 'active' ? "bg-green-500" : 
-                    gpsStatus === 'locating' ? "bg-yellow-500" : "bg-red-500"
-                  )}></span>
+              {activeTab === 'surface' && (
+                <div 
+                  className="flex items-center gap-2.5 mt-2 cursor-pointer hover:bg-white/10 px-3 py-1.5 rounded-full w-max -ml-1 transition-all border border-transparent hover:border-white/10 group"
+                  onClick={() => {
+                    setAutoTracking(!autoTracking);
+                    if (!autoTracking) {
+                      setToast({ message: '已恢復 GPS 自動追蹤', type: 'success' });
+                    }
+                  }}
+                >
+                  <div className="relative flex h-2.5 w-2.5">
+                    <span className={cn(
+                      "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                      !autoTracking ? "bg-slate-400" :
+                      gpsStatus === 'active' ? "bg-green-400" : 
+                      gpsStatus === 'locating' ? "bg-yellow-400" : "bg-red-400"
+                    )}></span>
+                    <span className={cn(
+                      "relative inline-flex rounded-full h-2.5 w-2.5",
+                      !autoTracking ? "bg-slate-400" :
+                      gpsStatus === 'active' ? "bg-green-500" : 
+                      gpsStatus === 'locating' ? "bg-yellow-500" : "bg-red-500"
+                    )}></span>
+                  </div>
+                  <span className="text-xs font-bold text-blue-100 group-hover:text-white transition-colors">
+                    {!autoTracking ? 'GPS 已暫停' :
+                     gpsStatus === 'active' ? `連線中 (${Math.round(accuracy || 0)}m)` : 
+                     gpsStatus === 'locating' ? '定位中...' : '定位失敗'}
+                  </span>
                 </div>
-                <span className="text-xs font-bold text-blue-100 group-hover:text-white transition-colors">
-                  {!autoTracking ? 'GPS 已暫停' :
-                   gpsStatus === 'active' ? `連線中 (${Math.round(accuracy || 0)}m)` : 
-                   gpsStatus === 'locating' ? '定位中...' : '定位失敗'}
-                </span>
-              </div>
+              )}
             </div>
             
             <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-white/10 pt-3 sm:pt-0">
