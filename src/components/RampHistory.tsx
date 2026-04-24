@@ -291,9 +291,9 @@ export default function RampHistory(props: RampHistoryProps) {
             </button>
             <button 
               onClick={() => exportComponentAsImage('ramp-details-export', `${selectedHighway}_${selectedInterchange}_匝道詳細資料`)}
-              className="hidden sm:flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-2 px-4 py-3 sm:px-6 bg-white border border-slate-200 rounded-2xl text-xs font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95"
             >
-              <Download size={16} /> 匯出報表
+              <Download size={16} /> <span className="hidden sm:inline">匯出報表</span>
             </button>
           </div>
         </div>
@@ -435,9 +435,10 @@ export default function RampHistory(props: RampHistoryProps) {
           <div className="flex items-center gap-3">
             <button 
               onClick={() => exportComponentAsImage('ramp-export-container', `${selectedHighway}_${selectedInterchange}_匝道履歷`)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black hover:bg-slate-50 transition-all shadow-sm"
+              className="flex items-center gap-2 p-2.5 sm:px-4 sm:py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+              title="匯出圖表"
             >
-              <Download className="w-4 h-4" /> 匯出圖表
+              <Download className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">匯出圖表</span>
             </button>
             <button 
               onClick={() => onNavigateToEditHistory(undefined)}

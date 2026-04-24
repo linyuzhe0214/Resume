@@ -1274,52 +1274,54 @@ export default function App() {
             </div>
           </div>
         
-        {/* Advanced Location Search */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="relative group">
-            <select 
-              className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-bold appearance-none text-center transition-all hover:bg-white/20"
-              value={highwayName}
-              onChange={(e) => setHighwayName(e.target.value)}
-            >
-              {[1, 3, 4].map(h => (
-                <option key={h} className="text-slate-900" value={`國道${h}號`}>國道{h}號</option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-white/50">
-              <Layers size={14} />
+        {/* Advanced Location Search - Only show in surface tab */}
+        {activeTab === 'surface' && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="relative group">
+              <select 
+                className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-bold appearance-none text-center transition-all hover:bg-white/20"
+                value={highwayName}
+                onChange={(e) => setHighwayName(e.target.value)}
+              >
+                {[1, 3, 4].map(h => (
+                  <option key={h} className="text-slate-900" value={`國道${h}號`}>國道{h}號</option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-white/50">
+                <Layers size={14} />
+              </div>
             </div>
-          </div>
 
-          <div className="relative group">
-            <select 
-              className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-bold appearance-none text-center transition-all hover:bg-white/20"
-              value={direction}
-              onChange={(e) => setDirection(e.target.value)}
-            >
-              {['南下車道', '北上車道', '東向車道', '西向車道', '雙向'].map(d => (
-                <option key={d} className="text-slate-900" value={d}>{d}</option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-white/50">
-              <Route size={14} />
+            <div className="relative group">
+              <select 
+                className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-bold appearance-none text-center transition-all hover:bg-white/20"
+                value={direction}
+                onChange={(e) => setDirection(e.target.value)}
+              >
+                {['南下車道', '北上車道', '東向車道', '西向車道', '雙向'].map(d => (
+                  <option key={d} className="text-slate-900" value={d}>{d}</option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-white/50">
+                <Route size={14} />
+              </div>
             </div>
-          </div>
 
-          <div className="col-span-2 relative group">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-blue-200 group-focus-within:text-white transition-colors">
-              <Search size={18} />
+            <div className="col-span-2 relative group">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-blue-200 group-focus-within:text-white transition-colors">
+                <Search size={18} />
+              </div>
+              <input 
+                type="text" 
+                className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 pl-11 pr-4 py-3 placeholder-blue-200/50 outline-none transition-all font-bold hover:bg-white/20" 
+                placeholder="搜尋里程 (例: 166k+500)" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearch}
+              />
             </div>
-            <input 
-              type="text" 
-              className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 pl-11 pr-4 py-3 placeholder-blue-200/50 outline-none transition-all font-bold hover:bg-white/20" 
-              placeholder="搜尋里程 (例: 166k+500)" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleSearch}
-            />
           </div>
-        </div>
+        )}
       </header>
 
       {/* Location Section */}
