@@ -1194,66 +1194,94 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1e293b] font-sans pb-24 flex flex-col p-3 gap-3">
-      
-      {/* Header */}
-      <header className="flex flex-col gap-3 p-4 rounded-xl bg-[#1e3a8a] shadow-lg">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex flex-col">
-            <h1 className="text-xl font-extrabold tracking-tight text-white drop-shadow-sm">高速公路路巡里程資訊系統</h1>
-            <div 
-              className="flex items-center gap-2 mt-1 cursor-pointer hover:bg-white/10 px-2 py-1 rounded-lg w-max -ml-2 transition-colors group"
-              onClick={() => {
-                setAutoTracking(!autoTracking);
-                if (!autoTracking) {
-                  setToast({ message: '已恢復 GPS 自動追蹤', type: 'success' });
-                }
-              }}
-              title="點擊切換 GPS 自動跟隨狀態"
-            >
-              <span className={cn(
-                "flex h-2 w-2 rounded-full",
-                !autoTracking ? "bg-slate-400" :
-                gpsStatus === 'active' ? "bg-green-400" : 
-                gpsStatus === 'locating' ? "bg-yellow-400 animate-pulse" : "bg-red-400"
-              )}></span>
-              <span className="text-[11px] font-semibold text-blue-100 group-hover:text-white transition-colors">
-                {!autoTracking ? 'GPS 自動追蹤已暫停 (點擊恢復)' :
-                 gpsStatus === 'active' ? `GPS 連線中 (${Math.round(accuracy || 0)}m)` : 
-                 gpsStatus === 'locating' ? 'GPS 定位中...' : 'GPS 定位失敗'}
-              </span>
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-28 flex flex-col items-center">
+      <div className="responsive-container flex flex-col gap-4 py-4">
+        {/* Header */}
+        <header className="flex flex-col gap-4 p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-blue-900 to-indigo-900 shadow-xl shadow-blue-900/20 relative overflow-hidden">
+          {/* Subtle background decoration */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+            <div className="flex flex-col">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-md">
+                高速公路路巡系統
+              </h1>
+              <div 
+                className="flex items-center gap-2.5 mt-2 cursor-pointer hover:bg-white/10 px-3 py-1.5 rounded-full w-max -ml-1 transition-all border border-transparent hover:border-white/10 group"
+                onClick={() => {
+                  setAutoTracking(!autoTracking);
+                  if (!autoTracking) {
+                    setToast({ message: '已恢復 GPS 自動追蹤', type: 'success' });
+                  }
+                }}
+              >
+                <div className="relative flex h-2.5 w-2.5">
+                  <span className={cn(
+                    "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                    !autoTracking ? "bg-slate-400" :
+                    gpsStatus === 'active' ? "bg-green-400" : 
+                    gpsStatus === 'locating' ? "bg-yellow-400" : "bg-red-400"
+                  )}></span>
+                  <span className={cn(
+                    "relative inline-flex rounded-full h-2.5 w-2.5",
+                    !autoTracking ? "bg-slate-400" :
+                    gpsStatus === 'active' ? "bg-green-500" : 
+                    gpsStatus === 'locating' ? "bg-yellow-500" : "bg-red-500"
+                  )}></span>
+                </div>
+                <span className="text-xs font-bold text-blue-100 group-hover:text-white transition-colors">
+                  {!autoTracking ? 'GPS 已暫停' :
+                   gpsStatus === 'active' ? `連線中 (${Math.round(accuracy || 0)}m)` : 
+                   gpsStatus === 'locating' ? '定位中...' : '定位失敗'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-white/10 pt-3 sm:pt-0">
+              <div className="text-2xl sm:text-3xl font-mono font-black text-white tracking-tighter">{format(currentTime, 'HH:mm:ss')}</div>
+              <div className="text-xs text-blue-200 font-bold tracking-widest opacity-80">{format(currentTime, 'yyyy-MM-dd')}</div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-xl font-mono font-black text-white">{format(currentTime, 'HH:mm:ss')}</div>
-            <div className="text-[10px] text-blue-200 font-bold tracking-wider">{format(currentTime, 'yyyy-MM-dd')}</div>
-          </div>
-        </div>
         
         {/* Advanced Location Search */}
-        <div className="flex w-full gap-2">
-          <select 
-            className="flex-1 bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-white/50 px-2 py-2.5 outline-none font-bold placeholder-blue-200/50 appearance-none text-center"
-            value={highwayName}
-            onChange={(e) => setHighwayName(e.target.value)}
-          >
-            {[1, 3, 4].map(h => (
-              <option key={h} className="text-black" value={`國道${h}號`}>國道{h}號</option>
-            ))}
-          </select>
-          <select 
-            className="flex-1 bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-white/50 px-2 py-2.5 outline-none font-bold appearance-none text-center"
-            value={direction}
-            onChange={(e) => setDirection(e.target.value)}
-          >
-            {['南下車道', '北上車道', '東向車道', '西向車道', '雙向'].map(d => (
-              <option key={d} className="text-black" value={d}>{d}</option>
-            ))}
-          </select>
-          <div className="flex-[2] relative">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="relative group">
+            <select 
+              className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-bold appearance-none text-center transition-all hover:bg-white/20"
+              value={highwayName}
+              onChange={(e) => setHighwayName(e.target.value)}
+            >
+              {[1, 3, 4].map(h => (
+                <option key={h} className="text-slate-900" value={`國道${h}號`}>國道{h}號</option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-white/50">
+              <Layers size={14} />
+            </div>
+          </div>
+
+          <div className="relative group">
+            <select 
+              className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-bold appearance-none text-center transition-all hover:bg-white/20"
+              value={direction}
+              onChange={(e) => setDirection(e.target.value)}
+            >
+              {['南下車道', '北上車道', '東向車道', '西向車道', '雙向'].map(d => (
+                <option key={d} className="text-slate-900" value={d}>{d}</option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-white/50">
+              <Route size={14} />
+            </div>
+          </div>
+
+          <div className="col-span-2 relative group">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-blue-200 group-focus-within:text-white transition-colors">
+              <Search size={18} />
+            </div>
             <input 
               type="text" 
-              className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-white/50 px-3 py-2.5 placeholder-blue-200/50 outline-none transition-all font-bold" 
+              className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 pl-11 pr-4 py-3 placeholder-blue-200/50 outline-none transition-all font-bold hover:bg-white/20" 
               placeholder="搜尋里程 (例: 166k+500)" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -1266,45 +1294,46 @@ export default function App() {
       {/* Location Section */}
       {activeTab === 'surface' && (
         <>
-          <section className="bg-white border border-slate-200 shadow-sm p-5 rounded-2xl">
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-xs font-bold text-[#0284c7] flex items-center gap-1.5 uppercase tracking-wider">
-                <MapPin className="w-4 h-4" />
+          <section className="bg-white border border-slate-200 shadow-sm p-6 sm:p-8 rounded-[2rem] transition-all hover:shadow-md">
+            <div className="flex items-start justify-between mb-4">
+              <span className="text-xs font-black text-indigo-600 flex items-center gap-2 uppercase tracking-widest bg-indigo-50 px-3 py-1.5 rounded-full">
+                <MapPin className="w-3.5 h-3.5" />
                 當前位置
               </span>
-              <span className="text-[10px] text-slate-500 font-mono tracking-tighter">
-                {location ? `${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}` : '24.1234, 120.5678'}
-              </span>
-            </div>
-            <div className="text-center py-1">
-              <div className="text-4xl font-black text-slate-800 tracking-tight">
-                {highwayName} {formatMileage(mileage)}
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] text-slate-400 font-mono tracking-tight leading-none mb-1">COORDINATES</span>
+                <span className="text-xs text-slate-600 font-mono font-bold">
+                  {location ? `${location.coords.latitude.toFixed(5)}, ${location.coords.longitude.toFixed(5)}` : '未定位'}
+                </span>
               </div>
-              <div className="inline-block mt-2 px-3 py-1 rounded-full bg-slate-100 text-xs font-bold text-slate-600 border border-slate-200">
+            </div>
+            
+            <div className="text-center py-2">
+              <div className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+                {highwayName} <span className="text-indigo-600">{formatMileage(mileage)}</span>
+              </div>
+              <div className="inline-flex items-center gap-2 mt-4 px-4 py-1.5 rounded-full bg-slate-100 text-sm font-bold text-slate-700 border border-slate-200">
+                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
                 {direction}
               </div>
             </div>
 
             {/* Search Mode Toggle */}
-            <div className="mt-4 flex bg-slate-100 p-1 rounded-xl">
-              <button
-                className={cn("flex-1 py-1.5 text-xs font-bold rounded-lg transition-all", searchMode === 'auto' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-                onClick={() => setSearchMode('auto')}
-              >
-                自動偵測
-              </button>
-              <button
-                className={cn("flex-1 py-1.5 text-xs font-bold rounded-lg transition-all", searchMode === 'mainline' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-                onClick={() => setSearchMode('mainline')}
-              >
-                主線模式
-              </button>
-              <button
-                className={cn("flex-1 py-1.5 text-xs font-bold rounded-lg transition-all", searchMode === 'ramp' ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-                onClick={() => setSearchMode('ramp')}
-              >
-                匝道模式
-              </button>
+            <div className="mt-8 flex bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/50">
+              {['auto', 'mainline', 'ramp'].map((mode) => (
+                <button
+                  key={mode}
+                  className={cn(
+                    "flex-1 py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all active:scale-95",
+                    searchMode === mode 
+                      ? "bg-white text-indigo-700 shadow-lg shadow-indigo-100 ring-1 ring-black/5" 
+                      : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                  )}
+                  onClick={() => setSearchMode(mode as any)}
+                >
+                  {mode === 'auto' ? '自動偵測' : mode === 'mainline' ? '主線模式' : '匝道模式'}
+                </button>
+              ))}
             </div>
           </section>
 
@@ -1566,6 +1595,7 @@ export default function App() {
         </main>
       )}
 
+      </div>
       {/* 全域提示元件 */}
       {renderOverlays()}
 

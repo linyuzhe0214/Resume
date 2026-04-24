@@ -202,40 +202,45 @@ export default function RampHistory(props: RampHistoryProps) {
   }, [maxLength]);
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8 pb-24">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8 pb-24">
       {/* Section 1: Filters & Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <div>
-          <h1 className="font-black text-3xl tracking-tight text-[#00488d]">匝道詳細資料</h1>
-          <p className="text-slate-500 font-medium mt-1">交流道匝道結構與維護歷程管理</p>
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-6 sm:p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-600 p-2.5 rounded-2xl shadow-lg shadow-blue-600/20">
+              <Layers size={24} className="text-white" />
+            </div>
+            <h1 className="font-black text-2xl sm:text-3xl tracking-tight text-slate-900 leading-none">匝道履歷資料</h1>
+          </div>
+          <p className="text-slate-500 font-bold text-sm sm:text-base opacity-80">交流道匝道結構與維護歷程管理系統</p>
         </div>
         
-          <div className="flex flex-wrap items-center gap-4">
-                <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">國道選擇</label>
-            <div className="relative">
+        <div className="grid grid-cols-2 gap-4 lg:flex lg:items-center">
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">國道 Highway</label>
+            <div className="relative group">
               <select 
                 value={selectedHighway}
                 onChange={(e) => setSelectedHighway(e.target.value)}
-                className="appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-[#005fb8] focus:border-transparent min-w-[140px]"
+                className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 pr-12 text-sm font-black text-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none"
               >
                 {highways.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">交流道選擇</label>
-            <div className="relative">
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">交流道 Interchange</label>
+            <div className="relative group">
               <select 
                 value={selectedInterchange}
                 onChange={(e) => setSelectedInterchange(e.target.value)}
-                className="appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-[#005fb8] focus:border-transparent min-w-[160px]"
+                className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 pr-12 text-sm font-black text-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none"
               >
                 {interchanges.map(i => <option key={i} value={i}>{i}</option>)}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
             </div>
           </div>
         </div>
@@ -274,140 +279,154 @@ export default function RampHistory(props: RampHistoryProps) {
         </div>
       </section>
 
-{/* Section 3: Ramp Detailed Data Table */}
-      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-        <div className="p-6 flex justify-between items-center border-b border-slate-100 bg-slate-50/30">
-          <h3 className="font-black text-lg tracking-tight text-slate-800">匝道詳細資料 (Ramp Detailed Data)</h3>
+      {/* Section 3: Ramp Detailed Data Table */}
+      <section className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden mb-8">
+        <div className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-50 bg-slate-50/30">
+          <div className="flex flex-col gap-1">
+            <h3 className="font-black text-xl tracking-tight text-slate-800">匝道詳細資料</h3>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ramp Detailed Structure</span>
+          </div>
           <div className="flex items-center gap-3">
             <button 
               onClick={() => onNavigateToEditDetails(undefined, selectedHighway, selectedInterchange)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#00488d] text-white rounded-xl text-xs font-bold hover:bg-[#005fb8] transition-all shadow-sm"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-xs font-black hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
             >
-              <Plus className="w-3.5 h-3.5" /> 新增資料
+              <Plus size={16} /> 新增資料
             </button>
             <button 
               onClick={() => exportComponentAsImage('ramp-details-export', `${selectedHighway}_${selectedInterchange}_匝道詳細資料`)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm"
+              className="hidden sm:flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95"
             >
-              <Download className="w-3.5 h-3.5" /> 匯出報表
+              <Download size={16} /> 匯出報表
             </button>
           </div>
         </div>
         <div id="ramp-details-export" className="bg-white">
-          <div className="p-4 border-b border-slate-100 flex items-center gap-3">
-             <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <div className="p-6 border-b border-slate-50 flex items-center gap-4">
+             <div className="relative flex-1 max-w-sm group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                 <input 
                   type="text"
                   placeholder="搜尋匝道編碼或名稱..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#005fb8]/20 outline-none transition-all"
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white outline-none transition-all"
                 />
              </div>
-             {searchTerm && (
-               <button 
-                 onClick={() => setSearchTerm('')}
-                 className="text-[10px] font-bold text-slate-400 hover:text-slate-600"
-               >
-                 清除過濾
-               </button>
-             )}
           </div>
-          <div className="overflow-auto max-h-[700px] customize-scrollbar shadow-inner rounded-xl border border-slate-100">
-          <table className="w-full text-left border-separate border-spacing-0">
-            <thead className="sticky top-0 z-20">
-              <tr className="bg-slate-50/90 backdrop-blur-sm">
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝道編碼</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝道名稱</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝環道名稱</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝道長度 (m)</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">備註</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center border-b border-slate-200">操作 / 排序</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {displayRamps.map((group, index) => {
+          <div className="overflow-hidden shadow-inner">
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left border-separate border-spacing-0">
+                <thead>
+                  <tr className="bg-slate-50/90 backdrop-blur-sm">
+                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝道編碼</th>
+                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝道名稱</th>
+                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝環道名稱</th>
+                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">長度 (m)</th>
+                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">備註</th>
+                    <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center border-b border-slate-200">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {displayRamps.map((group, index) => {
+                    const ramp = group.segments[0];
+                    if (!ramp) return null;
+                    return (
+                      <tr key={ramp.id} className="hover:bg-blue-50/30 transition-colors group">
+                        <td className="px-6 py-5">
+                          <span className="font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100">
+                            {ramp.rampId}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5 font-bold text-slate-700">{ramp.rampName}</td>
+                        <td className="px-6 py-5 font-bold text-slate-600">{ramp.rampNo}</td>
+                        <td className="px-6 py-5 font-mono font-bold text-slate-800">{ramp.length}</td>
+                        <td className="px-6 py-5 text-xs font-medium text-slate-500 italic max-w-[200px] truncate">
+                          {ramp.notes || '-'}
+                        </td>
+                        <td className="px-6 py-5 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button 
+                              onClick={() => onNavigateToEditDetails(ramp.id)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-xl transition-all active:scale-90"
+                              title="編輯"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setDeletingRampId(ramp.rampId);
+                                setShowDeleteConfirm(true);
+                              }}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-90"
+                              title="刪除"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 bg-slate-50/50">
+              {displayRamps.map((group) => {
                 const ramp = group.segments[0];
                 if (!ramp) return null;
                 return (
-                  <tr key={ramp.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="px-6 py-5">
-                      <span className="font-black text-[#00488d]">
-                        {ramp.rampId}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="font-bold text-slate-700">{ramp.rampName}</span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="font-bold text-slate-600">{ramp.rampNo}</span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="font-mono font-bold text-slate-800">{ramp.length}</span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="text-xs font-medium text-slate-500 italic">
-                        {ramp.notes || '無備註'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        <div className="flex flex-col gap-1 mr-2 border-r border-slate-100 pr-3">
-                          <button 
-                            disabled={index === 0 || !!searchTerm}
-                            onClick={() => {
-                              if (onUpdateRampOrder) {
-                                const newOrder = displayRamps.map(g => g.groupId);
-                                [newOrder[index-1], newOrder[index]] = [newOrder[index], newOrder[index-1]];
-                                onUpdateRampOrder(newOrder);
-                              }
-                            }}
-                            className={cn(
-                              "p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors"
-                            )}
-                          >
-                            <ArrowUp className="w-3 h-3 text-slate-400" />
-                          </button>
-                          <button 
-                            disabled={index === displayRamps.length - 1 || !!searchTerm}
-                            onClick={() => {
-                              if (onUpdateRampOrder) {
-                                const newOrder = displayRamps.map(g => g.groupId);
-                                [newOrder[index+1], newOrder[index]] = [newOrder[index], newOrder[index+1]];
-                                onUpdateRampOrder(newOrder);
-                              }
-                            }}
-                            className={cn(
-                              "p-1 hover:bg-slate-100 rounded disabled:opacity-20 transition-colors"
-                            )}
-                          >
-                            <ArrowDown className="w-3 h-3 text-slate-400" />
-                          </button>
-                        </div>
+                  <div key={ramp.id} className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col gap-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{ramp.rampId}</span>
+                        <h4 className="font-black text-lg text-slate-800">{ramp.rampName}</h4>
+                      </div>
+                      <div className="flex items-center gap-1">
                         <button 
                           onClick={() => onNavigateToEditDetails(ramp.id)}
-                          className="text-[#005fb8] font-black text-xs hover:underline"
+                          className="p-3 bg-blue-50 text-blue-600 rounded-2xl active:scale-90 transition-all"
                         >
-                          修改
+                          <Edit2 size={18} />
                         </button>
                         <button 
                           onClick={() => {
                             setDeletingRampId(ramp.rampId);
                             setShowDeleteConfirm(true);
                           }}
-                          className="text-red-600 font-black text-xs hover:underline"
+                          className="p-3 bg-red-50 text-red-500 rounded-2xl active:scale-90 transition-all"
                         >
-                          刪除
+                          <Trash2 size={18} />
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-50">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">匝環道</span>
+                        <span className="font-bold text-slate-700">{ramp.rampNo}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">總長度</span>
+                        <span className="font-mono font-black text-slate-900">{ramp.length}m</span>
+                      </div>
+                    </div>
+
+                    {ramp.notes && (
+                      <div className="bg-slate-50 p-3 rounded-2xl text-[11px] font-medium text-slate-500 italic">
+                        {ramp.notes}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
           </div>
+        </div>
+      </section>
         </div>
       </section>
 

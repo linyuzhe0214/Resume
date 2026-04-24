@@ -241,46 +241,55 @@ export default function MainlineHistory({
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[#f7f9fc] relative pb-24">
+    <div className="flex flex-col h-[100dvh] bg-slate-50 relative pb-24 overflow-hidden">
       {/* Top Navigation Shell */}
-      <header className="bg-[#f7f9fc] z-50 w-full pt-4 px-6 flex flex-col border-b border-slate-200 shrink-0">
-        <div className="flex items-center justify-between pb-4">
+      <header className="bg-white/80 backdrop-blur-md z-50 w-full pt-4 px-4 sm:px-6 flex flex-col border-b border-slate-200 shrink-0 shadow-sm">
+        <div className="flex items-center justify-between pb-4 gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 cursor-pointer">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#005FB8]"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/20">
+              <Route className="w-5 h-5 text-white" />
             </div>
-            <h1 className="font-bold text-xl tracking-tight text-[#191c1e]">{title}</h1>
+            <h1 className="font-black text-lg sm:text-xl tracking-tight text-slate-900 leading-none">{title}</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="hidden sm:flex items-center gap-2">
+              <button 
+                onClick={() => setIsLaneSettingsOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700 active:scale-95"
+              >
+                <Settings className="w-3.5 h-3.5" /> 車道編輯
+              </button>
+              <button 
+                onClick={() => exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`)}
+                className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700 active:scale-95"
+              >
+                <Download className="w-3.5 h-3.5" /> 匯出
+              </button>
+            </div>
+            
             <button 
               onClick={() => setIsLaneSettingsOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700"
+              className="sm:hidden p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 shadow-sm active:scale-95"
             >
-              <Settings className="w-3.5 h-3.5" /> 車道編輯
+              <Settings size={20} />
             </button>
-            <button 
-              onClick={() => exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700"
-            >
-              <Download className="w-3.5 h-3.5" /> 匯出圖表
-            </button>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 cursor-pointer"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center cursor-pointer">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center cursor-pointer hover:bg-blue-100 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             </div>
           </div>
         </div>
         {/* Highway Selection Tabs */}
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-4">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
           {highways.map(h => (
             <button 
               key={h.name}
               onClick={() => onActiveHighwayChange(h.name)}
               className={cn(
-                "whitespace-nowrap px-4 py-2 rounded-xl font-medium transition-all duration-200 ease-in-out",
+                "whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-black transition-all duration-200",
                 activeHighway === h.name 
-                  ? "text-[#005FB8] border-b-2 border-[#005FB8] font-bold bg-[#005FB8]/5" 
-                  : "text-[#48626e] hover:bg-[#eceef1]"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               )}
             >
               {h.label}
@@ -289,15 +298,15 @@ export default function MainlineHistory({
         </div>
 
         {/* Global Settings / Add Lane Section */}
-        <div className="flex items-center gap-3 py-3 border-t border-slate-100 mt-1">
-          <div className="flex items-center gap-2 bg-blue-50/50 px-3 py-1.5 rounded-lg border border-blue-100">
-            <Plus className="w-3.5 h-3.5 text-[#005FB8]" />
+        <div className="hidden sm:flex items-center gap-3 py-3 border-t border-slate-100 mt-1">
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+            <Plus size={16} className="text-slate-400" />
             <input 
               type="text" 
-              placeholder="新增車道名稱 (如: 第六車道)" 
+              placeholder="新增車道名稱..." 
               value={newLaneName}
               onChange={(e) => setNewLaneName(e.target.value)}
-              className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 w-40"
+              className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 w-32 lg:w-48"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && newLaneName.trim() && onAddLane) {
                   onAddLane(newLaneName.trim());
@@ -305,22 +314,11 @@ export default function MainlineHistory({
                 }
               }}
             />
-            <button 
-              onClick={() => {
-                if (newLaneName && onAddLane) {
-                  onAddLane(newLaneName);
-                  setNewLaneName('');
-                }
-              }}
-              className="text-[10px] font-black text-[#005FB8] hover:underline"
-            >
-              新增
-            </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
               {laneOptions && laneOptions.filter(l => !isDefaultLane(l)).map(l => (
-                <span key={l} className="px-2 py-0.5 bg-slate-100 text-[#1e293b] rounded text-[10px] font-bold border border-slate-200">
+                <span key={l} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-black border border-blue-100 flex-shrink-0">
                   {l}
                 </span>
               ))}
@@ -330,27 +328,29 @@ export default function MainlineHistory({
       </header>
 
 
-      <div id="mainline-export-container" className="flex-1 flex flex-col bg-[#f7f9fc] overflow-hidden pt-4">
+      <div id="mainline-export-container" className="flex-1 flex flex-col bg-slate-50 overflow-hidden pt-4">
         {/* Legend Section */}
-      <section className="mx-4 mb-4 bg-white rounded-xl p-4 shadow-sm border border-slate-200 shrink-0">
-        <h2 className="font-bold text-xs tracking-wider text-slate-500 uppercase mb-3 flex items-center gap-2">
-          <span className="w-1.5 h-4 bg-[#00488d] rounded-full"></span>
-          整修工法圖例 LEGEND
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <section className="mx-4 sm:mx-6 mb-4 bg-white rounded-3xl p-5 shadow-sm border border-slate-200 shrink-0">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-black text-xs tracking-[0.2em] text-slate-400 uppercase flex items-center gap-2">
+            <div className="w-1.5 h-4 bg-blue-600 rounded-full"></div>
+            整修工法圖例 LEGEND
+          </h2>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
           {legendItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={i} className="flex items-center gap-2.5 group cursor-default">
               <div 
-                className="w-6 h-4 border border-black/10 rounded-sm"
+                className="w-5 h-5 rounded-lg border border-black/5 shadow-sm group-hover:scale-110 transition-transform"
                 style={{ backgroundColor: item.color }}
               ></div>
-              <span className="text-[10px] font-medium text-slate-600 leading-tight">{item.label}</span>
+              <span className="text-[10px] font-bold text-slate-600 leading-tight truncate">{item.label}</span>
             </div>
           ))}
           {legendItems.length === 0 && (
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-4 bg-[#e7e6e6] border border-black/10 rounded-sm"></div>
-              <span className="text-[10px] font-medium text-slate-600 leading-tight">其他/舊有</span>
+            <div className="flex items-center gap-2.5">
+              <div className="w-5 h-5 bg-slate-100 rounded-lg border border-black/5"></div>
+              <span className="text-[10px] font-bold text-slate-400 leading-tight">目前無資料</span>
             </div>
           )}
         </div>
@@ -502,21 +502,21 @@ export default function MainlineHistory({
       </div>
 
       {/* Float Action Button */}
-      <div className="fixed bottom-24 right-6 flex flex-col gap-3 z-50">
+      <div className="fixed bottom-28 right-6 flex flex-col gap-4 z-50">
         {onDeleteAll && segments.length > 0 && (
           <button 
             onClick={onDeleteAll}
-            className="flex items-center gap-2 px-4 py-3 bg-red-500 text-white rounded-full shadow-lg active:scale-95 transition-all hover:bg-red-600 font-bold text-sm"
+            className="flex items-center gap-2 px-5 py-3.5 bg-red-500 text-white rounded-2xl shadow-xl shadow-red-500/20 active:scale-95 transition-all hover:bg-red-600 font-black text-sm group"
           >
-            <Trash2 className="w-5 h-5" />
-            一鍵刪除
+            <Trash2 className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+            <span className="hidden sm:inline">一鍵刪除</span>
           </button>
         )}
         <button 
           onClick={() => onNavigateToEdit()}
-          className="w-14 h-14 bg-[#00488d] text-white rounded-full shadow-lg flex items-center justify-center self-end active:scale-95 transition-all hover:bg-[#003d7a]"
+          className="w-16 h-16 bg-blue-600 text-white rounded-2xl shadow-xl shadow-blue-600/30 flex items-center justify-center self-end active:scale-95 transition-all hover:bg-blue-700 hover:rotate-90"
         >
-          <Plus className="w-6 h-6" />
+          <Plus className="w-8 h-8" />
         </button>
       </div>
       </div>

@@ -120,34 +120,23 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
   return (
     <div className="min-h-screen bg-[#f7f9fc] text-[#191c1e] pb-32">
       {/* TopAppBar */}
-      <header className="bg-white/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm flex items-center justify-between px-6 h-16 w-full">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 transition-colors active:scale-95 duration-150">
-            <ArrowLeft className="w-6 h-6 text-[#005FB8]" />
+      <header className="bg-white/90 backdrop-blur-md sticky top-0 z-50 shadow-sm border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 h-16 w-full">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="flex items-center justify-center w-10 h-10 rounded-2xl hover:bg-slate-100 transition-all active:scale-90">
+            <ArrowLeft className="w-5 h-5 text-slate-600" />
           </button>
-          <h1 className="font-bold text-xl tracking-tight">{segment ? '編輯路段' : '新增路段'}</h1>
+          <div className="flex flex-col">
+            <h1 className="font-black text-lg tracking-tight leading-none text-slate-900">
+              {segment ? '編輯路段' : '新增路段'}
+            </h1>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">MAINLINE EDIT</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          {segment && !isPlanning && onMoveToPlanning && (
-            <button 
-              onClick={() => onMoveToPlanning(formData)} 
-              className="text-[#005FB8] bg-[#005FB8]/10 px-3 py-1.5 rounded-full text-xs font-bold active:scale-95 duration-150 hover:bg-[#005FB8]/20"
-            >
-              移至整修規劃
-            </button>
-          )}
-          {segment && onCopy && (
-            <button 
-              onClick={onCopy} 
-              className="text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full text-xs font-bold active:scale-95 duration-150 hover:bg-emerald-100"
-            >
-              複製新增
-            </button>
-          )}
           {segment && onDelete && (
             <button 
               onClick={() => setShowDeleteConfirm(true)} 
-              className="text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors active:scale-95 duration-150"
+              className="w-10 h-10 flex items-center justify-center rounded-2xl text-red-500 hover:bg-red-50 transition-all active:scale-90"
             >
               <Trash2 className="w-5 h-5" />
             </button>
@@ -155,7 +144,12 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
           <button 
             onClick={handleSave} 
             disabled={!!validationError}
-            className={cn("px-4 py-1.5 rounded-full text-sm font-bold shadow-sm transition-all duration-150", validationError ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-[#00488d] text-white active:scale-95 hover:bg-[#003d7a]")}
+            className={cn(
+              "px-6 py-2.5 rounded-2xl text-sm font-black shadow-lg transition-all active:scale-95",
+              validationError 
+                ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" 
+                : "bg-blue-600 text-white shadow-blue-600/20 hover:bg-blue-700"
+            )}
           >
             儲存
           </button>
@@ -165,15 +159,28 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
       <main className="max-w-md mx-auto px-4 py-6 space-y-6">
         {/* Basic Path Info Section */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 px-1">
-            <span className="w-1.5 h-6 bg-[#00488d] rounded-full"></span>
-            <h2 className="font-extrabold text-lg tracking-tight">基本路徑資訊</h2>
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+              <h2 className="font-black text-lg tracking-tight text-slate-800">基本路徑資訊</h2>
+            </div>
+            <div className="flex gap-2">
+              {segment && onCopy && (
+                <button 
+                  onClick={onCopy} 
+                  className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors active:scale-90"
+                  title="複製新增"
+                >
+                  <Copy size={18} />
+                </button>
+              )}
+            </div>
           </div>
-          <div className="bg-white rounded-xl p-5 shadow-sm space-y-5 border border-slate-100">
+          <div className="bg-white rounded-3xl p-6 shadow-sm space-y-6 border border-slate-100">
             {/* Highway Select */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-[0.05rem] text-slate-500 ml-1">Highway 國道</label>
-              <div className="relative">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Highway 國道</label>
+              <div className="relative group">
                 <select 
                   value={formData.highway}
                   onChange={(e) => {
@@ -186,51 +193,52 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
                     }
                     handleChange({...formData, highway: newHighway, direction: newDir as any});
                   }}
-                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 focus:ring-2 focus:ring-[#005fb8]/20 transition-all font-medium outline-none"
+                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold outline-none group-hover:bg-slate-100/50"
                 >
                   <option value="國道1號">國道1號</option>
                   <option value="國道3號">國道3號</option>
                   <option value="國道4號">國道4號</option>
                 </select>
-                <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <ChevronDown className="w-5 h-5 absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
             </div>
-            {/* Property Select */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-[0.05rem] text-slate-500 ml-1">Property 屬性</label>
-              <div className="relative">
-                <select 
-                  value={formData.property}
-                  onChange={(e) => handleChange({...formData, property: e.target.value})}
-                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 focus:ring-2 focus:ring-[#005fb8]/20 transition-all font-medium outline-none"
-                >
-                  <option value="路堤">路堤</option>
-                  <option value="橋梁">橋梁</option>
-                  <option value="隧道">隧道</option>
-                </select>
-                <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            {/* Property & Lane Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Property 屬性</label>
+                <div className="relative group">
+                  <select 
+                    value={formData.property}
+                    onChange={(e) => handleChange({...formData, property: e.target.value})}
+                    className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold outline-none"
+                  >
+                    <option value="路堤">路堤</option>
+                    <option value="橋梁">橋梁</option>
+                    <option value="隧道">隧道</option>
+                  </select>
+                  <ChevronDown className="w-5 h-5 absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
               </div>
-            </div>
-            {/* Lane Category Select */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-[0.05rem] text-slate-500 ml-1">Lane Category 車道別</label>
-              <div className="relative">
-                <select 
-                  value={formData.lanes[0] || ''}
-                  onChange={(e) => handleChange({...formData, lanes: [e.target.value]})}
-                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-800 focus:ring-2 focus:ring-[#005fb8]/20 transition-all font-medium outline-none"
-                >
-                  <option value="" disabled>選擇車道名稱</option>
-                  {(() => {
-                    const isSouthSide = ['Southbound', 'Westbound'].includes(formData.direction);
-                    const displayLanes = isSouthSide ? [...laneOptions].reverse() : laneOptions;
-                    
-                    return displayLanes.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ));
-                  })()}
-                </select>
-                <ChevronDown className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Lane 車道</label>
+                <div className="relative group">
+                  <select 
+                    value={formData.lanes[0] || ''}
+                    onChange={(e) => handleChange({...formData, lanes: [e.target.value]})}
+                    className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-bold outline-none"
+                  >
+                    <option value="" disabled>選擇車道</option>
+                    {(() => {
+                      const isSouthSide = ['Southbound', 'Westbound'].includes(formData.direction);
+                      const displayLanes = isSouthSide ? [...laneOptions].reverse() : laneOptions;
+                      
+                      return displayLanes.map(option => (
+                        <option key={option} value={option}>{option}</option>
+                      ));
+                    })()}
+                  </select>
+                  <ChevronDown className="w-5 h-5 absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
               </div>
             </div>
           </div>
@@ -361,49 +369,56 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
             onClick={() => {
               onNavigateToPavement();
             }}
-            className="bg-white rounded-2xl p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-slate-100 space-y-6 cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 space-y-8 cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
           >
             {/* Visual Layering representation */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               {formData.pavementLayers.length > 0 ? (
                 formData.pavementLayers.map((layer, index) => {
-                  const colors = ['#8ba1b5', '#5c7089', '#4a5a6e', '#374354', '#2c3643'];
-                  const color = colors[index % colors.length];
+                  const colors = ['bg-slate-400', 'bg-slate-500', 'bg-slate-600', 'bg-slate-700', 'bg-slate-800'];
+                  const colorClass = colors[index % colors.length];
                   const typeAbbr = layer.type.split('(')[0].trim();
-                  const displayType = typeAbbr;
 
                   return (
                     <div 
                       key={layer.id || index}
-                      className="relative h-14 w-full flex items-center justify-center px-4 rounded-xl shadow-sm transition-all"
-                      style={{ backgroundColor: color }}
+                      className={cn(
+                        "relative h-16 w-full flex items-center justify-between px-6 rounded-2xl shadow-sm border border-white/10 overflow-hidden",
+                        colorClass
+                      )}
                     >
-                      <span className="font-bold text-base tracking-wider text-white">
-                        {layer.thickness.toFixed(1)}cm {displayType}
-                      </span>
-                      
-                      <div className="absolute right-3 bg-white/20 backdrop-blur-sm rounded px-2 py-1 flex items-center">
-                        <span className="text-xs font-medium text-white">
-                          施工: {layer.month}
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-white/50 uppercase tracking-widest leading-none mb-1">LAYER {index + 1}</span>
+                        <span className="font-black text-lg text-white leading-none">
+                          {typeAbbr}
                         </span>
+                      </div>
+                      
+                      <div className="flex items-baseline gap-1 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
+                        <span className="text-xl font-black text-white">{layer.thickness.toFixed(1)}</span>
+                        <span className="text-[10px] font-bold text-white/70">cm</span>
                       </div>
                     </div>
                   );
                 })
               ) : (
-                <div className="h-28 w-full flex items-center justify-center border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-400 font-bold">
-                  尚未設定鋪面層
+                <div className="h-32 w-full flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl text-slate-400 gap-2">
+                  <Edit2 size={24} />
+                  <span className="text-sm font-black uppercase tracking-widest">尚未設定鋪面層</span>
                 </div>
               )}
             </div>
             
-            <div className="pt-4 flex items-end justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">TOTAL THICKNESS 總厚度</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black text-[#00488d] tracking-tighter">
+            <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">TOTAL THICKNESS</span>
+                <span className="text-xs font-bold text-slate-600">總設計厚度</span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-5xl font-black text-blue-600 tracking-tighter">
                   {totalThickness.toFixed(1)} 
                 </span>
-                <span className="text-lg font-bold text-[#00488d]">cm</span>
+                <span className="text-sm font-black text-blue-400 uppercase">cm</span>
               </div>
             </div>
           </div>
