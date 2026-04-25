@@ -246,7 +246,7 @@ export default function RampHistory(props: RampHistoryProps) {
               ['ramp-details-export', 'ramp-export-container'],
               `${selectedHighway}_${selectedInterchange}_匝道資料`
             )}
-            className="flex items-center justify-center gap-2 px-5 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-2xl text-sm font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95 col-span-2 lg:col-span-1"
+            className="hidden sm:flex items-center justify-center gap-2 px-5 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-2xl text-sm font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95 col-span-2 lg:col-span-1"
             title="匯出（含施工履歷與詳細資料）"
           >
             <Download size={18} /> 匯出資料

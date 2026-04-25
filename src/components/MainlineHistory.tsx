@@ -40,6 +40,7 @@ export default function MainlineHistory({
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportStart, setExportStart] = useState('');
   const [exportEnd, setExportEnd] = useState('');
+  const [activeExportRange, setActiveExportRange] = useState<{ start: number, end: number } | null>(null);
   const segmentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -73,7 +74,9 @@ export default function MainlineHistory({
   ];
 
   const currentHighway = highways.find(h => h.name === activeHighway) || highways[0];
-  const baseMileage = currentHighway.start;
+  const displayBaseMileage = activeExportRange ? activeExportRange.start : currentHighway.start;
+  const displayEndMileage = activeExportRange ? activeExportRange.end : currentHighway.end;
+  const baseMileage = displayBaseMileage;
 
   // 解析 「Xk+YYY」格式的里程
   const parseMileage = (str: string) => {
@@ -85,30 +88,31 @@ export default function MainlineHistory({
   };
 
   // 匯出指定里程範圍
-  const handleExportWithRange = () => {
-    const start = exportStart ? parseMileage(exportStart) : null;
-    const end = exportEnd ? parseMileage(exportEnd) : null;
+  const handleExportWithRange = async () => {
+    let start = exportStart ? parseMileage(exportStart) : currentHighway.start;
+    let end = exportEnd ? parseMileage(exportEnd) : currentHighway.end;
+    
+    // 防呆機制
+    if (start === null || isNaN(start)) start = currentHighway.start;
+    if (end === null || isNaN(end)) end = currentHighway.end;
+    
+    if (start < currentHighway.start) start = currentHighway.start;
+    if (end > currentHighway.end) end = currentHighway.end;
+    
+    if (start >= end) {
+      alert("匯出錯誤：起點里程必須小於終點里程！");
+      return;
+    }
+
     setShowExportModal(false);
 
-    if (start !== null || end !== null) {
-      // 先暫時過濾 DOM 範圍外的 segment（用 visibility 控制，不改 layout）
-      const container = document.getElementById('mainline-export-container');
-      if (!container) return;
-      const allSegs = container.querySelectorAll('[data-seg-start][data-seg-end]') as NodeListOf<HTMLElement>;
-      const hidden: HTMLElement[] = [];
-      allSegs.forEach(el => {
-        const segStart = parseInt(el.dataset.segStart || '0');
-        const segEnd = parseInt(el.dataset.segEnd || '0');
-        const inRange =
-          (start === null || segEnd > start) &&
-          (end === null || segStart < end);
-        if (!inRange) {
-          el.style.visibility = 'hidden';
-          hidden.push(el);
-        }
-      });
-      exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}${start !== null || end !== null ? '_range' : ''}`);
-      setTimeout(() => hidden.forEach(el => { el.style.visibility = ''; }), 200);
+    if (start !== currentHighway.start || end !== currentHighway.end) {
+      setActiveExportRange({ start, end });
+      // 等待 React re-render 網格
+      setTimeout(async () => {
+        await exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}_range`);
+        setActiveExportRange(null); // 恢復原狀
+      }, 500);
     } else {
       exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`);
     }
@@ -130,7 +134,7 @@ export default function MainlineHistory({
     }
     return intervals;
   };
-  const gridIntervals = generateGridIntervals(currentHighway.start, currentHighway.end);
+  const gridIntervals = generateGridIntervals(displayBaseMileage, displayEndMileage);
 
   const filteredSegments = segments.filter(s => s.highway === activeHighway);
   const southSegments = filteredSegments.filter(s => {
@@ -200,9 +204,14 @@ export default function MainlineHistory({
 
   const renderSegment = (segment: Segment, lane: string) => {
     if (!segment.lanes.includes(lane)) return null;
+    
+    // 如果這段 segment 完全不在目前的檢視範圍內，不渲染
+    if (segment.endMileage <= displayBaseMileage || segment.startMileage >= displayEndMileage) return null;
 
-    const top = (segment.startMileage - baseMileage) * SCALE;
-    const height = (segment.endMileage - segment.startMileage) * SCALE;
+    const top = (Math.max(segment.startMileage, displayBaseMileage) - displayBaseMileage) * SCALE;
+    const height = (Math.min(segment.endMileage, displayEndMileage) - Math.max(segment.startMileage, displayBaseMileage)) * SCALE;
+
+    if (height <= 0) return null;
 
     const targetMonth = segment.constructionYear + segment.constructionMonth;
     const info = getPavementDisplayInfo(segment.pavementLayers, targetMonth);
@@ -307,7 +316,7 @@ export default function MainlineHistory({
               </button>
               <button 
                 onClick={() => { setExportStart(''); setExportEnd(''); setShowExportModal(true); }}
-                className="flex items-center gap-2 p-2.5 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700 active:scale-95"
+                className="hidden sm:flex items-center gap-2 p-2.5 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700 active:scale-95"
                 title="匯出"
               >
                 <Download className="w-5 h-5 sm:w-3.5 sm:h-3.5" /> 
