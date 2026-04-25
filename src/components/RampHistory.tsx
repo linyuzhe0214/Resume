@@ -270,8 +270,7 @@ export default function RampHistory(props: RampHistoryProps) {
             </span>
             <iframe 
               key={`${selectedHighway}-${selectedInterchange}`}
-              // @ts-ignore
-              src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf#view=FitH`} 
+              src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} 
               className="w-full h-full absolute inset-0 z-10 bg-white border-0" 
               title={`${selectedHighway}-${selectedInterchange} 匝道路網圖`}
             >
