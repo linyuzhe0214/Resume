@@ -239,6 +239,18 @@ export default function RampHistory(props: RampHistoryProps) {
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
             </div>
           </div>
+
+          {/* 匯出按鈕移到頂部 Header */}
+          <button 
+            onClick={() => exportMultipleAsImage(
+              ['ramp-details-export', 'ramp-export-container'],
+              `${selectedHighway}_${selectedInterchange}_匝道資料`
+            )}
+            className="flex items-center justify-center gap-2 px-5 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-2xl text-sm font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95 col-span-2 lg:col-span-1"
+            title="匯出（含施工履歷與詳細資料）"
+          >
+            <Download size={18} /> 匯出資料
+          </button>
         </div>
       </header>
 
@@ -428,16 +440,6 @@ export default function RampHistory(props: RampHistoryProps) {
           </div>
           
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => exportMultipleAsImage(
-                ['ramp-details-export', 'ramp-export-container'],
-                `${selectedHighway}_${selectedInterchange}_匝道資料`
-              )}
-              className="flex items-center gap-2 p-2.5 sm:px-4 sm:py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95"
-              title="匯出圖表（含施工履歷與詳細資料）"
-            >
-              <Download className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">匯出</span>
-            </button>
             <button 
               onClick={() => onNavigateToEditHistory(undefined)}
               className="flex items-center gap-2 px-4 py-2 bg-[#00488d] text-white rounded-xl text-xs font-black hover:bg-[#005fb8] transition-all shadow-sm"
