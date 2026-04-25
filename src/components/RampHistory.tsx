@@ -255,14 +255,14 @@ export default function RampHistory(props: RampHistoryProps) {
       </header>
 
       {/* Section 2: Road Network Map */}
-      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 sticky top-4 z-40 shadow-2xl">
         <div className="p-6 border-b border-slate-100 bg-slate-50/30">
           <h3 className="font-black text-lg tracking-tight text-slate-800 flex items-center gap-2">
             <MapPin className="w-5 h-5 text-[#00488d]" /> 匝道路網圖
           </h3>
         </div>
         <div className="p-4 bg-slate-50 flex justify-center items-center align-middle">
-          <div className="w-full max-w-4xl aspect-[16/9] bg-slate-100/50 rounded-xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center shadow-inner">
+          <div className="w-full max-w-4xl aspect-[16/9] lg:aspect-[21/9] bg-slate-100/50 rounded-xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center shadow-inner">
             <span className="text-slate-400 font-bold mb-2 flex flex-col items-center gap-2">
               <MapPin className="w-8 h-8 opacity-50" />
               無對應交流道之 PDF
@@ -271,7 +271,7 @@ export default function RampHistory(props: RampHistoryProps) {
             <iframe 
               key={`${selectedHighway}-${selectedInterchange}`}
               // @ts-ignore
-              src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf`} 
+              src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf#view=FitH`} 
               className="w-full h-full absolute inset-0 z-10 bg-white border-0" 
               title={`${selectedHighway}-${selectedInterchange} 匝道路網圖`}
             >
