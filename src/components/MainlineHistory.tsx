@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Plus, Trash2, Download, Settings, X, AlertTriangle, Route } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Plus, Trash2, Download, Settings, X, AlertTriangle, Route, Filter } from 'lucide-react';
 import { cn } from '../App';
 import { Segment } from '../types';
 import { getPavementColor, getPavementDisplayInfo } from '../utils/pavement';
@@ -34,9 +34,12 @@ export default function MainlineHistory({
   onHighlightClear,
   title = '路面整修歷史' 
 }: MainlineHistoryProps) {
-  const [newLaneName, setNewLaneName] = React.useState('');
-  const [isLaneSettingsOpen, setIsLaneSettingsOpen] = React.useState(false);
-  const [flashingId, setFlashingId] = React.useState<string | null>(null);
+  const [newLaneName, setNewLaneName] = useState('');
+  const [isLaneSettingsOpen, setIsLaneSettingsOpen] = useState(false);
+  const [flashingId, setFlashingId] = useState<string | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportStart, setExportStart] = useState('');
+  const [exportEnd, setExportEnd] = useState('');
   const segmentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +74,45 @@ export default function MainlineHistory({
 
   const currentHighway = highways.find(h => h.name === activeHighway) || highways[0];
   const baseMileage = currentHighway.start;
+
+  // 解析 「Xk+YYY」格式的里程
+  const parseMileage = (str: string) => {
+    const s = str.trim().toLowerCase();
+    const kMatch = s.match(/^(\d+)k\+(\d+)$/);
+    if (kMatch) return parseInt(kMatch[1]) * 1000 + parseInt(kMatch[2]);
+    const num = parseInt(s);
+    return isNaN(num) ? null : num;
+  };
+
+  // 匯出指定里程範圍
+  const handleExportWithRange = () => {
+    const start = exportStart ? parseMileage(exportStart) : null;
+    const end = exportEnd ? parseMileage(exportEnd) : null;
+    setShowExportModal(false);
+
+    if (start !== null || end !== null) {
+      // 先暫時過濾 DOM 範圍外的 segment（用 visibility 控制，不改 layout）
+      const container = document.getElementById('mainline-export-container');
+      if (!container) return;
+      const allSegs = container.querySelectorAll('[data-seg-start][data-seg-end]') as NodeListOf<HTMLElement>;
+      const hidden: HTMLElement[] = [];
+      allSegs.forEach(el => {
+        const segStart = parseInt(el.dataset.segStart || '0');
+        const segEnd = parseInt(el.dataset.segEnd || '0');
+        const inRange =
+          (start === null || segEnd > start) &&
+          (end === null || segStart < end);
+        if (!inRange) {
+          el.style.visibility = 'hidden';
+          hidden.push(el);
+        }
+      });
+      exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}${start !== null || end !== null ? '_range' : ''}`);
+      setTimeout(() => hidden.forEach(el => { el.style.visibility = ''; }), 200);
+    } else {
+      exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`);
+    }
+  };
 
   const generateGridIntervals = (startM: number, endM: number) => {
     const intervals = [];
@@ -195,6 +237,8 @@ export default function MainlineHistory({
           height: `${height}px`,
           backgroundColor: bgColor,
         }}
+        data-seg-start={segment.startMileage}
+        data-seg-end={segment.endMileage}
       >
         {/* 頂部起始里程標記 */}
         {height >= 30 && (
@@ -262,7 +306,7 @@ export default function MainlineHistory({
                 <span className="hidden sm:inline">車道編輯</span>
               </button>
               <button 
-                onClick={() => exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`)}
+                onClick={() => { setExportStart(''); setExportEnd(''); setShowExportModal(true); }}
                 className="flex items-center gap-2 p-2.5 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700 active:scale-95"
                 title="匯出"
               >
@@ -638,6 +682,65 @@ export default function MainlineHistory({
                 className="px-6 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-all shadow-md active:scale-95"
               >
                 完成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 匯出範圍 Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-[#005FB8] px-6 py-5 flex items-center justify-between text-white">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-xl">
+                  <Filter className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg leading-tight">匯出里程範圍</h3>
+                  <p className="text-blue-100 text-[10px] font-medium opacity-80 uppercase tracking-wider">Export Mileage Range (Optional)</p>
+                </div>
+              </div>
+              <button onClick={() => setShowExportModal(false)} className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 transition-all active:scale-90">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-500 font-bold">可留空代表不限（匯出全段），格式：<span className="text-blue-600">166k+500</span> 或 <span className="text-blue-600">166500</span></p>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">起點里程</label>
+                  <input
+                    type="text"
+                    placeholder="例：166k+427（留空=起始）"
+                    value={exportStart}
+                    onChange={e => setExportStart(e.target.value)}
+                    className="mt-1 w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">終點里程</label>
+                  <input
+                    type="text"
+                    placeholder="例：192k+000（留空=終點）"
+                    value={exportEnd}
+                    onChange={e => setExportEnd(e.target.value)}
+                    className="mt-1 w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"
+              >取消</button>
+              <button
+                onClick={handleExportWithRange}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-md active:scale-95"
+              >
+                <Download className="w-4 h-4 inline mr-1.5" />匯出圖片
               </button>
             </div>
           </div>

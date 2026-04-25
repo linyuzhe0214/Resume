@@ -5,7 +5,7 @@ import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
 import { HIGHWAY_INTERCHANGE_MAP } from '../constants';
 import { getPavementColor, getPavementDisplayInfo, getColorFromLabel } from '../utils/pavement';
-import { exportComponentAsImage } from '../utils/exportImage';
+import { exportComponentAsImage, exportMultipleAsImage } from '../utils/exportImage';
 
 interface RampHistoryProps {
   rampSegments: RampSegment[];
@@ -289,12 +289,7 @@ export default function RampHistory(props: RampHistoryProps) {
             >
               <Plus size={16} /> 新增資料
             </button>
-            <button 
-              onClick={() => exportComponentAsImage('ramp-details-export', `${selectedHighway}_${selectedInterchange}_匝道詳細資料`)}
-              className="flex items-center gap-2 px-4 py-3 sm:px-6 bg-white border border-slate-200 rounded-2xl text-xs font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95"
-            >
-              <Download size={16} /> <span className="hidden sm:inline">匯出報表</span>
-            </button>
+
           </div>
         </div>
         <div id="ramp-details-export" className="bg-white">
@@ -434,11 +429,14 @@ export default function RampHistory(props: RampHistoryProps) {
           
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => exportComponentAsImage('ramp-export-container', `${selectedHighway}_${selectedInterchange}_匝道履歷`)}
+              onClick={() => exportMultipleAsImage(
+                ['ramp-details-export', 'ramp-export-container'],
+                `${selectedHighway}_${selectedInterchange}_匝道資料`
+              )}
               className="flex items-center gap-2 p-2.5 sm:px-4 sm:py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95"
-              title="匯出圖表"
+              title="匯出圖表（含施工履歷與詳細資料）"
             >
-              <Download className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">匯出圖表</span>
+              <Download className="w-5 h-5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">匯出</span>
             </button>
             <button 
               onClick={() => onNavigateToEditHistory(undefined)}

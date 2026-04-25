@@ -1192,6 +1192,62 @@ export default function App() {
     );
   }
 
+  if (activeTab === 'planning') {
+    return (
+      <div className="min-h-screen bg-[#f7f9fc]">
+        {/* 頂部系統資訊欄 - 與主線履歷一致 */}
+        <header className="flex items-center justify-between px-4 sm:px-6 py-3 bg-[#00488d] shadow-lg z-[60] relative">
+          <div className="flex items-center gap-3">
+            <h1 className="text-base sm:text-lg font-black tracking-tight text-white leading-none">高速公路路巡系統</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-xl font-mono font-black text-white tracking-tighter leading-none">{format(currentTime, 'HH:mm:ss')}</div>
+              <div className="text-[10px] text-blue-200 font-bold tracking-widest opacity-80">{format(currentTime, 'yyyy-MM-dd')}</div>
+            </div>
+          </div>
+        </header>
+        <MainlineHistory 
+          title="路面整修規劃"
+          segments={planningSegments}
+          activeHighway={activeHistoryHighway}
+          onActiveHighwayChange={setActiveHistoryHighway}
+          laneOptions={laneOptions[activeHistoryHighway] || []}
+          onAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
+          onDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
+          onUpdateLaneOrder={(newLanes) => handleUpdateLaneOrder(activeHistoryHighway, newLanes)}
+          onDeleteAll={() => setShowConfirmDeleteAll(true)}
+          onNavigateToEdit={(id) => {
+            setEditingSegmentId(id || null);
+            if (id) {
+              const segment = planningSegments.find(s => s.id === id);
+              setDraftSegment(segment ? { ...segment } : null);
+            } else {
+              setDraftSegment({
+                id: '',
+                highway: '國道1號',
+                property: '路堤',
+                laneCategory: '一般路段',
+                constructionYear: '113',
+                constructionMonth: '08',
+                startMileage: 166427,
+                endMileage: 166527,
+                direction: 'Southbound',
+                lanes: ['第一車道'],
+                pavementLayers: [],
+                prevConstructionYear: '',
+                prevConstructionDepth: 0
+              });
+            }
+            setSubPage('editSegment');
+          }}
+        />
+        {renderOverlays()}
+        {renderBottomNav()}
+      </div>
+    );
+  }
+
   if (activeTab === 'mainline') {
     return (
       <div className="min-h-screen bg-[#f7f9fc]">
@@ -1611,46 +1667,7 @@ export default function App() {
         </>
       )}
 
-      {activeTab === 'planning' && (
-        <main className="flex-grow flex flex-col bg-[#f7f9fc]">
-          <MainlineHistory 
-            title="路面整修規劃"
-            segments={planningSegments}
-            activeHighway={activeHistoryHighway}
-            onActiveHighwayChange={setActiveHistoryHighway}
-            laneOptions={laneOptions[activeHistoryHighway] || []}
-            onAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
-            onDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
-            onUpdateLaneOrder={(newLanes) => handleUpdateLaneOrder(activeHistoryHighway, newLanes)}
-            onDeleteAll={() => setShowConfirmDeleteAll(true)}
-            onNavigateToEdit={(id) => {
 
-              setEditingSegmentId(id || null);
-              if (id) {
-                const segment = planningSegments.find(s => s.id === id);
-                setDraftSegment(segment ? { ...segment } : null);
-              } else {
-                setDraftSegment({
-                  id: '',
-                  highway: '國道1號',
-                  property: '路堤',
-                  laneCategory: '一般路段',
-                  constructionYear: '113',
-                  constructionMonth: '08',
-                  startMileage: 166427,
-                  endMileage: 166527,
-                  direction: 'Southbound',
-                  lanes: ['第一車道'],
-                  pavementLayers: [],
-                  prevConstructionYear: '',
-                  prevConstructionDepth: 0
-                });
-              }
-              setSubPage('editSegment');
-            }}
-          />
-        </main>
-      )}
 
       </div>
       {/* 全域提示元件 */}
