@@ -135,7 +135,8 @@ export default function RampHistory(props: RampHistoryProps) {
       return { color: '#e7e6e6', depth: 0, label: '其他/舊有' };
     }
     
-    const targetMonth = ramp.constructionYear + ramp.constructionMonth;
+    const [y, m] = (ramp.completionTime || '').split('/');
+    const targetMonth = (y && m) ? `${y}${m.padStart(2, '0')}` : (ramp.constructionYear + (ramp.constructionMonth || '').padStart(2, '0'));
     const info = getPavementDisplayInfo(ramp.pavementLayers, targetMonth);
     
     if (info.thickness === 0 && ramp.pavementLayers.length > 0) {
@@ -562,7 +563,7 @@ export default function RampHistory(props: RampHistoryProps) {
                               }}
                             >
                               <span className="drop-shadow-sm truncate px-1 text-[11px] font-black leading-none text-slate-950">
-                                {ramp.constructionYear || ramp.completionTime?.split('/')[0] || ''}
+                                {ramp.completionTime ? ramp.completionTime.split('/')[0] : ramp.constructionYear}
                               </span>
                               <span className="text-[10px] font-black leading-none mt-0.5 text-slate-950">
                                 {segmentData.depth}cm
