@@ -127,7 +127,7 @@ export default function RampHistory(props: RampHistoryProps) {
           segments: []
         });
       }
-      const group = map.get(ramp.rampId)!;
+      const group = map.get(key)!;
       group.segments.push(ramp);
       if (ramp.length > group.length) group.length = ramp.length;
       if (!group.rampName && ramp.rampName) group.rampName = ramp.rampName;
