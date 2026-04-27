@@ -255,14 +255,14 @@ export default function RampHistory(props: RampHistoryProps) {
       </header>
 
       {/* Section 2: Road Network Map */}
-      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 sticky top-4 z-40 shadow-2xl">
-        <div className="p-6 border-b border-slate-100 bg-slate-50/30">
-          <h3 className="font-black text-lg tracking-tight text-slate-800 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-[#00488d]" /> 匝道路網圖
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 sticky top-0 sm:top-4 z-40 shadow-xl">
+        <div className="p-2.5 sm:p-6 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
+          <h3 className="font-black text-sm sm:text-lg tracking-tight text-slate-800 flex items-center gap-2">
+            <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#00488d]" /> 匝道路網圖
           </h3>
         </div>
-        <div className="p-4 bg-slate-50 flex justify-center items-center align-middle">
-          <div className="w-full max-w-4xl aspect-[16/9] lg:aspect-[21/9] bg-slate-100/50 rounded-xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center shadow-inner">
+        <div className="p-1.5 sm:p-4 bg-slate-50 flex justify-center items-center align-middle">
+          <div className="w-full max-w-4xl h-[25vh] sm:h-auto sm:aspect-[16/9] lg:aspect-[21/9] bg-slate-100/50 rounded-xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center shadow-inner">
             <span className="text-slate-400 font-bold mb-2 flex flex-col items-center gap-2">
               <MapPin className="w-8 h-8 opacity-50" />
               無對應交流道之 PDF
