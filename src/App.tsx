@@ -1076,7 +1076,7 @@ export default function App() {
 
   if (activeTab === 'ramp') {
     return (
-      <div className="min-h-screen bg-[#f7f9fc]">
+      <div className="min-h-screen bg-[#f7f9fc] pb-40">
         <RampHistory 
           rampSegments={rampSegments}
           activeHighway={activeRampHighway}
@@ -1184,13 +1184,14 @@ export default function App() {
           }}
         />
         {renderOverlays()}
+        {subPage === 'none' && renderBottomNav()}
       </div>
     );
   }
 
   if (activeTab === 'planning') {
     return (
-      <div className="min-h-screen bg-[#f7f9fc]">
+      <div className="min-h-screen bg-[#f7f9fc] pb-40">
         {/* 頂部系統資訊欄 - 與主線履歷一致 */}
         <header className="flex items-center justify-between px-4 sm:px-6 py-3 bg-[#00488d] shadow-lg z-[60] relative">
           <div className="flex items-center gap-3">
@@ -1239,13 +1240,14 @@ export default function App() {
           }}
         />
         {renderOverlays()}
+        {subPage === 'none' && renderBottomNav()}
       </div>
     );
   }
 
   if (activeTab === 'mainline') {
     return (
-      <div className="min-h-screen bg-[#f7f9fc]">
+      <div className="min-h-screen bg-[#f7f9fc] pb-40">
         <MainlineHistory 
           segments={segments}
           activeHighway={activeHistoryHighway}
@@ -1292,6 +1294,7 @@ export default function App() {
         />
         
         {renderOverlays()}
+        {subPage === 'none' && renderBottomNav()}
       </div>
     );
   }
