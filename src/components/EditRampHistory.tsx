@@ -250,11 +250,11 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                     onChange={(e) => {
                       const newYear = e.target.value;
                       const oldParts = (formData.completionTime || '/').split('/');
-                      const month = oldParts.length > 1 && oldParts[1] ? oldParts[1].padStart(2, '0') : '01';
+                      const month = (oldParts.length > 1 && oldParts[1]) ? oldParts[1].padStart(2, '0') : (formData.constructionMonth || '01').padStart(2, '0');
                       
                       const newCompletionTime = `${newYear}/${month}`;
                       const newCompMonth = `${newYear}${month}`;
-                      const oldCompMonth = formData.completionTime ? formData.completionTime.replace('/', '') : '';
+                      const oldCompMonth = formData.completionTime ? formData.completionTime.replace('/', '') : (formData.constructionYear + (formData.constructionMonth || '').padStart(2, '0'));
                       
                       const updatedLayers = formData.pavementLayers.map(layer => 
                         layer.month === oldCompMonth ? { ...layer, month: newCompMonth } : layer
@@ -284,11 +284,11 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                     onChange={(e) => {
                       const monthStr = e.target.value;
                       const oldParts = (formData.completionTime || '/').split('/');
-                      const year = oldParts[0] || formData.constructionYear || '113';
+                      const year = oldParts[0] || formData.constructionYear || (new Date().getFullYear() - 1911).toString();
                       
                       const newCompletionTime = `${year}/${monthStr}`;
                       const newCompMonth = `${year}${monthStr}`;
-                      const oldCompMonth = formData.completionTime ? formData.completionTime.replace('/', '') : '';
+                      const oldCompMonth = formData.completionTime ? formData.completionTime.replace('/', '') : (formData.constructionYear + (formData.constructionMonth || '').padStart(2, '0'));
                       
                       const updatedLayers = formData.pavementLayers.map(layer => 
                         layer.month === oldCompMonth ? { ...layer, month: newCompMonth } : layer
