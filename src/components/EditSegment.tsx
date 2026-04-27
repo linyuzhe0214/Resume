@@ -119,7 +119,7 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
   const totalThickness = formData.pavementLayers.reduce((sum, layer) => sum + layer.thickness, 0);
 
   return (
-    <div className="h-[100dvh] bg-[#f7f9fc] text-[#191c1e] flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-[#f7f9fc] text-[#191c1e] pb-32">
       {/* TopAppBar */}
       <header className="bg-white/90 backdrop-blur-md sticky top-0 z-50 shadow-sm border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 h-16 w-full">
         <div className="flex items-center gap-3">
@@ -157,8 +157,7 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
-        <main className="max-w-md md:max-w-2xl mx-auto px-4 py-6 space-y-6 md:space-y-8">
+      <main className="max-w-md md:max-w-2xl mx-auto px-4 py-6 space-y-6 md:space-y-8">
         {/* Basic Path Info Section */}
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
@@ -471,7 +470,6 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
           </div>
         </section>
       </main>
-    </div>
 
       {/* Copy Pavement Modal */}
       {showCopyPavementModal && (

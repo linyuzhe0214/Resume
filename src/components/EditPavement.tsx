@@ -34,7 +34,7 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
   const totalThickness = layers.reduce((sum, layer) => sum + layer.thickness, 0);
 
   return (
-    <div className="h-[100dvh] bg-[#f7f9fc] text-[#191c1e] flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-[#f7f9fc] text-[#191c1e] pb-32">
       {/* TopAppBar */}
       <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 h-16 shadow-sm border-b border-slate-200">
         <div className="flex items-center gap-4">
@@ -51,8 +51,7 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
-        <main className="pt-24 px-6 max-w-md md:max-w-2xl mx-auto space-y-6 md:space-y-8">
+      <main className="pt-24 px-6 max-w-md md:max-w-2xl mx-auto space-y-6 md:space-y-8">
         {/* Stats Bento Grid */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col items-start border-l-4 border-[#005fb8]">

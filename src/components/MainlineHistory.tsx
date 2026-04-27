@@ -43,6 +43,45 @@ export default function MainlineHistory({
   const [activeExportRange, setActiveExportRange] = useState<{ start: number, end: number } | null>(null);
   const segmentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const isTableDragging = useRef(false);
+  const tableStartX = useRef(0);
+  const tableScrollLeftStart = useRef(0);
+
+  // 同步捲動邏輯
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target === scrollContainerRef.current && headerScrollRef.current) {
+      headerScrollRef.current.scrollLeft = target.scrollLeft;
+    } else if (target === headerScrollRef.current && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = target.scrollLeft;
+    }
+  };
+
+  const handleTableMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+    isTableDragging.current = true;
+    tableStartX.current = e.pageX - scrollContainerRef.current.offsetLeft;
+    tableScrollLeftStart.current = scrollContainerRef.current.scrollLeft;
+    scrollContainerRef.current.style.cursor = 'grabbing';
+    scrollContainerRef.current.style.userSelect = 'none';
+  };
+
+  const handleTableMouseMove = (e: React.MouseEvent) => {
+    if (!isTableDragging.current || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - tableStartX.current) * 1.5;
+    scrollContainerRef.current.scrollLeft = tableScrollLeftStart.current - walk;
+  };
+
+  const stopTableDragging = () => {
+    isTableDragging.current = false;
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.style.cursor = 'grab';
+      scrollContainerRef.current.style.removeProperty('user-select');
+    }
+  };
 
   // 儲存後自動捲動至目標色塊並闪爍
   useEffect(() => {
@@ -294,7 +333,7 @@ export default function MainlineHistory({
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-slate-50 relative pb-24 overflow-hidden">
+    <div className="flex flex-col h-[100dvh] bg-slate-50 relative pb-40 overflow-hidden">
       {/* Top Navigation Shell */}
       <header className="bg-white/80 backdrop-blur-md z-50 w-full pt-4 px-4 sm:px-6 flex flex-col border-b border-slate-200 shrink-0 shadow-sm">
         <div className="flex items-center justify-between pb-4 gap-4">
@@ -408,7 +447,25 @@ export default function MainlineHistory({
 
       {/* Main History Grid */}
       <div className="mx-4 mb-4 bg-white rounded-xl shadow-sm border border-slate-200 flex-1 overflow-hidden flex flex-col">
-        <div className="overflow-auto flex-1 relative">
+        {/* 頂部同步捲動條 (僅 PC 顯示或作為輔助) */}
+        <div 
+          ref={headerScrollRef}
+          onScroll={handleScroll}
+          className="overflow-x-auto border-b border-slate-100 bg-slate-50 customize-scrollbar"
+        >
+          <div className="min-w-[800px] h-2"></div>
+        </div>
+
+        <div 
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          onMouseDown={handleTableMouseDown}
+          onMouseMove={handleTableMouseMove}
+          onMouseUp={stopTableDragging}
+          onMouseLeave={stopTableDragging}
+          className="overflow-auto flex-1 relative customize-scrollbar"
+          style={{ cursor: 'grab' }}
+        >
           <div className="min-w-[800px] flex flex-col">
             {/* Sticky Headers Wrapper */}
             <div className="sticky top-0 z-40 flex flex-col shadow-sm">

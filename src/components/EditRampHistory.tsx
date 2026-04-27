@@ -76,7 +76,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
   };
 
   return (
-    <div className="h-[100dvh] bg-[#f7f9fc] text-[#191c1e] flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-[#f7f9fc] text-[#191c1e] pb-32">
       {/* TopAppBar */}
       <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 h-16 shadow-sm border-b border-slate-200">
         <div className="flex items-center gap-4">
@@ -112,8 +112,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
-        <main className="pt-24 px-4 max-w-md md:max-w-2xl mx-auto space-y-6 md:space-y-8">
+      <main className="pt-24 px-4 max-w-md md:max-w-2xl mx-auto space-y-6 md:space-y-8">
         {/* Construction History Details */}
         <section className="space-y-3">
           <h2 className="font-black text-sm uppercase tracking-wider text-slate-500 ml-2">施工履歷內容</h2>
@@ -415,7 +414,6 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
           </div>
         </section>
       </main>
-    </div>
 
       {/* Copy Pavement Modal */}
       {showCopyPavementModal && (

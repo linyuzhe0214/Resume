@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Download, Plus, Layers, ChevronDown, MapPin, Search, ArrowUp, ArrowDown, Edit2, Trash2 } from 'lucide-react';
 import { RampSegment } from '../types';
 import { cn } from '../App';
@@ -32,10 +32,62 @@ export default function RampHistory(props: RampHistoryProps) {
     onUpdateRampOrder
   } = props;
 
+  const moveRamp = (index: number, direction: 'up' | 'down') => {
+    if (!onUpdateRampOrder) return;
+    const newOrder = [...displayRamps];
+    if (direction === 'up' && index > 0) {
+      [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    } else if (direction === 'down' && index < newOrder.length - 1) {
+      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    }
+    // 使用 rampId 或 id 作為排序標識
+    onUpdateRampOrder(newOrder.map(r => r.rampId || r.groupId));
+  };
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingRampId, setDeletingRampId] = useState<string | null>(null);
   const [selectedRampId, setSelectedRampId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isTableDragging = useRef(false);
+  const tableStartX = useRef(0);
+  const tableScrollLeftStart = useRef(0);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target === scrollContainerRef.current && headerScrollRef.current) {
+      headerScrollRef.current.scrollLeft = target.scrollLeft;
+    } else if (target === headerScrollRef.current && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = target.scrollLeft;
+    }
+  };
+
+  const handleTableMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+    isTableDragging.current = true;
+    tableStartX.current = e.pageX - scrollContainerRef.current.offsetLeft;
+    tableScrollLeftStart.current = scrollContainerRef.current.scrollLeft;
+    scrollContainerRef.current.style.cursor = 'grabbing';
+    scrollContainerRef.current.style.userSelect = 'none';
+  };
+
+  const handleTableMouseMove = (e: React.MouseEvent) => {
+    if (!isTableDragging.current || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - tableStartX.current) * 1.5;
+    scrollContainerRef.current.scrollLeft = tableScrollLeftStart.current - walk;
+  };
+
+  const stopTableDragging = () => {
+    isTableDragging.current = false;
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.style.cursor = 'grab';
+      scrollContainerRef.current.style.removeProperty('user-select');
+    }
+  };
 
   const highways = Object.keys(HIGHWAY_INTERCHANGE_MAP);
 
@@ -65,11 +117,11 @@ export default function RampHistory(props: RampHistoryProps) {
     const map = new Map<string, { groupId: string, rampId: string, rampName: string, length: number, segments: RampSegment[] }>();
     
     filteredRamps.forEach(ramp => {
-      if (!ramp.rampId) return;
-      if (!map.has(ramp.rampId)) {
-        map.set(ramp.rampId, {
-          groupId: ramp.rampId,
-          rampId: ramp.rampId,
+      const key = ramp.rampId || ramp.id;
+      if (!map.has(key)) {
+        map.set(key, {
+          groupId: key,
+          rampId: ramp.rampId || '',
           rampName: ramp.rampName || '',
           length: ramp.length || 0,
           segments: []
@@ -198,7 +250,7 @@ export default function RampHistory(props: RampHistoryProps) {
   }, [maxLength]);
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8 pb-24">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8 pb-40">
       {/* Section 1: Filters & Header */}
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-6 sm:p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
         <div className="flex flex-col gap-2">
@@ -255,7 +307,7 @@ export default function RampHistory(props: RampHistoryProps) {
       </header>
 
       {/* Section 2: Road Network Map */}
-      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 sticky top-0 sm:top-4 z-40 shadow-xl">
+      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 shadow-xl">
         <div className="p-2.5 sm:p-6 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
           <h3 className="font-black text-sm sm:text-lg tracking-tight text-slate-800 flex items-center gap-2">
             <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#00488d]" /> 匝道路網圖
@@ -317,8 +369,26 @@ export default function RampHistory(props: RampHistoryProps) {
              </div>
           </div>
           <div className="overflow-hidden shadow-inner">
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full text-left border-separate border-spacing-0">
+            {/* Top Scrollbar (Visible on both PC and Mobile) */}
+            <div 
+              ref={headerScrollRef}
+              onScroll={handleScroll}
+              className="overflow-x-auto border-b border-slate-50 bg-slate-50/50 customize-scrollbar"
+            >
+              <div className="min-w-[800px] h-3 sm:h-1.5"></div>
+            </div>
+
+            <div 
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              onMouseDown={handleTableMouseDown}
+              onMouseMove={handleTableMouseMove}
+              onMouseUp={stopTableDragging}
+              onMouseLeave={stopTableDragging}
+              className="overflow-x-auto customize-scrollbar"
+              style={{ cursor: 'grab' }}
+            >
+              <table className="w-full text-left border-separate border-spacing-0 min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-50/90 backdrop-blur-sm">
                     <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">匝道編碼</th>
@@ -347,7 +417,25 @@ export default function RampHistory(props: RampHistoryProps) {
                           {ramp.notes || '-'}
                         </td>
                         <td className="px-6 py-5 text-center">
-                          <div className="flex items-center justify-center gap-2">
+                          <div className="flex items-center justify-center gap-1 sm:gap-2">
+                            <div className="flex items-center bg-slate-100 rounded-xl p-0.5 mr-1">
+                              <button 
+                                onClick={() => moveRamp(index, 'up')}
+                                disabled={index === 0}
+                                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-all"
+                                title="上移"
+                              >
+                                <ArrowUp size={14} />
+                              </button>
+                              <button 
+                                onClick={() => moveRamp(index, 'down')}
+                                disabled={index === displayRamps.length - 1}
+                                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent rounded-lg transition-all"
+                                title="下移"
+                              >
+                                <ArrowDown size={14} />
+                              </button>
+                            </div>
                             <button 
                               onClick={() => onNavigateToEditDetails(ramp.id)}
                               className="p-2 text-blue-600 hover:bg-blue-100 rounded-xl transition-all active:scale-90"

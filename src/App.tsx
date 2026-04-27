@@ -505,8 +505,10 @@ export default function App() {
   const handleUpdateRampOrder = (newOrder: string[]) => {
     setRampSegments(prev => {
       const sorted = [...prev].sort((a, b) => {
-        const idxA = newOrder.indexOf(a.rampId);
-        const idxB = newOrder.indexOf(b.rampId);
+        const idA = a.rampId || a.id;
+        const idB = b.rampId || b.id;
+        const idxA = newOrder.indexOf(idA);
+        const idxB = newOrder.indexOf(idB);
         if (idxA === -1 && idxB === -1) return 0;
         if (idxA === -1) return 1;
         if (idxB === -1) return -1;
@@ -698,29 +700,26 @@ export default function App() {
     return `${km}k+${m.toString().padStart(3, '0')}`;
   };
 
-  const renderBottomNav = () => {
-    if (subPage !== 'none') return null;
-    return (
-      <footer className="fixed bottom-0 left-0 w-full md:w-auto md:left-1/2 md:-translate-x-1/2 md:bottom-8 md:rounded-full md:px-3 md:py-2 flex justify-around md:justify-center md:gap-2 items-center px-2 pb-6 pt-3 md:pb-2 bg-white/90 md:bg-white/80 backdrop-blur-xl border-t md:border border-slate-200 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] md:shadow-2xl z-[100] rounded-t-3xl transition-all">
-        <div onClick={() => { setActiveTab('surface'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'surface' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
-          <Layers className="w-6 h-6 md:w-5 md:h-5" />
-          <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">路面資料</span>
-        </div>
-        <div onClick={() => { setActiveTab('mainline'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'mainline' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
-          <Route className="w-6 h-6 md:w-5 md:h-5" />
-          <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">主線履歷</span>
-        </div>
-        <div onClick={() => { setActiveTab('ramp'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'ramp' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
-          <Split className="w-6 h-6 md:w-5 md:h-5" />
-          <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">匝道履歷</span>
-        </div>
-        <div onClick={() => { setActiveTab('planning'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'planning' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
-          <HardHat className="w-6 h-6 md:w-5 md:h-5" />
-          <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">整修規劃</span>
-        </div>
-      </footer>
-    );
-  };
+  const renderBottomNav = () => (
+    <footer className="fixed bottom-0 left-0 w-full md:w-auto md:left-1/2 md:-translate-x-1/2 md:bottom-8 md:rounded-full md:px-3 md:py-2 flex justify-around md:justify-center md:gap-2 items-center px-2 pb-6 pt-3 md:pb-2 bg-white/90 md:bg-white/80 backdrop-blur-xl border-t md:border border-slate-200 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] md:shadow-2xl z-[100] rounded-t-3xl transition-all">
+      <div onClick={() => { setActiveTab('surface'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'surface' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
+        <Layers className="w-6 h-6 md:w-5 md:h-5" />
+        <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">路面資料</span>
+      </div>
+      <div onClick={() => { setActiveTab('mainline'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'mainline' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
+        <Route className="w-6 h-6 md:w-5 md:h-5" />
+        <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">主線履歷</span>
+      </div>
+      <div onClick={() => { setActiveTab('ramp'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'ramp' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
+        <Split className="w-6 h-6 md:w-5 md:h-5" />
+        <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">匝道履歷</span>
+      </div>
+      <div onClick={() => { setActiveTab('planning'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'planning' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
+        <HardHat className="w-6 h-6 md:w-5 md:h-5" />
+        <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">整修規劃</span>
+      </div>
+    </footer>
+  );
 
   // Helper to render global overlays in all sub-pages/tabs
   const renderOverlays = () => {
@@ -814,7 +813,6 @@ export default function App() {
           onNavigateToPavement={() => setSubPage('editRampPavement')}
         />
         {renderOverlays()}
-        {renderBottomNav()}
       </div>
     );
   }
@@ -834,7 +832,6 @@ export default function App() {
           onBack={() => setSubPage('editRamp')} 
         />
         {renderOverlays()}
-        {renderBottomNav()}
       </div>
     );
   }
@@ -907,7 +904,6 @@ export default function App() {
           onNavigateToPavement={() => setSubPage('editRampHistoryPavement')}
         />
         {renderOverlays()}
-        {renderBottomNav()}
       </div>
     );
   }
@@ -927,7 +923,6 @@ export default function App() {
           onBack={() => setSubPage('editRampHistory')} 
         />
         {renderOverlays()}
-        {renderBottomNav()}
       </div>
     );
   }
@@ -1058,7 +1053,6 @@ export default function App() {
           onNavigateToPavement={() => setSubPage('editPavement')} 
         />
         {renderOverlays()}
-        {renderBottomNav()}
       </div>
     );
   }
@@ -1077,7 +1071,6 @@ export default function App() {
           onBack={() => setSubPage('editSegment')} 
         />
         {renderOverlays()}
-        {renderBottomNav()}
       </div>
     );
   }
@@ -1192,7 +1185,6 @@ export default function App() {
           }}
         />
         {renderOverlays()}
-        {renderBottomNav()}
       </div>
     );
   }
@@ -1248,7 +1240,6 @@ export default function App() {
           }}
         />
         {renderOverlays()}
-        {renderBottomNav()}
       </div>
     );
   }
@@ -1302,13 +1293,12 @@ export default function App() {
         />
         
         {renderOverlays()}
-        {renderBottomNav()}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-28 flex flex-col items-center">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-40 flex flex-col items-center">
       <div className="responsive-container flex flex-col gap-4 py-4">
         {/* Header */}
         <header className="flex flex-col gap-4 p-5 sm:p-6 rounded-3xl bg-[#00488d] shadow-xl shadow-[#00488d]/20 relative overflow-hidden">
