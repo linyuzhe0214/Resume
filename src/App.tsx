@@ -5,6 +5,9 @@ import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+// @ts-ignore - 如果找不到此檔案，請見 config.example.ts 或自行建立 config.ts
+import { MAINLINE_URL, RAMP_URL, PLANNING_URL } from './config';
+
 import MainlineHistory from './components/MainlineHistory';
 import RampHistory from './components/RampHistory';
 import EditSegment from './components/EditSegment';
@@ -325,9 +328,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'surface' | 'mainline' | 'ramp' | 'planning'>('surface');
   const [subPage, setSubPage] = useState<'none' | 'editSegment' | 'editPavement' | 'editRamp' | 'editRampHistory' | 'editRampHistoryPavement'>('none');
 
-  const MAINLINE_URL = 'https://script.google.com/macros/s/AKfycbwFnImk16G7FulPiUxnBb_dd79RwH4k_16CREqsoDOzpYQ79GUR_E-aLWSMzVKol8rw/exec';
-  const RAMP_URL = 'https://script.google.com/macros/s/AKfycbxi2T-7P4BQv-KWJqEHNzL_P3iZ4zTwhHjPxFVk6Fp3qBUdVMsbxx_4sdww4r-tthL0/exec';
-  const PLANNING_URL = 'https://script.google.com/macros/s/AKfycbyi3Ib_fulT4L_VFLkOMOXYM92rwvvY5kfmyxfHz2yMPdVNZfiEQ-G1kJu3p021OsVQ9g/exec';
+  // URLs 現在從 src/config.ts 引入，以防 Vite 的 .env 載入異常
+  console.log('Config Debug:', { MAINLINE_URL, RAMP_URL, PLANNING_URL });
 
   const [loadingData, setLoadingData] = useState(true);
 
@@ -696,26 +698,29 @@ export default function App() {
     return `${km}k+${m.toString().padStart(3, '0')}`;
   };
 
-  const renderBottomNav = () => (
-    <footer className="fixed bottom-0 left-0 w-full md:w-auto md:left-1/2 md:-translate-x-1/2 md:bottom-8 md:rounded-full md:px-3 md:py-2 flex justify-around md:justify-center md:gap-2 items-center px-2 pb-6 pt-3 md:pb-2 bg-white/90 md:bg-white/80 backdrop-blur-xl border-t md:border border-slate-200 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] md:shadow-2xl z-[100] rounded-t-3xl transition-all">
-      <div onClick={() => { setActiveTab('surface'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'surface' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
-        <Layers className="w-6 h-6 md:w-5 md:h-5" />
-        <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">路面資料</span>
-      </div>
-      <div onClick={() => { setActiveTab('mainline'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'mainline' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
-        <Route className="w-6 h-6 md:w-5 md:h-5" />
-        <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">主線履歷</span>
-      </div>
-      <div onClick={() => { setActiveTab('ramp'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'ramp' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
-        <Split className="w-6 h-6 md:w-5 md:h-5" />
-        <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">匝道履歷</span>
-      </div>
-      <div onClick={() => { setActiveTab('planning'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'planning' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
-        <HardHat className="w-6 h-6 md:w-5 md:h-5" />
-        <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">整修規劃</span>
-      </div>
-    </footer>
-  );
+  const renderBottomNav = () => {
+    if (subPage !== 'none') return null;
+    return (
+      <footer className="fixed bottom-0 left-0 w-full md:w-auto md:left-1/2 md:-translate-x-1/2 md:bottom-8 md:rounded-full md:px-3 md:py-2 flex justify-around md:justify-center md:gap-2 items-center px-2 pb-6 pt-3 md:pb-2 bg-white/90 md:bg-white/80 backdrop-blur-xl border-t md:border border-slate-200 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] md:shadow-2xl z-[100] rounded-t-3xl transition-all">
+        <div onClick={() => { setActiveTab('surface'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'surface' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
+          <Layers className="w-6 h-6 md:w-5 md:h-5" />
+          <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">路面資料</span>
+        </div>
+        <div onClick={() => { setActiveTab('mainline'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'mainline' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
+          <Route className="w-6 h-6 md:w-5 md:h-5" />
+          <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">主線履歷</span>
+        </div>
+        <div onClick={() => { setActiveTab('ramp'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'ramp' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
+          <Split className="w-6 h-6 md:w-5 md:h-5" />
+          <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">匝道履歷</span>
+        </div>
+        <div onClick={() => { setActiveTab('planning'); setSubPage('none'); }} className={cn("flex flex-col md:flex-row md:gap-2 items-center justify-center rounded-xl md:rounded-full px-4 py-2 active:scale-95 transition-all cursor-pointer", activeTab === 'planning' ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}>
+          <HardHat className="w-6 h-6 md:w-5 md:h-5" />
+          <span className="text-[11px] md:text-xs font-bold tracking-wider uppercase mt-1 md:mt-0">整修規劃</span>
+        </div>
+      </footer>
+    );
+  };
 
   // Helper to render global overlays in all sub-pages/tabs
   const renderOverlays = () => {
@@ -1101,8 +1106,8 @@ export default function App() {
                   pavementLayers: [],
                   maintenanceHistory: [],
                   notes: '',
-                  constructionYear: '113',
-                  constructionMonth: '08'
+                  constructionYear: (new Date().getFullYear() - 1911).toString(),
+                  constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0')
                 });
               }
             } else {
@@ -1118,8 +1123,8 @@ export default function App() {
                 interchange: defaultInterchange || '豐原交流道',
                 property: '路堤',
                 laneCategory: '一般路段',
-                constructionYear: '113',
-                constructionMonth: '08',
+                constructionYear: (new Date().getFullYear() - 1911).toString(),
+                constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
                 startMileage: 0,
                 endMileage: 0,
                 direction: 'Southbound',
@@ -1145,8 +1150,8 @@ export default function App() {
                   id: '',
                   pavementLayers: [],
                   maintenanceHistory: [],
-                  constructionYear: '114',
-                  constructionMonth: '01',
+                  constructionYear: (new Date().getFullYear() - 1911).toString(),
+                  constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
                   startMileage: defaultStart ?? 0,
                   endMileage: defaultEnd ?? proto.length
                 });
@@ -1166,8 +1171,8 @@ export default function App() {
                 interchange: '豐原交流道',
                 property: '路堤',
                 laneCategory: '一般路段',
-                constructionYear: '114',
-                constructionMonth: '01',
+                constructionYear: (new Date().getFullYear() - 1911).toString(),
+                constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
                 startMileage: 0,
                 endMileage: 0,
                 direction: 'Southbound',

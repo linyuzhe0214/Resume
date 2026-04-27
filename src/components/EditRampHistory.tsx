@@ -52,7 +52,17 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
   }, [formData]);
 
   useEffect(() => {
-    if (segment) setFormData(segment);
+    if (segment) {
+      const updated = { ...segment };
+      if (segment.completionTime) {
+        const [y, m] = segment.completionTime.split('/');
+        if (y && m) {
+          updated.constructionYear = y;
+          updated.constructionMonth = m.padStart(2, '0');
+        }
+      }
+      setFormData(updated);
+    }
   }, [segment]);
 
   const handleChange = (newData: RampSegment) => {
@@ -66,7 +76,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f9fc] text-[#191c1e] pb-32">
+    <div className="h-[100dvh] bg-[#f7f9fc] text-[#191c1e] flex flex-col overflow-hidden">
       {/* TopAppBar */}
       <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 h-16 shadow-sm border-b border-slate-200">
         <div className="flex items-center gap-4">
@@ -102,7 +112,8 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
         </div>
       </header>
 
-      <main className="pt-24 px-4 max-w-md md:max-w-2xl mx-auto space-y-6 md:space-y-8">
+      <div className="flex-1 overflow-y-auto">
+        <main className="pt-24 px-4 max-w-md md:max-w-2xl mx-auto space-y-6 md:space-y-8">
         {/* Construction History Details */}
         <section className="space-y-3">
           <h2 className="font-black text-sm uppercase tracking-wider text-slate-500 ml-2">施工履歷內容</h2>
@@ -240,11 +251,11 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                     onChange={(e) => {
                       const newYear = e.target.value;
                       const oldParts = (formData.completionTime || '/').split('/');
-                      const month = oldParts.length > 1 && oldParts[1] ? oldParts[1].padStart(2, '0') : '01';
+                      const month = (oldParts.length > 1 && oldParts[1]) ? oldParts[1].padStart(2, '0') : (formData.constructionMonth || '01').padStart(2, '0');
                       
                       const newCompletionTime = `${newYear}/${month}`;
                       const newCompMonth = `${newYear}${month}`;
-                      const oldCompMonth = formData.completionTime ? formData.completionTime.replace('/', '') : '';
+                      const oldCompMonth = formData.completionTime ? formData.completionTime.replace('/', '') : (formData.constructionYear + (formData.constructionMonth || '').padStart(2, '0'));
                       
                       const updatedLayers = formData.pavementLayers.map(layer => 
                         layer.month === oldCompMonth ? { ...layer, month: newCompMonth } : layer
@@ -253,6 +264,8 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                       handleChange({
                         ...formData, 
                         completionTime: newCompletionTime,
+                        constructionYear: newYear,
+                        constructionMonth: month,
                         pavementLayers: updatedLayers
                       });
                     }}
@@ -272,11 +285,11 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                     onChange={(e) => {
                       const monthStr = e.target.value;
                       const oldParts = (formData.completionTime || '/').split('/');
-                      const year = oldParts[0] || '113';
+                      const year = oldParts[0] || formData.constructionYear || (new Date().getFullYear() - 1911).toString();
                       
                       const newCompletionTime = `${year}/${monthStr}`;
                       const newCompMonth = `${year}${monthStr}`;
-                      const oldCompMonth = formData.completionTime ? formData.completionTime.replace('/', '') : '';
+                      const oldCompMonth = formData.completionTime ? formData.completionTime.replace('/', '') : (formData.constructionYear + (formData.constructionMonth || '').padStart(2, '0'));
                       
                       const updatedLayers = formData.pavementLayers.map(layer => 
                         layer.month === oldCompMonth ? { ...layer, month: newCompMonth } : layer
@@ -285,6 +298,8 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                       handleChange({
                         ...formData, 
                         completionTime: newCompletionTime,
+                        constructionYear: year,
+                        constructionMonth: monthStr,
                         pavementLayers: updatedLayers
                       });
                     }}
@@ -400,6 +415,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
           </div>
         </section>
       </main>
+    </div>
 
       {/* Copy Pavement Modal */}
       {showCopyPavementModal && (
