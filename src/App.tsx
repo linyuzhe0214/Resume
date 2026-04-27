@@ -5,6 +5,9 @@ import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+// @ts-ignore - 如果找不到此檔案，請見 config.example.ts 或自行建立 config.ts
+import { MAINLINE_URL, RAMP_URL, PLANNING_URL } from './config';
+
 import MainlineHistory from './components/MainlineHistory';
 import RampHistory from './components/RampHistory';
 import EditSegment from './components/EditSegment';
@@ -325,10 +328,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'surface' | 'mainline' | 'ramp' | 'planning'>('surface');
   const [subPage, setSubPage] = useState<'none' | 'editSegment' | 'editPavement' | 'editRamp' | 'editRampHistory' | 'editRampHistoryPavement'>('none');
 
-  const MAINLINE_URL = import.meta.env.VITE_MAINLINE_URL || '';
-  const RAMP_URL = import.meta.env.VITE_RAMP_URL || '';
-  const PLANNING_URL = import.meta.env.VITE_PLANNING_URL || '';
-  console.log('ENV Debug:', { MAINLINE_URL, RAMP_URL, PLANNING_URL, raw: import.meta.env });
+  // URLs 現在從 src/config.ts 引入，以防 Vite 的 .env 載入異常
+  console.log('Config Debug:', { MAINLINE_URL, RAMP_URL, PLANNING_URL });
 
   const [loadingData, setLoadingData] = useState(true);
 
