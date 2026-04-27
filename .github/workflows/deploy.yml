@@ -27,6 +27,11 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm install
+      - name: Generate config.ts from secrets
+        run: |
+          echo "export const MAINLINE_URL = '${{ secrets.VITE_MAINLINE_URL }}';" > src/config.ts
+          echo "export const RAMP_URL = '${{ secrets.VITE_RAMP_URL }}';" >> src/config.ts
+          echo "export const PLANNING_URL = '${{ secrets.VITE_PLANNING_URL }}';" >> src/config.ts
       - name: Build
         run: npm run build
       - name: Setup Pages
