@@ -5,7 +5,6 @@ import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-// @ts-ignore - 如果找不到此檔案，請見 config.example.ts 或自行建立 config.ts
 import { MAINLINE_URL, RAMP_URL, PLANNING_URL } from './config';
 
 import MainlineHistory from './components/MainlineHistory';
