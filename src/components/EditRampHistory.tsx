@@ -52,7 +52,17 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
   }, [formData]);
 
   useEffect(() => {
-    if (segment) setFormData(segment);
+    if (segment) {
+      const updated = { ...segment };
+      if (segment.completionTime) {
+        const [y, m] = segment.completionTime.split('/');
+        if (y && m) {
+          updated.constructionYear = y;
+          updated.constructionMonth = m;
+        }
+      }
+      setFormData(updated);
+    }
   }, [segment]);
 
   const handleChange = (newData: RampSegment) => {
@@ -253,6 +263,8 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                       handleChange({
                         ...formData, 
                         completionTime: newCompletionTime,
+                        constructionYear: newYear,
+                        constructionMonth: month,
                         pavementLayers: updatedLayers
                       });
                     }}
@@ -272,7 +284,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                     onChange={(e) => {
                       const monthStr = e.target.value;
                       const oldParts = (formData.completionTime || '/').split('/');
-                      const year = oldParts[0] || '113';
+                      const year = oldParts[0] || formData.constructionYear || '113';
                       
                       const newCompletionTime = `${year}/${monthStr}`;
                       const newCompMonth = `${year}${monthStr}`;
@@ -285,6 +297,8 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                       handleChange({
                         ...formData, 
                         completionTime: newCompletionTime,
+                        constructionYear: year,
+                        constructionMonth: monthStr,
                         pavementLayers: updatedLayers
                       });
                     }}
