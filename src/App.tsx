@@ -328,6 +328,7 @@ export default function App() {
   const MAINLINE_URL = import.meta.env.VITE_MAINLINE_URL || '';
   const RAMP_URL = import.meta.env.VITE_RAMP_URL || '';
   const PLANNING_URL = import.meta.env.VITE_PLANNING_URL || '';
+  console.log('ENV Debug:', { MAINLINE_URL, RAMP_URL, PLANNING_URL, raw: import.meta.env });
 
   const [loadingData, setLoadingData] = useState(true);
 
