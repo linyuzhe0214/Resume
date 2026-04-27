@@ -58,7 +58,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
         const [y, m] = segment.completionTime.split('/');
         if (y && m) {
           updated.constructionYear = y;
-          updated.constructionMonth = m;
+          updated.constructionMonth = m.padStart(2, '0');
         }
       }
       setFormData(updated);

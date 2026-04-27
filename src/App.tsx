@@ -1103,8 +1103,8 @@ export default function App() {
                   pavementLayers: [],
                   maintenanceHistory: [],
                   notes: '',
-                  constructionYear: '113',
-                  constructionMonth: '08'
+                  constructionYear: (new Date().getFullYear() - 1911).toString(),
+                  constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0')
                 });
               }
             } else {
@@ -1120,8 +1120,8 @@ export default function App() {
                 interchange: defaultInterchange || '豐原交流道',
                 property: '路堤',
                 laneCategory: '一般路段',
-                constructionYear: '113',
-                constructionMonth: '08',
+                constructionYear: (new Date().getFullYear() - 1911).toString(),
+                constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
                 startMileage: 0,
                 endMileage: 0,
                 direction: 'Southbound',
@@ -1147,8 +1147,8 @@ export default function App() {
                   id: '',
                   pavementLayers: [],
                   maintenanceHistory: [],
-                  constructionYear: '114',
-                  constructionMonth: '01',
+                  constructionYear: (new Date().getFullYear() - 1911).toString(),
+                  constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
                   startMileage: defaultStart ?? 0,
                   endMileage: defaultEnd ?? proto.length
                 });
@@ -1168,8 +1168,8 @@ export default function App() {
                 interchange: '豐原交流道',
                 property: '路堤',
                 laneCategory: '一般路段',
-                constructionYear: '114',
-                constructionMonth: '01',
+                constructionYear: (new Date().getFullYear() - 1911).toString(),
+                constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
                 startMileage: 0,
                 endMileage: 0,
                 direction: 'Southbound',
