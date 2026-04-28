@@ -733,6 +733,7 @@ export default function RampHistory(props: RampHistoryProps) {
           </div>
         </div>
       </section>
+        </div>
       </div>
 
       <ConfirmDialog 
