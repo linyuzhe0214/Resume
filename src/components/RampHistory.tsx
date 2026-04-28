@@ -306,46 +306,54 @@ export default function RampHistory(props: RampHistoryProps) {
         </div>
       </header>
 
-      {/* Section 2: Road Network Map */}
-      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8 shadow-xl">
-        <div className="p-2.5 sm:p-6 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
-          <h3 className="font-black text-sm sm:text-lg tracking-tight text-slate-800 flex items-center gap-2">
-            <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#00488d]" /> 匝道路網圖
-          </h3>
+      {/* 2-Column Layout Container */}
+      <div className="flex flex-col xl:flex-row gap-6 lg:gap-8 items-start">
+        
+        {/* Left Column: Road Network Map (Sticky) */}
+        <div className="w-full xl:w-[360px] shrink-0 xl:sticky xl:top-6 z-20">
+          <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden shadow-xl">
+            <div className="p-2.5 sm:p-4 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
+              <h3 className="font-black text-sm sm:text-base tracking-tight text-slate-800 flex items-center gap-2">
+                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#00488d]" /> 匝道路網圖
+              </h3>
+            </div>
+            <div className="p-1.5 sm:p-3 bg-slate-50 flex justify-center items-center align-middle">
+              <div className="w-full h-[30vh] sm:h-[40vh] xl:h-[50vh] xl:max-h-[600px] bg-slate-100/50 rounded-xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center shadow-inner">
+                <span className="text-slate-400 font-bold mb-2 flex flex-col items-center gap-2 text-center px-4">
+                  <MapPin className="w-8 h-8 opacity-50" />
+                  無對應交流道之 PDF
+                  <span className="text-[10px] font-normal break-all">({`/${selectedHighway}-${selectedInterchange}.pdf`})</span>
+                </span>
+                <iframe 
+                  key={`${selectedHighway}-${selectedInterchange}`}
+                  src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} 
+                  className="w-full h-full absolute inset-0 z-10 bg-white border-0" 
+                  title={`${selectedHighway}-${selectedInterchange} 匝道路網圖`}
+                >
+                   <div className="w-full h-full flex flex-col gap-3 items-center justify-center bg-slate-100 text-slate-600 font-bold p-6 text-center shadow-inner">
+                     <span>您的瀏覽器不支援即時 PDF 預覽，或系統找不到該檔案。</span>
+                     {/* @ts-ignore */}
+                     <a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf`} target="_blank" rel="noreferrer" className="px-5 py-2.5 bg-[#00488d] text-white rounded-xl text-sm shadow hover:bg-[#005fb8] transition-colors hover:shadow-md cursor-pointer inline-flex">
+                       另開視窗檢視 PDF
+                     </a>
+                   </div>
+                </iframe>
+              </div>
+            </div>
+          </section>
         </div>
-        <div className="p-1.5 sm:p-4 bg-slate-50 flex justify-center items-center align-middle">
-          <div className="w-full max-w-4xl h-[25vh] sm:h-auto sm:aspect-[16/9] lg:aspect-[21/9] bg-slate-100/50 rounded-xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center shadow-inner">
-            <span className="text-slate-400 font-bold mb-2 flex flex-col items-center gap-2">
-              <MapPin className="w-8 h-8 opacity-50" />
-              無對應交流道之 PDF
-              <span className="text-xs font-normal">({`/${selectedHighway}-${selectedInterchange}.pdf`})</span>
-            </span>
-            <iframe 
-              key={`${selectedHighway}-${selectedInterchange}`}
-              src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} 
-              className="w-full h-full absolute inset-0 z-10 bg-white border-0" 
-              title={`${selectedHighway}-${selectedInterchange} 匝道路網圖`}
-            >
-               <div className="w-full h-full flex flex-col gap-3 items-center justify-center bg-slate-100 text-slate-600 font-bold p-6 text-center shadow-inner">
-                 <span>您的瀏覽器不支援即時 PDF 預覽，或系統找不到該檔案。</span>
-                 {/* @ts-ignore */}
-                 <a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf`} target="_blank" rel="noreferrer" className="px-5 py-2.5 bg-[#00488d] text-white rounded-xl text-sm shadow hover:bg-[#005fb8] transition-colors hover:shadow-md cursor-pointer inline-flex">
-                   點此另開視窗下載 / 檢視 PDF
-                 </a>
-               </div>
-            </iframe>
-          </div>
-        </div>
-      </section>
 
-      {/* Section 3: Ramp Detailed Data Table */}
-      <section className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden mb-8">
-        <div className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-50 bg-slate-50/30">
-          <div className="flex flex-col gap-1">
-            <h3 className="font-black text-xl tracking-tight text-slate-800">匝道詳細資料</h3>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ramp Detailed Structure</span>
-          </div>
-          <div className="flex items-center gap-3">
+        {/* Right Column: Data Tables */}
+        <div className="w-full xl:flex-1 flex flex-col gap-8 overflow-hidden min-w-0">
+          
+          {/* Section 3: Ramp Detailed Data Table */}
+          <section className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-50 bg-slate-50/30">
+              <div className="flex flex-col gap-1">
+                <h3 className="font-black text-xl tracking-tight text-slate-800">匝道詳細資料</h3>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ramp Detailed Structure</span>
+              </div>
+              <div className="flex items-center gap-3">
             <button 
               onClick={() => onNavigateToEditDetails(undefined, selectedHighway, selectedInterchange)}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-xs font-black hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
@@ -516,9 +524,9 @@ export default function RampHistory(props: RampHistoryProps) {
         </div>
       </section>
 
-      {/* Section 4: Construction History */}
-      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
+              {/* Section 4: Construction History */}
+              <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-[#00488d]" />
             <h3 className="font-black text-lg tracking-tight text-slate-800">
@@ -555,12 +563,12 @@ export default function RampHistory(props: RampHistoryProps) {
             )}
           </div>
           
-          <div className="p-6 overflow-x-auto">
-            <div className="min-w-[800px] space-y-1">
-              <div className="grid grid-cols-[180px_100px_1fr] items-center text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">
+          <div className="p-4 sm:p-6 overflow-x-auto">
+            <div className="min-w-[1000px] space-y-2">
+              <div className="grid grid-cols-[140px_80px_1fr] sm:grid-cols-[180px_100px_1fr] items-center text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">
                 <div className="text-center">匝道編碼</div>
-                <div className="text-center border-l border-slate-200">車道長度 (m)</div>
-                <div className="relative h-6 flex items-center px-4">
+                <div className="text-center border-l border-slate-200">車道長度(m)</div>
+                <div className="relative h-6 flex items-center px-2 sm:px-4">
                   {scaleMarkers.map(val => (
                     <span key={val} className="absolute text-slate-900 text-[10px] font-black" style={{ left: `${(val / maxLength) * 100}%`, transform: 'translateX(-50%)' }}>{val}</span>
                   ))}
@@ -570,24 +578,24 @@ export default function RampHistory(props: RampHistoryProps) {
               {displayRamps.map((group, idx) => (
                 <div 
                   key={group.groupId} 
-                  className="grid grid-cols-[180px_100px_1fr] items-stretch group transition-colors"
+                  className="grid grid-cols-[140px_80px_1fr] sm:grid-cols-[180px_100px_1fr] items-stretch group transition-colors"
                 >
                   <div className={cn(
-                    "flex flex-col items-center justify-center py-4 border-b border-white rounded-l-md transition-shadow",
+                    "flex flex-col items-center justify-center py-4 border-b border-white rounded-l-md transition-shadow px-2 text-center",
                     idx % 4 === 0 ? "bg-[#a3f69c]/40" :
                     idx % 4 === 1 ? "bg-[#cbe7f5]" :
                     idx % 4 === 2 ? "bg-[#ffdad6]" :
                     "bg-[#d6e3ff]"
                   )}>
-                    <span className="font-black text-xs text-slate-950 drop-shadow-sm">{group.rampName}</span>
-                    <span className="text-[10px] font-black tracking-widest uppercase mt-0.5 text-black">
+                    <span className="font-black text-[10px] sm:text-xs text-slate-950 drop-shadow-sm leading-tight break-words line-clamp-2">{group.rampName}</span>
+                    <span className="text-[9px] sm:text-[10px] font-black tracking-widest uppercase mt-1 text-black bg-white/50 px-1.5 py-0.5 rounded-md">
                       {group.rampId}
                     </span>
                   </div>
-                  <div className="flex items-center justify-center bg-yellow-50/50 font-bold text-sm text-slate-800 border-l border-slate-100 border-b border-white">
+                  <div className="flex items-center justify-center bg-yellow-50/50 font-bold text-xs sm:text-sm text-slate-800 border-l border-slate-100 border-b border-white">
                     {group.length}
                   </div>
-                  <div className="relative bg-yellow-50/50 flex items-center px-4 border-b border-white rounded-r-md">
+                  <div className="relative bg-yellow-50/50 flex items-center px-2 sm:px-4 border-b border-white rounded-r-md">
                     {scaleMarkers.map(val => (
                       <div key={val} className="absolute top-0 bottom-0 w-[1px] bg-slate-200/40" style={{ left: `${(val / maxLength) * 100}%` }}></div>
                     ))}
@@ -642,22 +650,22 @@ export default function RampHistory(props: RampHistoryProps) {
                             <div
                               key={ramp.id}
                               onClick={() => onNavigateToEditHistory(ramp.id)}
-                              className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10"
+                              className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10 overflow-hidden"
                               style={{ 
                                 left: `${(start / group.length) * 100}%`, 
                                 width: `${((end - start) / group.length) * 100}%`, 
                                 backgroundColor: segmentColor 
                               }}
                             >
-                              <span className="drop-shadow-sm truncate px-1 text-[11px] font-black leading-none text-slate-950">
+                              <span className="drop-shadow-sm truncate w-full text-center px-0.5 text-[10px] sm:text-[11px] font-black leading-none text-slate-950">
                                 {ramp.constructionYear}
                               </span>
-                              <span className="text-[10px] font-black leading-none mt-0.5 text-slate-950">
+                              <span className="text-[9px] sm:text-[10px] font-black leading-none mt-0.5 text-slate-950 truncate w-full text-center px-0.5">
                                 {segmentData.depth}cm
                               </span>
                               {ramp.prevConstructionYear && (
-                                <span className="text-[9px] leading-none mt-0.5 text-slate-950/70 truncate px-1 max-w-full">
-                                  EX：{ramp.prevConstructionYear}{ramp.prevConstructionDepth ? `  ${ramp.prevConstructionDepth}cm` : ''}
+                                <span className="text-[8px] sm:text-[9px] leading-none mt-0.5 text-slate-950/70 truncate w-full text-center px-0.5">
+                                  EX:{ramp.prevConstructionYear}{ramp.prevConstructionDepth ? ` ${ramp.prevConstructionDepth}cm` : ''}
                                 </span>
                               )}
                             </div>
@@ -675,14 +683,14 @@ export default function RampHistory(props: RampHistoryProps) {
                               <div
                                 key={event.id}
                                 onClick={() => onNavigateToEditHistory(ramp.id)}
-                                className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10"
+                                className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10 overflow-hidden"
                                 style={{ left: `${left}%`, width: `${width}%`, backgroundColor: eventColor }}
                               >
-                                <span className="drop-shadow-sm truncate px-1 text-[11px] font-black leading-none text-slate-950">
+                                <span className="drop-shadow-sm truncate w-full text-center px-0.5 text-[10px] sm:text-[11px] font-black leading-none text-slate-950">
                                   {event.year}
                                 </span>
                                 {event.depth && (
-                                   <span className="text-[10px] font-black leading-none mt-0.5 text-slate-950">
+                                   <span className="text-[9px] sm:text-[10px] font-black leading-none mt-0.5 text-slate-950 truncate w-full text-center px-0.5">
                                      {event.depth}cm
                                    </span>
                                 )}
@@ -698,16 +706,25 @@ export default function RampHistory(props: RampHistoryProps) {
                       ))
                       .sort((a, b) => a - b)
                       .filter(m => m > 0 && m < group.length)
-                      .map((m, index) => (
-                        <div key={`marker-${m}`} className="absolute top-0 h-9 w-[1px] bg-slate-400/60 z-30 pointer-events-none" style={{ left: `${(m / group.length) * 100}%` }}>
-                          <span className={cn(
-                            "absolute left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-800 shadow-sm whitespace-nowrap bg-white/95 px-1 py-[1px] rounded leading-none border border-slate-200",
-                            "-top-4"
-                          )}>
-                            {m}
-                          </span>
-                        </div>
-                      ))}
+                      .map((m, index) => {
+                        const leftPercent = (m / group.length) * 100;
+                        // Alternate the top position to prevent overlapping if they are close
+                        const isAlt = index % 2 !== 0;
+                        return (
+                          <div key={`marker-${m}`} className="absolute top-0 h-9 w-[1px] bg-slate-400/60 z-30 pointer-events-none" style={{ left: `${leftPercent}%` }}>
+                            <span className={cn(
+                              "absolute left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-800 shadow-sm whitespace-nowrap bg-white/95 px-1 py-[1px] rounded leading-none border border-slate-200 z-40 transition-transform hover:scale-110",
+                              isAlt ? "-top-7" : "-top-3.5"
+                            )}>
+                              {m}
+                            </span>
+                            {/* Connection line for alternating markers */}
+                            {isAlt && (
+                              <div className="absolute w-[1px] bg-slate-300 left-1/2 -translate-x-1/2 -top-7 h-4"></div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -716,6 +733,7 @@ export default function RampHistory(props: RampHistoryProps) {
           </div>
         </div>
       </section>
+      </div>
 
       <ConfirmDialog 
         isOpen={showDeleteConfirm}
