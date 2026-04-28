@@ -374,10 +374,24 @@ export default function App() {
           PLANNING_URL ? fetch(`${PLANNING_URL}?action=getPlanning`) : Promise.resolve(null)
         ]);
         
+        const parseGasResponse = async (res: Response | null, name: string) => {
+          if (!res) return [];
+          const text = await res.text();
+          const lowerText = text.trim().toLowerCase();
+          if (lowerText.startsWith('<!doctype html>') || lowerText.startsWith('<html')) {
+            throw new Error(`連線被攔截 (${name})：您的裝置似乎阻擋了第三方 Cookie、處於無痕模式，或是連上了需要登入的公用 Wi-Fi。`);
+          }
+          try {
+            return JSON.parse(text);
+          } catch (e) {
+            throw new Error(`解析資料失敗 (${name})：伺服器回傳格式不符。`);
+          }
+        };
+
         const [mainlineData, rampData, planningData] = await Promise.all([
-          mainlineRes.json(),
-          rampRes.json(),
-          planningRes ? planningRes.json() : []
+          parseGasResponse(mainlineRes, '主線'),
+          parseGasResponse(rampRes, '匝道'),
+          parseGasResponse(planningRes, '規劃')
         ]);
         
         if (Array.isArray(mainlineData) && mainlineData.length > 0) {
@@ -396,18 +410,18 @@ export default function App() {
 
           if (settingsRecord && settingsRecord.data) {
             setLaneOptions(prev => {
-              const cloudTimestamp = settingsRecord.timestamp || 0;
-              const localTimestamp = (prev as any)._timestamp || 0;
-              
-              // 只有當雲端資料明顯較新時才覆蓋
-              if (cloudTimestamp > localTimestamp + 2000) {
-                return {
-                  ...INITIAL_HIGHWAY_LANES,
-                  ...settingsRecord.data,
-                  _timestamp: cloudTimestamp
-                } as any;
-              }
-              return prev;
+               const cloudTimestamp = settingsRecord.timestamp || 0;
+               const localTimestamp = (prev as any)._timestamp || 0;
+               
+               // 只有當雲端資料明顯較新時才覆蓋
+               if (cloudTimestamp > localTimestamp + 2000) {
+                 return {
+                   ...INITIAL_HIGHWAY_LANES,
+                   ...settingsRecord.data,
+                   _timestamp: cloudTimestamp
+                 } as any;
+               }
+               return prev;
             });
           }
         }
@@ -422,8 +436,9 @@ export default function App() {
           setRampSegments(rampData);
         }
         setToast({ message: '雲端資料載入成功', type: 'success' });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to fetch from GAS:', error);
+        setToast({ message: error.message || '連線至資料庫失敗，請檢查網路或重新整理。', type: 'error' });
       } finally {
         setLoadingData(false);
       }
