@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Trash2, ChevronDown, Plus, Layers } from 'lucide-react';
+import { ArrowLeft, Trash2, ChevronDown, Plus, Layers, ArrowUp, ArrowDown } from 'lucide-react';
 import { PavementLayer } from '../types';
 import { cn } from '../App';
 
@@ -19,6 +19,13 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
 
   const handleDeleteLayer = (id: string) => {
     setLayers(layers.filter(layer => layer.id !== id));
+  };
+
+  const moveLayer = (index: number, direction: 'up' | 'down') => {
+    const newLayers = [...layers];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    [newLayers[index], newLayers[targetIndex]] = [newLayers[targetIndex], newLayers[index]];
+    setLayers(newLayers);
   };
 
   const handleAddLayer = () => {
@@ -79,12 +86,32 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
                   <Layers className="w-4 h-4 text-[#005fb8]" />
                   <span className="font-black text-sm tracking-tight">Layer {String(index + 1).padStart(2, '0')}</span>
                 </div>
-                <button 
-                  onClick={() => handleDeleteLayer(layer.id)}
-                  className="text-rose-400 hover:text-rose-600 active:scale-90 transition-all p-1"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => moveLayer(index, 'up')}
+                    disabled={index === 0}
+                    className="text-slate-400 hover:text-[#005fb8] active:scale-90 transition-all p-1 disabled:opacity-20 disabled:cursor-not-allowed"
+                    title="上移"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => moveLayer(index, 'down')}
+                    disabled={index === layers.length - 1}
+                    className="text-slate-400 hover:text-[#005fb8] active:scale-90 transition-all p-1 disabled:opacity-20 disabled:cursor-not-allowed"
+                    title="下移"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </button>
+                  <div className="w-px h-4 bg-slate-200 mx-1" />
+                  <button 
+                    onClick={() => handleDeleteLayer(layer.id)}
+                    className="text-rose-400 hover:text-rose-600 active:scale-90 transition-all p-1"
+                    title="刪除"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
               <div className="p-6 space-y-5">
                 <div className="space-y-1.5">
