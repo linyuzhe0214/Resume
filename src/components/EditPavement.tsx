@@ -159,7 +159,7 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
                           }}
                         >
                           <option value="" disabled>年份</option>
-                          {Array.from({length: 60}, (_, i) => 125 - i).map(y => (
+                          {Array.from({length: new Date().getFullYear() - 1911 + 5 - 67 + 1}, (_, i) => new Date().getFullYear() - 1911 + 5 - i).map(y => (
                             <option key={y} value={y.toString().padStart(3, '0')}>{y}</option>
                           ))}
                         </select>
