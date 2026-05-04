@@ -127,14 +127,42 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     await new Promise(resolve => setTimeout(resolve, 50));
 
     const targetHeight = element.scrollHeight;
-    // 超長圖片自動降解析度以避免超出 GPU 極限
+    const targetWidth = Math.max(element.scrollWidth, 900);
     const pixelRatio = targetHeight > 2000 ? 1 : 1.5; 
+
+    // 超過 iOS/iPadOS 畫布上限時，自動分段下載
+    const MAX_CANVAS_HEIGHT = 8000;
+    const MAX_CHUNK_HEIGHT = Math.floor(MAX_CANVAS_HEIGHT / pixelRatio);
+
+    if (targetHeight > MAX_CHUNK_HEIGHT) {
+      alert(`⚠️ 圖片長度過大，為避免設備記憶體不足，系統將自動為您分段匯出成多張圖片。`);
+      const parts = Math.ceil(targetHeight / MAX_CHUNK_HEIGHT);
+      
+      for (let i = 0; i < parts; i++) {
+        const currentChunkHeight = Math.min(MAX_CHUNK_HEIGHT, targetHeight - i * MAX_CHUNK_HEIGHT);
+        const dataUrl = await toPng(element, {
+          backgroundColor: '#ffffff',
+          pixelRatio: pixelRatio,
+          width: targetWidth,
+          height: currentChunkHeight,
+          skipFonts: true,
+          style: {
+            transform: `translateY(-${i * MAX_CHUNK_HEIGHT}px)`,
+            transition: 'none'
+          }
+        });
+        await downloadDataUrl(dataUrl, `${filename}_第${i + 1}段`);
+        // 等待一下讓瀏覽器有時間釋放記憶體
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+      return;
+    }
 
     const dataUrl = await toPng(element, {
       backgroundColor: '#ffffff',
       pixelRatio: pixelRatio,
-      width: Math.max(element.scrollWidth, 900),
-      height: element.scrollHeight,
+      width: targetWidth,
+      height: targetHeight,
       skipFonts: true,
       style: {
         transform: 'none',
@@ -229,6 +257,59 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     }));
 
     const totalHeight = images.reduce((acc, img, i) => acc + elements[i].scrollHeight * pixelRatio, 0);
+    
+    // 超過畫布上限時，自動分段匯出
+    const MAX_CANVAS_HEIGHT = 8000;
+    if (totalHeight > MAX_CANVAS_HEIGHT) {
+      alert(`⚠️ 圖片長度過大，系統將自動為您分段匯出成多張圖片。`);
+      let currentCanvasImages: {img: HTMLImageElement, height: number}[] = [];
+      let currentCanvasH = 0;
+      let part = 1;
+      
+      for (let i = 0; i < images.length; i++) {
+        const imgH = elements[i].scrollHeight * pixelRatio;
+        // 如果加入這張圖會超過限制，且目前已經有圖片，就先匯出目前的
+        if (currentCanvasH + imgH > MAX_CANVAS_HEIGHT && currentCanvasImages.length > 0) {
+           const canvas = document.createElement('canvas');
+           canvas.width = FIXED_WIDTH * pixelRatio;
+           canvas.height = currentCanvasH;
+           const ctx = canvas.getContext('2d')!;
+           ctx.fillStyle = '#ffffff';
+           ctx.fillRect(0, 0, canvas.width, canvas.height);
+           let y = 0;
+           currentCanvasImages.forEach(({img, height}) => {
+             ctx.drawImage(img, 0, y);
+             y += height;
+           });
+           const dataUrl = canvas.toDataURL('image/png');
+           await downloadDataUrl(dataUrl, `${filename}_第${part}段`);
+           part++;
+           currentCanvasImages = [];
+           currentCanvasH = 0;
+        }
+        currentCanvasImages.push({img: images[i], height: imgH});
+        currentCanvasH += imgH;
+      }
+      
+      // 匯出最後剩餘的
+      if (currentCanvasImages.length > 0) {
+         const canvas = document.createElement('canvas');
+         canvas.width = FIXED_WIDTH * pixelRatio;
+         canvas.height = currentCanvasH;
+         const ctx = canvas.getContext('2d')!;
+         ctx.fillStyle = '#ffffff';
+         ctx.fillRect(0, 0, canvas.width, canvas.height);
+         let y = 0;
+         currentCanvasImages.forEach(({img, height}) => {
+           ctx.drawImage(img, 0, y);
+           y += height;
+         });
+         const dataUrl = canvas.toDataURL('image/png');
+         await downloadDataUrl(dataUrl, `${filename}_第${part}段`);
+      }
+      return;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = FIXED_WIDTH * pixelRatio;
     canvas.height = totalHeight;
