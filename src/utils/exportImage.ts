@@ -45,7 +45,7 @@ const convertToComputedRgb = (element: HTMLElement) => {
  * 下載單一或多個檔案 — 使用 Blob URL 解決手機版無法下載或預覽的問題
  * 支援一次分享多個檔案（針對 iOS/iPadOS 自動分段）
  */
-const downloadDataUrls = async (dataUrls: string[], filename: string) => {
+export const downloadDataUrls = async (dataUrls: string[], filename: string) => {
   try {
     const files: File[] = [];
     const blobUrls: string[] = [];
@@ -204,6 +204,64 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     alert(`匯出圖片失敗：${errMsg}`);
   } finally {
     // 3. 復原一切
+    if (restoreColors) restoreColors();
+    element.style.cssText = originalStyle;
+    scrollContainers.forEach((el: any, i) => {
+      el.style.cssText = originalScrollStyles[i];
+    });
+  }
+};
+
+/**
+ * 將指定 DOM 元素匯出為單一 Base64 圖片 (不自動下載，用於 React 狀態分段渲染)
+ */
+export const exportComponentAsDataUrl = async (elementId: string): Promise<string | null> => {
+  const element = document.getElementById(elementId);
+  if (!element) return null;
+  
+  let restoreColors: (() => void) | null = null;
+  const originalStyle = element.style.cssText;
+  const scrollContainers = element.querySelectorAll('.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar');
+  const originalScrollStyles = Array.from(scrollContainers).map((el: any) => el.style.cssText);
+
+  try {
+    element.style.setProperty('height', 'max-content', 'important');
+    element.style.setProperty('width', 'max-content', 'important');
+    element.style.setProperty('overflow', 'visible', 'important');
+    element.style.setProperty('min-width', '900px', 'important'); 
+    
+    scrollContainers.forEach((el: any) => {
+      el.style.setProperty('height', 'max-content', 'important');
+      el.style.setProperty('width', 'max-content', 'important');
+      el.style.setProperty('overflow', 'visible', 'important');
+      el.style.setProperty('max-height', 'none', 'important');
+      el.style.setProperty('max-width', 'none', 'important');
+    });
+
+    restoreColors = convertToComputedRgb(element);
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    const targetHeight = element.scrollHeight;
+    const targetWidth = Math.max(element.scrollWidth, 900);
+    const pixelRatio = targetHeight > 2000 ? 1 : 1.5; 
+
+    const dataUrl = await toPng(element, {
+      backgroundColor: '#ffffff',
+      pixelRatio: pixelRatio,
+      width: targetWidth,
+      height: targetHeight,
+      skipFonts: true,
+      style: {
+        transform: 'none',
+        transition: 'none'
+      }
+    });
+
+    return dataUrl;
+  } catch (err) {
+    console.error('Failed to generate dataUrl:', err);
+    return null;
+  } finally {
     if (restoreColors) restoreColors();
     element.style.cssText = originalStyle;
     scrollContainers.forEach((el: any, i) => {
