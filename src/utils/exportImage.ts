@@ -66,52 +66,130 @@ export const downloadDataUrls = async (dataUrls: string[], filename: string) => 
       files.push(new File([blob], fileNameWithExt, { type: mime }));
     });
 
-    // 優先使用 Web Share API 一次分享所有檔案 (解決 iOS/iPadOS/Android 無法直接下載的問題)
-    if (navigator.canShare && navigator.share) {
-      if (navigator.canShare({ files })) {
+    const triggerShareOrDownload = async () => {
+      if (navigator.canShare && navigator.share && navigator.canShare({ files })) {
         try {
           await navigator.share({
             files,
             title: filename,
           });
-          return; // 成功分享/儲存後返回
+          return true;
         } catch (shareErr: any) {
-          if (shareErr.name !== 'AbortError') {
-            console.error('Share failed:', shareErr);
-          }
-          // 若失敗或取消，則 fallback 到傳統下載
+          if (shareErr.name === 'AbortError') return true; // 使用者取消，視為成功處理
+          console.error('Share failed:', shareErr);
+          return false;
         }
       }
-    }
-
-    // Fallback 到傳統下載 (循序下載)
-    for (const file of files) {
-      const blobUrl = URL.createObjectURL(file);
-      blobUrls.push(blobUrl);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
       
-      // 稍微等待一下，避免瀏覽器阻擋多重下載
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Fallback 到傳統下載
+      for (const file of files) {
+        const blobUrl = URL.createObjectURL(file);
+        blobUrls.push(blobUrl);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
+      return true;
+    };
+
+    // 嘗試直接呼叫。如果耗時過久，iOS Safari 會丟出 NotAllowedError (遺失使用者點擊授權)
+    const success = await triggerShareOrDownload();
+    
+    // 如果失敗 (通常是 NotAllowedError)，我們在畫面上產生一個按鈕，讓使用者親自點擊來觸發
+    if (!success) {
+      await new Promise<void>((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+          background: rgba(15, 23, 42, 0.85); z-index: 999999;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          backdrop-filter: blur(8px);
+        `;
+        
+        const card = document.createElement('div');
+        card.style.cssText = `
+          background: white; padding: 2.5rem 2rem; border-radius: 1.5rem; text-align: center;
+          width: 90%; max-width: 320px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+          animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        `;
+        
+        // 注入動畫 style
+        if (!document.getElementById('export-anim-style')) {
+          const style = document.createElement('style');
+          style.id = 'export-anim-style';
+          style.innerHTML = `@keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }`;
+          document.head.appendChild(style);
+        }
+        
+        const icon = document.createElement('div');
+        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+        icon.style.cssText = 'margin: 0 auto 1rem auto; background: #eff6ff; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center;';
+        
+        const title = document.createElement('h3');
+        title.innerText = '圖片生成完畢';
+        title.style.cssText = 'margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 900; color: #0f172a;';
+        
+        const desc = document.createElement('p');
+        desc.innerText = dataUrls.length > 1 
+          ? `共生成了 ${dataUrls.length} 張分段圖片\n請點擊下方按鈕分享或儲存至相簿`
+          : `請點擊下方按鈕分享或儲存至相簿`;
+        desc.style.cssText = 'margin: 0 0 1.5rem 0; color: #64748b; font-size: 0.875rem; font-weight: 600; line-height: 1.5; white-space: pre-wrap;';
+        
+        const btn = document.createElement('button');
+        btn.innerText = '立即儲存 / 分享';
+        btn.style.cssText = `
+          background: #2563eb; color: white; border: none; padding: 0.875rem;
+          font-size: 1rem; border-radius: 0.75rem; cursor: pointer; font-weight: 800;
+          width: 100%; transition: background 0.2s;
+        `;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.innerText = '取消';
+        closeBtn.style.cssText = `
+          background: transparent; color: #94a3b8; border: none; padding: 0.75rem;
+          font-size: 0.875rem; border-radius: 0.75rem; cursor: pointer; font-weight: 700;
+          width: 100%; margin-top: 0.5rem;
+        `;
+        
+        btn.onclick = async () => {
+          btn.innerText = '處理中...';
+          btn.style.background = '#93c5fd';
+          btn.disabled = true;
+          await triggerShareOrDownload();
+          document.body.removeChild(overlay);
+          resolve();
+        };
+        
+        closeBtn.onclick = () => {
+          document.body.removeChild(overlay);
+          resolve();
+        };
+        
+        card.appendChild(icon);
+        card.appendChild(title);
+        card.appendChild(desc);
+        card.appendChild(btn);
+        card.appendChild(closeBtn);
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+      });
     }
 
-    // 稍後釋放 object URL
     setTimeout(() => {
       blobUrls.forEach(url => URL.revokeObjectURL(url));
     }, 10000);
 
   } catch (e) {
-    // 極端 fallback
     for (let i = 0; i < dataUrls.length; i++) {
       const link = document.createElement('a');
       link.href = dataUrls[i];
       link.download = dataUrls.length > 1 ? `${filename}_第${i + 1}段_${new Date().getTime()}.png` : `${filename}_${new Date().getTime()}.png`;
       link.click();
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 600));
     }
   }
 };
