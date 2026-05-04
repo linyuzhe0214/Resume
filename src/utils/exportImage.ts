@@ -42,26 +42,36 @@ const convertToComputedRgb = (element: HTMLElement) => {
 };
 
 /**
- * 下載圖片 — 使用 Blob URL 解決手機版無法下載或預覽的問題
+ * 下載單一或多個檔案 — 使用 Blob URL 解決手機版無法下載或預覽的問題
+ * 支援一次分享多個檔案（針對 iOS/iPadOS 自動分段）
  */
-const downloadDataUrl = async (dataUrl: string, filename: string) => {
+const downloadDataUrls = async (dataUrls: string[], filename: string) => {
   try {
-    const arr = dataUrl.split(',');
-    const mime = arr[0].match(/:(.*?);/)![1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) u8arr[n] = bstr.charCodeAt(n);
-    const blob = new Blob([u8arr], { type: mime });
-    const fileNameWithExt = `${filename}_${new Date().getTime()}.png`;
+    const files: File[] = [];
+    const blobUrls: string[] = [];
 
-    // 優先使用 Web Share API (解決 iOS/iPadOS/Android 無法直接下載的問題)
+    dataUrls.forEach((dataUrl, index) => {
+      const arr = dataUrl.split(',');
+      const mime = arr[0].match(/:(.*?);/)![1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+      const blob = new Blob([u8arr], { type: mime });
+      
+      const fileNameWithExt = dataUrls.length > 1 
+        ? `${filename}_第${index + 1}段_${new Date().getTime()}.png`
+        : `${filename}_${new Date().getTime()}.png`;
+      
+      files.push(new File([blob], fileNameWithExt, { type: mime }));
+    });
+
+    // 優先使用 Web Share API 一次分享所有檔案 (解決 iOS/iPadOS/Android 無法直接下載的問題)
     if (navigator.canShare && navigator.share) {
-      const file = new File([blob], fileNameWithExt, { type: mime });
-      if (navigator.canShare({ files: [file] })) {
+      if (navigator.canShare({ files })) {
         try {
           await navigator.share({
-            files: [file],
+            files,
             title: filename,
           });
           return; // 成功分享/儲存後返回
@@ -69,27 +79,40 @@ const downloadDataUrl = async (dataUrl: string, filename: string) => {
           if (shareErr.name !== 'AbortError') {
             console.error('Share failed:', shareErr);
           }
-          // 若失敗則 fallback 到傳統下載
+          // 若失敗或取消，則 fallback 到傳統下載
         }
       }
     }
 
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = fileNameWithExt;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Fallback 到傳統下載 (循序下載)
+    for (const file of files) {
+      const blobUrl = URL.createObjectURL(file);
+      blobUrls.push(blobUrl);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // 稍微等待一下，避免瀏覽器阻擋多重下載
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
 
     // 稍後釋放 object URL
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    setTimeout(() => {
+      blobUrls.forEach(url => URL.revokeObjectURL(url));
+    }, 10000);
+
   } catch (e) {
-    // fallback
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `${filename}_${new Date().getTime()}.png`;
-    link.click();
+    // 極端 fallback
+    for (let i = 0; i < dataUrls.length; i++) {
+      const link = document.createElement('a');
+      link.href = dataUrls[i];
+      link.download = dataUrls.length > 1 ? `${filename}_第${i + 1}段_${new Date().getTime()}.png` : `${filename}_${new Date().getTime()}.png`;
+      link.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
   }
 };
 
@@ -137,6 +160,7 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     if (targetHeight > MAX_CHUNK_HEIGHT) {
       alert(`⚠️ 圖片長度過大，為避免設備記憶體不足，系統將自動為您分段匯出成多張圖片。`);
       const parts = Math.ceil(targetHeight / MAX_CHUNK_HEIGHT);
+      const dataUrls: string[] = [];
       
       for (let i = 0; i < parts; i++) {
         const currentChunkHeight = Math.min(MAX_CHUNK_HEIGHT, targetHeight - i * MAX_CHUNK_HEIGHT);
@@ -151,10 +175,12 @@ export const exportComponentAsImage = async (elementId: string, filename: string
             transition: 'none'
           }
         });
-        await downloadDataUrl(dataUrl, `${filename}_第${i + 1}段`);
+        dataUrls.push(dataUrl);
         // 等待一下讓瀏覽器有時間釋放記憶體
         await new Promise(resolve => setTimeout(resolve, 800));
       }
+      
+      await downloadDataUrls(dataUrls, filename);
       return;
     }
 
@@ -170,7 +196,7 @@ export const exportComponentAsImage = async (elementId: string, filename: string
       }
     });
 
-    await downloadDataUrl(dataUrl, filename);
+    await downloadDataUrls([dataUrl], filename);
 
   } catch (err: any) {
     console.error('Failed to export image:', err);
@@ -236,25 +262,28 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     const totalRawHeight = elements.reduce((acc, el) => acc + el.scrollHeight, 0);
     const pixelRatio = (FIXED_WIDTH * totalRawHeight) > 3000000 ? 1 : 1.5;
     
-    const dataUrls = await Promise.all(elements.map(el =>
-      toPng(el, {
+    // 改為循序產生圖片，避免 Promise.all 造成平板記憶體瞬間爆炸 (OOM)
+    const images: HTMLImageElement[] = [];
+    for (let i = 0; i < elements.length; i++) {
+      const el = elements[i];
+      const url = await toPng(el, {
         backgroundColor: '#ffffff',
         pixelRatio: pixelRatio,
         width: FIXED_WIDTH,
         height: el.scrollHeight,
         skipFonts: true,
         style: { transform: 'none', transition: 'none' }
-      })
-    ));
-
-    const images = await Promise.all(dataUrls.map((url, index) => {
-      return new Promise<HTMLImageElement>((resolve, reject) => {
+      });
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`第 ${index + 1} 個區塊合併時發生錯誤，可能因為圖片過大超出平板記憶體限制。`));
+        img.onerror = () => reject(new Error(`第 ${i + 1} 個區塊合併時發生錯誤，可能因為圖片過大超出平板記憶體限制。`));
         img.src = url;
       });
-    }));
+      images.push(img);
+      // 暫停一下讓記憶體釋放
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
 
     const totalHeight = images.reduce((acc, img, i) => acc + elements[i].scrollHeight * pixelRatio, 0);
     
@@ -264,7 +293,7 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
       alert(`⚠️ 圖片長度過大，系統將自動為您分段匯出成多張圖片。`);
       let currentCanvasImages: {img: HTMLImageElement, height: number}[] = [];
       let currentCanvasH = 0;
-      let part = 1;
+      const finalDataUrls: string[] = [];
       
       for (let i = 0; i < images.length; i++) {
         const imgH = elements[i].scrollHeight * pixelRatio;
@@ -281,9 +310,7 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
              ctx.drawImage(img, 0, y);
              y += height;
            });
-           const dataUrl = canvas.toDataURL('image/png');
-           await downloadDataUrl(dataUrl, `${filename}_第${part}段`);
-           part++;
+           finalDataUrls.push(canvas.toDataURL('image/png'));
            currentCanvasImages = [];
            currentCanvasH = 0;
         }
@@ -304,9 +331,10 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
            ctx.drawImage(img, 0, y);
            y += height;
          });
-         const dataUrl = canvas.toDataURL('image/png');
-         await downloadDataUrl(dataUrl, `${filename}_第${part}段`);
+         finalDataUrls.push(canvas.toDataURL('image/png'));
       }
+      
+      await downloadDataUrls(finalDataUrls, filename);
       return;
     }
 
@@ -324,7 +352,7 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     });
 
     const finalDataUrl = canvas.toDataURL('image/png');
-    await downloadDataUrl(finalDataUrl, filename);
+    await downloadDataUrls([finalDataUrl], filename);
 
   } catch (err: any) {
     console.error('Failed to export images:', err);
