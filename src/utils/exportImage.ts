@@ -146,7 +146,8 @@ export const exportComponentAsImage = async (elementId: string, filename: string
 
   } catch (err: any) {
     console.error('Failed to export image:', err);
-    alert(`匯出圖片失敗：${err.message || err}`);
+    const errMsg = (err instanceof Event) ? '處理圖片時發生不明的 Event 錯誤（通常為設備記憶體不足或跨域資源限制）' : (err.message || err);
+    alert(`匯出圖片失敗：${errMsg}`);
   } finally {
     // 3. 復原一切
     if (restoreColors) restoreColors();
@@ -204,11 +205,13 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     await new Promise(resolve => setTimeout(resolve, 80));
 
     const FIXED_WIDTH = Math.max(...elements.map(el => Math.max(el.scrollWidth, 900)));
+    const totalRawHeight = elements.reduce((acc, el) => acc + el.scrollHeight, 0);
+    const pixelRatio = (FIXED_WIDTH * totalRawHeight) > 3000000 ? 1 : 1.5;
     
     const dataUrls = await Promise.all(elements.map(el =>
       toPng(el, {
         backgroundColor: '#ffffff',
-        pixelRatio: 1.5,
+        pixelRatio: pixelRatio,
         width: FIXED_WIDTH,
         height: el.scrollHeight,
         skipFonts: true,
@@ -216,18 +219,18 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
       })
     ));
 
-    const images = await Promise.all(dataUrls.map(url => {
+    const images = await Promise.all(dataUrls.map((url, index) => {
       return new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve(img);
-        img.onerror = reject;
+        img.onerror = () => reject(new Error(`第 ${index + 1} 個區塊合併時發生錯誤，可能因為圖片過大超出平板記憶體限制。`));
         img.src = url;
       });
     }));
 
-    const totalHeight = images.reduce((acc, img, i) => acc + elements[i].scrollHeight * 1.5, 0);
+    const totalHeight = images.reduce((acc, img, i) => acc + elements[i].scrollHeight * pixelRatio, 0);
     const canvas = document.createElement('canvas');
-    canvas.width = FIXED_WIDTH * 1.5;
+    canvas.width = FIXED_WIDTH * pixelRatio;
     canvas.height = totalHeight;
     const ctx = canvas.getContext('2d')!;
     ctx.fillStyle = '#ffffff';
@@ -236,7 +239,7 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     let y = 0;
     images.forEach((img, i) => {
       ctx.drawImage(img, 0, y);
-      y += elements[i].scrollHeight * 1.5;
+      y += elements[i].scrollHeight * pixelRatio;
     });
 
     const finalDataUrl = canvas.toDataURL('image/png');
@@ -244,7 +247,8 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
 
   } catch (err: any) {
     console.error('Failed to export images:', err);
-    alert(`匯出圖片失敗：${err.message || err}`);
+    const errMsg = (err instanceof Event) ? '處理圖片時發生不明的 Event 錯誤（通常為設備記憶體不足或跨域資源限制）' : (err.message || err);
+    alert(`匯出圖片失敗：${errMsg}`);
   } finally {
     restoreFns.forEach(fn => fn());
     elements.forEach((el, i) => { el.style.cssText = originalStyles[i]; });
