@@ -44,7 +44,7 @@ const convertToComputedRgb = (element: HTMLElement) => {
 /**
  * 下載圖片 — 使用 Blob URL 解決手機版無法下載或預覽的問題
  */
-const downloadDataUrl = (dataUrl: string, filename: string) => {
+const downloadDataUrl = async (dataUrl: string, filename: string) => {
   try {
     const arr = dataUrl.split(',');
     const mime = arr[0].match(/:(.*?);/)![1];
@@ -53,11 +53,31 @@ const downloadDataUrl = (dataUrl: string, filename: string) => {
     const u8arr = new Uint8Array(n);
     while (n--) u8arr[n] = bstr.charCodeAt(n);
     const blob = new Blob([u8arr], { type: mime });
-    const blobUrl = URL.createObjectURL(blob);
+    const fileNameWithExt = `${filename}_${new Date().getTime()}.png`;
 
+    // 優先使用 Web Share API (解決 iOS/iPadOS/Android 無法直接下載的問題)
+    if (navigator.canShare && navigator.share) {
+      const file = new File([blob], fileNameWithExt, { type: mime });
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: filename,
+          });
+          return; // 成功分享/儲存後返回
+        } catch (shareErr: any) {
+          if (shareErr.name !== 'AbortError') {
+            console.error('Share failed:', shareErr);
+          }
+          // 若失敗則 fallback 到傳統下載
+        }
+      }
+    }
+
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = blobUrl;
-    link.download = `${filename}_${new Date().getTime()}.png`;
+    link.download = fileNameWithExt;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -122,7 +142,7 @@ export const exportComponentAsImage = async (elementId: string, filename: string
       }
     });
 
-    downloadDataUrl(dataUrl, filename);
+    await downloadDataUrl(dataUrl, filename);
 
   } catch (err: any) {
     console.error('Failed to export image:', err);
@@ -220,7 +240,7 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     });
 
     const finalDataUrl = canvas.toDataURL('image/png');
-    downloadDataUrl(finalDataUrl, filename);
+    await downloadDataUrl(finalDataUrl, filename);
 
   } catch (err: any) {
     console.error('Failed to export images:', err);
