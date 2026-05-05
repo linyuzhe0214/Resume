@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronDown, Calendar, Edit2, Trash2, Lock, Unlock, Copy } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Calendar, Edit2, Trash2, Lock, Unlock, Copy, HardHat } from 'lucide-react';
 import { Segment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
@@ -166,6 +166,15 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
               <h2 className="font-black text-lg tracking-tight text-slate-800">基本路徑資訊</h2>
             </div>
             <div className="flex gap-2">
+              {segment && !isPlanning && onMoveToPlanning && (
+                <button 
+                  onClick={() => onMoveToPlanning(segment)} 
+                  className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-colors active:scale-90"
+                  title="移至整修規劃"
+                >
+                  <HardHat size={18} />
+                </button>
+              )}
               {segment && onCopy && (
                 <button 
                   onClick={onCopy} 

@@ -66,8 +66,10 @@ export const downloadDataUrls = async (dataUrls: string[], filename: string) => 
       files.push(new File([blob], fileNameWithExt, { type: mime }));
     });
 
+    const isMobileOrTablet = /iPad|iPhone|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
     const triggerShareOrDownload = async () => {
-      if (navigator.canShare && navigator.share && navigator.canShare({ files })) {
+      if (isMobileOrTablet && navigator.canShare && navigator.share && navigator.canShare({ files })) {
         try {
           await navigator.share({
             files,
@@ -230,12 +232,13 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     const targetHeight = element.scrollHeight;
     const targetWidth = Math.max(element.scrollWidth, 900);
     const pixelRatio = targetHeight > 2000 ? 1 : 1.5; 
+    const isMobileOrTablet = /iPad|iPhone|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     // 超過 iOS/iPadOS 畫布上限時，自動分段下載
     const MAX_CANVAS_HEIGHT = 8000;
     const MAX_CHUNK_HEIGHT = Math.floor(MAX_CANVAS_HEIGHT / pixelRatio);
 
-    if (targetHeight > MAX_CHUNK_HEIGHT) {
+    if (isMobileOrTablet && targetHeight > MAX_CHUNK_HEIGHT) {
       alert(`⚠️ 圖片長度過大，為避免設備記憶體不足，系統將自動為您分段匯出成多張圖片。`);
       const parts = Math.ceil(targetHeight / MAX_CHUNK_HEIGHT);
       const dataUrls: string[] = [];
@@ -422,10 +425,11 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     }
 
     const totalHeight = images.reduce((acc, img, i) => acc + elements[i].scrollHeight * pixelRatio, 0);
+    const isMobileOrTablet = /iPad|iPhone|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     
     // 超過畫布上限時，自動分段匯出
     const MAX_CANVAS_HEIGHT = 8000;
-    if (totalHeight > MAX_CANVAS_HEIGHT) {
+    if (isMobileOrTablet && totalHeight > MAX_CANVAS_HEIGHT) {
       alert(`⚠️ 圖片長度過大，系統將自動為您分段匯出成多張圖片。`);
       let currentCanvasImages: {img: HTMLImageElement, height: number}[] = [];
       let currentCanvasH = 0;

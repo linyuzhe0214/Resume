@@ -149,8 +149,9 @@ export default function MainlineHistory({
     // 設定每段 8 公里 (8000 公尺)，對應高度約 4800px，確保能安全輸出
     const CHUNK_METERS = 8000; 
     const totalMeters = end - start;
+    const isMobileOrTablet = /iPad|iPhone|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    if (totalMeters > CHUNK_METERS) {
+    if (isMobileOrTablet && totalMeters > CHUNK_METERS) {
       alert(`⚠️ 匯出範圍較大，系統將自動切換里程分為多段處理，這可能需要一點時間，處理期間請勿點擊畫面。`);
       const chunks = [];
       for (let i = start; i < end; i += CHUNK_METERS) {
