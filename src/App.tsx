@@ -745,6 +745,9 @@ export default function App() {
           message="此操作無法復原，所有規劃路段將被永久移除。"
           type="danger"
           onConfirm={() => {
+            planningSegments.forEach(seg => {
+              if (PLANNING_URL) syncGas(PLANNING_URL, 'deletePlanning', seg.highway + ' (規劃)', seg.id, true);
+            });
             setPlanningSegments([]);
             setShowConfirmDeleteAll(false);
             setToast({ message: '已成功刪除所有規劃路段', type: 'info' });
