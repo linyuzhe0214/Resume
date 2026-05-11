@@ -366,7 +366,7 @@ export default function MainlineHistory({
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-slate-50 relative pb-40 overflow-hidden">
+    <div className="flex flex-col h-[100dvh] bg-slate-50 relative overflow-hidden">
       {/* Top Navigation Shell */}
       <header className="bg-white/80 backdrop-blur-md z-50 w-full pt-4 px-4 sm:px-6 flex flex-col border-b border-slate-200 shrink-0 shadow-sm">
         <div className="flex items-center justify-between pb-4 gap-4">
@@ -450,7 +450,7 @@ export default function MainlineHistory({
       </header>
 
 
-      <div id="mainline-export-container" className="flex-1 flex flex-col bg-slate-50 overflow-hidden pt-4">
+      <div id="mainline-export-container" className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden pt-4">
         {/* Legend Section */}
       <section className="mx-4 sm:mx-6 mb-4 bg-white rounded-3xl p-5 shadow-sm border border-slate-200 shrink-0">
         <div className="flex items-center justify-between mb-4">
@@ -479,14 +479,14 @@ export default function MainlineHistory({
       </section>
 
       {/* Main History Grid */}
-      <div className="mx-4 mb-4 bg-white rounded-xl shadow-sm border border-slate-200 flex-1 overflow-hidden flex flex-col">
+      <div className="mx-4 mb-4 bg-white rounded-xl shadow-sm border border-slate-200 flex-1 min-h-0 overflow-hidden flex flex-col">
         {/* 頂部同步捲動條 (僅 PC 顯示或作為輔助) */}
         <div 
           ref={headerScrollRef}
           onScroll={handleScroll}
           className="overflow-x-auto border-b border-slate-100 bg-slate-50 customize-scrollbar"
         >
-          <div className="min-w-[800px] h-2"></div>
+          <div className="min-w-[1100px] h-2"></div>
         </div>
 
         <div 
@@ -496,7 +496,7 @@ export default function MainlineHistory({
           onMouseMove={handleTableMouseMove}
           onMouseUp={stopTableDragging}
           onMouseLeave={stopTableDragging}
-          className="overflow-auto flex-1 relative customize-scrollbar"
+          className="overflow-auto flex-1 min-h-0 relative customize-scrollbar pb-40"
           style={{ cursor: 'grab' }}
         >
           <div className="min-w-[1100px] flex flex-col">

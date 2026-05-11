@@ -1,28 +1,25 @@
 import React from 'react';
-import { format } from 'date-fns';
 import { MAINLINE_URL, RAMP_URL, PLANNING_URL } from '../config';
 import { syncGas } from '../hooks/useHighwayData';
 import type { ActiveTab, SubPage } from '../hooks/useUIState';
 import type { Segment, RampSegment } from '../types';
 
-import MainlineHistory from '../components/MainlineHistory';
-import RampHistory from '../components/RampHistory';
 import EditSegment from '../components/EditSegment';
 import EditRamp from '../components/EditRamp';
 import EditRampHistory from '../components/EditRampHistory';
 import EditPavement from '../components/EditPavement';
 import SurfaceView from './SurfaceView';
+import MainlineView from './MainlineView';
+import PlanningView from './PlanningView';
+import RampView from './RampView';
 import type { KmlPoint } from '../utils/kmlParser';
 import type { SearchMode } from '../hooks/useGeolocationSync';
 
 interface ViewRouterProps {
-  // UI state
   activeTab: ActiveTab;
   subPage: SubPage;
   setSubPage: (p: SubPage) => void;
   setActiveTab: (t: ActiveTab) => void;
-
-  // Highway data
   segments: Segment[];
   setSegments: React.Dispatch<React.SetStateAction<Segment[]>>;
   planningSegments: Segment[];
@@ -34,8 +31,6 @@ interface ViewRouterProps {
   handleDeleteLane: (lane: string, hw?: string) => void;
   handleUpdateLaneOrder: (hw: string, lanes: string[]) => void;
   handleUpdateRampOrder: (order: string[]) => void;
-
-  // Draft state
   draftSegment: Segment | null;
   setDraftSegment: React.Dispatch<React.SetStateAction<Segment | null>>;
   draftRamp: RampSegment | null;
@@ -44,8 +39,6 @@ interface ViewRouterProps {
   setEditingSegmentId: React.Dispatch<React.SetStateAction<string | null>>;
   editingRampId: string | null;
   setEditingRampId: React.Dispatch<React.SetStateAction<string | null>>;
-
-  // UI helpers
   showToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
   setShowConfirmDeleteAll: (v: boolean) => void;
   highlightSegmentId: string | null;
@@ -56,8 +49,6 @@ interface ViewRouterProps {
   setActiveRampHighway: (hw: string) => void;
   activeRampInterchange: string;
   setActiveRampInterchange: (ic: string) => void;
-
-  // Geolocation
   currentTime: Date;
   gpsStatus: 'locating' | 'active' | 'error';
   accuracy: number | null;
@@ -110,7 +101,7 @@ export default function ViewRouter(props: ViewRouterProps) {
     setSubPage('none');
   };
 
-  // ── subPage 優先 ──
+  // ── subPage Logic ──
   if (subPage === 'editRamp') {
     return (
       <EditRamp
@@ -349,155 +340,135 @@ export default function ViewRouter(props: ViewRouterProps) {
     );
   }
 
-  // ── activeTab 路由 ──
-  const newRampBase = (defaultHighway = '國道1號', defaultInterchange = '豐原交流道'): RampSegment => ({
-    id: '', rampId: '', rampName: '', rampNo: '', laneCount: 1, length: 0,
-    status: 'Optimal', highway: defaultHighway, interchange: defaultInterchange,
-    property: '路堤', laneCategory: '一般路段',
-    constructionYear: (new Date().getFullYear() - 1911).toString(),
-    constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
-    startMileage: 0, endMileage: 0, direction: 'Southbound',
-    lanes: ['第一車道'], pavementLayers: [], notes: '',
-    prevConstructionYear: '', prevConstructionDepth: 0,
-  });
-
+  // ── activeTab Routes ──
   if (activeTab === 'ramp') {
     return (
-      <div className="min-h-screen bg-[#f7f9fc] pb-40">
-        <RampHistory
-          rampSegments={rampSegments}
-          activeHighway={activeRampHighway}
-          onActiveHighwayChange={setActiveRampHighway}
-          activeInterchange={activeRampInterchange}
-          onActiveInterchangeChange={setActiveRampInterchange}
-          onUpdateRampOrder={handleUpdateRampOrder}
-          onNavigateToEditDetails={(id, defaultHighway, defaultInterchange, prototypeId) => {
-            setEditingRampId(id || null);
-            if (id) {
-              const ramp = rampSegments.find(s => s.id === id);
-              setDraftRamp(ramp ? { ...ramp } : null);
-            } else if (prototypeId) {
-              const proto = rampSegments.find(s => s.id === prototypeId);
-              if (proto) setDraftRamp({ ...proto, id: '', pavementLayers: [], maintenanceHistory: [], notes: '', constructionYear: (new Date().getFullYear() - 1911).toString(), constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0') });
-            } else {
-              setDraftRamp(newRampBase(defaultHighway, defaultInterchange));
-            }
-            setSubPage('editRamp');
-          }}
-          onNavigateToEditHistory={(id, prototypeId, defaultStart, defaultEnd) => {
-            setEditingRampId(id || null);
-            if (id) {
-              const ramp = rampSegments.find(s => s.id === id);
-              setDraftRamp(ramp ? { ...ramp } : null);
-            } else if (prototypeId) {
-              const proto = rampSegments.find(s => s.id === prototypeId);
-              if (proto) setDraftRamp({ ...proto, id: '', pavementLayers: [], maintenanceHistory: [], constructionYear: (new Date().getFullYear() - 1911).toString(), constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'), startMileage: defaultStart ?? 0, endMileage: defaultEnd ?? proto.length });
-              else setDraftRamp(null);
-            } else {
-              setDraftRamp(newRampBase());
-            }
-            setSubPage('editRampHistory');
-          }}
-          onDeleteRamp={(rampId) => {
-            const toDelete = rampSegments.filter(s => s.rampId === rampId);
-            toDelete.forEach(seg => syncGas(RAMP_URL, 'deleteRamp', seg.interchange, seg.id, true));
-            setRampSegments(rampSegments.filter(s => s.rampId !== rampId));
-          }}
-        />
-      </div>
+      <RampView
+        rampSegments={rampSegments}
+        activeRampHighway={activeRampHighway}
+        setActiveRampHighway={setActiveRampHighway}
+        activeRampInterchange={activeRampInterchange}
+        setActiveRampInterchange={setActiveRampInterchange}
+        handleUpdateRampOrder={handleUpdateRampOrder}
+        onNavigateToEditDetails={(id, hw, interchange, protoId) => {
+          setEditingRampId(id || null);
+          if (id) {
+            const ramp = rampSegments.find(s => s.id === id);
+            setDraftRamp(ramp ? { ...ramp } : null);
+          } else if (protoId) {
+            const proto = rampSegments.find(s => s.id === protoId);
+            if (proto) setDraftRamp({ ...proto, id: '', pavementLayers: [], maintenanceHistory: [], notes: '', constructionYear: (new Date().getFullYear() - 1911).toString(), constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0') });
+          } else {
+            setDraftRamp({
+              id: '', rampId: '', rampName: '', rampNo: '', laneCount: 1, length: 0,
+              status: 'Optimal', highway: hw || '國道1號', interchange: interchange || '豐原交流道',
+              property: '路堤', laneCategory: '一般路段',
+              constructionYear: (new Date().getFullYear() - 1911).toString(),
+              constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
+              startMileage: 0, endMileage: 0, direction: 'Southbound',
+              lanes: ['第一車道'], pavementLayers: [], notes: '',
+              prevConstructionYear: '', prevConstructionDepth: 0,
+            });
+          }
+          setSubPage('editRamp');
+        }}
+        onNavigateToEditHistory={(id, protoId, start, end) => {
+          setEditingRampId(id || null);
+          if (id) {
+            const ramp = rampSegments.find(s => s.id === id);
+            setDraftRamp(ramp ? { ...ramp } : null);
+          } else if (protoId) {
+            const proto = rampSegments.find(s => s.id === protoId);
+            if (proto) setDraftRamp({ ...proto, id: '', pavementLayers: [], maintenanceHistory: [], constructionYear: (new Date().getFullYear() - 1911).toString(), constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'), startMileage: start ?? 0, endMileage: end ?? proto.length });
+          } else {
+            setDraftRamp({
+              id: '', rampId: '', rampName: '', rampNo: '', laneCount: 1, length: 0,
+              status: 'Optimal', highway: '國道1號', interchange: '豐原交流道',
+              property: '路堤', laneCategory: '一般路段',
+              constructionYear: (new Date().getFullYear() - 1911).toString(),
+              constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
+              startMileage: 0, endMileage: 0, direction: 'Southbound',
+              lanes: ['第一車道'], pavementLayers: [], notes: '',
+              prevConstructionYear: '', prevConstructionDepth: 0,
+            });
+          }
+          setSubPage('editRampHistory');
+        }}
+        onDeleteRamp={(rampId) => {
+          const toDelete = rampSegments.filter(s => s.rampId === rampId);
+          toDelete.forEach(seg => syncGas(RAMP_URL, 'deleteRamp', seg.interchange, seg.id, true));
+          setRampSegments(rampSegments.filter(s => s.rampId !== rampId));
+        }}
+      />
     );
   }
 
-  const mainlineHistoryHeader = (
-    <header className="flex items-center justify-between px-4 sm:px-6 py-3 bg-[#00488d] shadow-lg z-[60] relative">
-      <h1 className="text-base sm:text-lg font-black tracking-tight text-white leading-none">
-        高速公路路巡系統
-      </h1>
-      <div className="text-right">
-        <div className="text-xl font-mono font-black text-white tracking-tighter leading-none">
-          {format(currentTime, 'HH:mm:ss')}
-        </div>
-        <div className="text-[10px] text-blue-200 font-bold tracking-widest opacity-80">
-          {format(currentTime, 'yyyy-MM-dd')}
-        </div>
-      </div>
-    </header>
-  );
-
-  const newSegBase = (): Segment => {
-    let mappedDir: 'Northbound' | 'Southbound' | 'Eastbound' | 'Westbound' =
-      activeHistoryHighway === '國道4號' ? 'Westbound' : 'Southbound';
-    if (direction === '北上車道') mappedDir = activeHistoryHighway === '國道4號' ? 'Eastbound' : 'Northbound';
-    else if (direction === '東向車道') mappedDir = 'Eastbound';
-    else if (direction === '西向車道') mappedDir = 'Westbound';
-    return {
-      id: '', highway: activeHistoryHighway, property: '路堤', laneCategory: '一般路段',
-      constructionYear: (new Date().getFullYear() - 1911).toString(),
-      constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
-      startMileage: mileage, endMileage: mileage + 100,
-      direction: mappedDir, lanes: ['第一車道'], pavementLayers: [],
-      notes: '', prevConstructionYear: '', prevConstructionDepth: 0,
-    };
-  };
-
   if (activeTab === 'planning') {
     return (
-      <div className="min-h-screen bg-[#f7f9fc] pb-40">
-        {mainlineHistoryHeader}
-        <MainlineHistory
-          title="路面整修規劃"
-          segments={planningSegments}
-          activeHighway={activeHistoryHighway}
-          onActiveHighwayChange={setActiveHistoryHighway}
-          laneOptions={laneOptions[activeHistoryHighway] || []}
-          onAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
-          onDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
-          onUpdateLaneOrder={(lanes) => handleUpdateLaneOrder(activeHistoryHighway, lanes)}
-          onDeleteAll={() => setShowConfirmDeleteAll(true)}
-          onNavigateToEdit={(id) => {
-            setEditingSegmentId(id || null);
-            if (id) {
-              const seg = planningSegments.find(s => s.id === id);
-              setDraftSegment(seg ? { ...seg } : null);
-            } else {
-              setDraftSegment({ id: '', highway: '國道1號', property: '路堤', laneCategory: '一般路段', constructionYear: '113', constructionMonth: '08', startMileage: 166427, endMileage: 166527, direction: 'Southbound', lanes: ['第一車道'], pavementLayers: [], prevConstructionYear: '', prevConstructionDepth: 0 });
-            }
-            setSubPage('editSegment');
-          }}
-        />
-      </div>
+      <PlanningView
+        planningSegments={planningSegments}
+        activeHistoryHighway={activeHistoryHighway}
+        setActiveHistoryHighway={setActiveHistoryHighway}
+        laneOptions={laneOptions[activeHistoryHighway] || []}
+        handleAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
+        handleDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
+        handleUpdateLaneOrder={(lanes) => handleUpdateLaneOrder(activeHistoryHighway, lanes)}
+        setShowConfirmDeleteAll={setShowConfirmDeleteAll}
+        currentTime={currentTime}
+        onNavigateToEdit={(id) => {
+          setEditingSegmentId(id || null);
+          if (id) {
+            const seg = planningSegments.find(s => s.id === id);
+            setDraftSegment(seg ? { ...seg } : null);
+          } else {
+            setDraftSegment({ id: '', highway: '國道1號', property: '路堤', laneCategory: '一般路段', constructionYear: '113', constructionMonth: '08', startMileage: 166427, endMileage: 166527, direction: 'Southbound', lanes: ['第一車道'], pavementLayers: [], prevConstructionYear: '', prevConstructionDepth: 0 });
+          }
+          setSubPage('editSegment');
+        }}
+      />
     );
   }
 
   if (activeTab === 'mainline') {
     return (
-      <div className="min-h-screen bg-[#f7f9fc] pb-40">
-        <MainlineHistory
-          segments={segments}
-          activeHighway={activeHistoryHighway}
-          onActiveHighwayChange={setActiveHistoryHighway}
-          laneOptions={laneOptions[activeHistoryHighway] || []}
-          onAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
-          onDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
-          onUpdateLaneOrder={(lanes) => handleUpdateLaneOrder(activeHistoryHighway, lanes)}
-          highlightSegmentId={highlightSegmentId}
-          onHighlightClear={() => setHighlightSegmentId(null)}
-          onNavigateToEdit={(id) => {
-            setEditingSegmentId(id || null);
-            if (id) {
-              const seg = segments.find(s => s.id === id);
-              setDraftSegment(seg ? { ...seg } : null);
-            } else {
-              setDraftSegment(newSegBase());
-            }
-            setSubPage('editSegment');
-          }}
-        />
-      </div>
+      <MainlineView
+        segments={segments}
+        activeHistoryHighway={activeHistoryHighway}
+        setActiveHistoryHighway={setActiveHistoryHighway}
+        laneOptions={laneOptions[activeHistoryHighway] || []}
+        handleAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
+        handleDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
+        handleUpdateLaneOrder={(lanes) => handleUpdateLaneOrder(activeHistoryHighway, lanes)}
+        highlightSegmentId={highlightSegmentId}
+        onHighlightClear={() => setHighlightSegmentId(null)}
+        currentTime={currentTime}
+        onNavigateToEdit={(id) => {
+          setEditingSegmentId(id || null);
+          if (id) {
+            const seg = segments.find(s => s.id === id);
+            setDraftSegment(seg ? { ...seg } : null);
+          } else {
+            let mappedDir: 'Northbound' | 'Southbound' | 'Eastbound' | 'Westbound' =
+              activeHistoryHighway === '國道4號' ? 'Westbound' : 'Southbound';
+            if (direction === '北上車道') mappedDir = activeHistoryHighway === '國道4號' ? 'Eastbound' : 'Northbound';
+            else if (direction === '東向車道') mappedDir = 'Eastbound';
+            else if (direction === '西向車道') mappedDir = 'Westbound';
+            setDraftSegment({
+              id: '', highway: activeHistoryHighway, property: '路堤', laneCategory: '一般路段',
+              constructionYear: (new Date().getFullYear() - 1911).toString(),
+              constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
+              startMileage: mileage, endMileage: mileage + 100,
+              direction: mappedDir, lanes: ['第一車道'], pavementLayers: [],
+              notes: '', prevConstructionYear: '', prevConstructionDepth: 0,
+            });
+          }
+          setSubPage('editSegment');
+        }}
+      />
     );
   }
 
-  // default: surface
+  // Default: SurfaceView
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter') return;
     const val = searchQuery.trim().toLowerCase();
@@ -510,8 +481,7 @@ export default function ViewRouter(props: ViewRouterProps) {
       if (!isNaN(km) && !isNaN(m)) {
         setMileage(km * 1000 + m);
         pauseTracking();
-        const fmt = `${km}k+${m.toString().padStart(3, '0')}`;
-        showToast(`已手動定位至 ${fmt}`);
+        showToast(`已手動定位至 ${km}k+${m.toString().padStart(3, '0')}`);
         return;
       }
     }
