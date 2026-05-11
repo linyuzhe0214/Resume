@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Download, Plus, Layers, ChevronDown, MapPin, Search, ArrowUp, ArrowDown, Edit2, Trash2 } from 'lucide-react';
 import { RampSegment } from '../types';
-import { cn } from '../App';
+import { cn } from '../utils/utils';
 import ConfirmDialog from './ConfirmDialog';
 import { HIGHWAY_INTERCHANGE_MAP } from '../constants';
 import { getPavementColor, getPavementDisplayInfo, getColorFromLabel } from '../utils/pavement';

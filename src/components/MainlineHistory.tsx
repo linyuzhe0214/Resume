@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2, Download, Settings, X, AlertTriangle, Route, Filter } from 'lucide-react';
-import { cn } from '../App';
+import { cn } from '../utils/utils';
 import { Segment } from '../types';
 import { getPavementColor, getPavementDisplayInfo } from '../utils/pavement';
 import { exportComponentAsImage, exportComponentAsDataUrl, downloadDataUrls } from '../utils/exportImage';

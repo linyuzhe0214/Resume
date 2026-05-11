@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronDown, Calendar, Edit2, Trash2, Lock, Unlock, Copy, HardHat } from 'lucide-react';
 import { Segment } from '../types';
-import { cn } from '../App';
+import { cn } from '../utils/utils';
 import ConfirmDialog from './ConfirmDialog';
 import { parseMileage, formatMileage } from '../utils/mileage';
 import MileageInput from './MileageInput';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Edit2, Calendar, ChevronDown, Trash2, Copy } from 'lucide-react';
 import { RampSegment } from '../types';
-import { cn } from '../App';
+import { cn } from '../utils/utils';
 import ConfirmDialog from './ConfirmDialog';
 import { formatMonth } from '../utils/pavement';
 

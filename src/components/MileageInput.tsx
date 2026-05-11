@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { cn } from '../App';
+import { cn } from '../utils/utils';
 import { parseMileage, formatMileage } from '../utils/mileage';
 
 interface MileageInputProps {

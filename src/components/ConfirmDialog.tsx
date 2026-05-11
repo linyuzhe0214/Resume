@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '../App';
+import { cn } from '../utils/utils';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
