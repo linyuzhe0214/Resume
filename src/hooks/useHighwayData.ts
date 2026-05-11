@@ -221,11 +221,17 @@ export function useHighwayData({
         const idB = b.rampId || b.id;
         const idxA = newOrder.indexOf(idA);
         const idxB = newOrder.indexOf(idB);
-        if (idxA === -1 && idxB === -1) return 0;
-        if (idxA === -1) return 1;
-        if (idxB === -1) return -1;
-        return idxA - idxB;
+        
+        // 如果都在新排序中，按新排序走
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        // 如果 A 在新排序中而 B 不在，A 優先 (或保持相對位置)
+        // 這裡為了不影響其他公路的排序，我們只針對有出現在 newOrder 中的進行重新排序
+        return 0; 
       });
+      
+      // 同步到雲端 (可選，根據需求)
+      // sorted.forEach(r => syncGas(RAMP_URL, 'saveRamp', r.interchange, r));
+      
       return sorted;
     });
     showToast('匝道排序已更新', 'success');

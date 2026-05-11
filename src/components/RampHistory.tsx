@@ -344,7 +344,7 @@ export default function RampHistory(props: RampHistoryProps) {
         </div>
 
         {/* Right Column: Data Tables */}
-        <div className="w-full xl:flex-1 flex flex-col gap-8 overflow-hidden min-w-0">
+        <div className="w-full xl:flex-1 flex flex-col gap-8 min-w-0">
           
           {/* Section 3: Ramp Detailed Data Table */}
           <section className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
