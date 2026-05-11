@@ -26,7 +26,7 @@ export default function RampView({
   onDeleteRamp,
 }: RampViewProps) {
   return (
-    <div className="h-screen w-screen overflow-hidden">
+    <div className="min-h-screen bg-[#f7f9fc] pb-40">
       <RampHistory
         rampSegments={rampSegments}
         activeHighway={activeRampHighway}
