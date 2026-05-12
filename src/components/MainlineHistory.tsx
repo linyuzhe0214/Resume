@@ -198,8 +198,12 @@ export default function MainlineHistory({
   const collectBoundaryMarkers = () => {
     const markerSet = new Set<number>();
     filteredSegments.forEach(s => {
-      markerSet.add(s.startMileage);
-      markerSet.add(s.endMileage);
+      if (s.startMileage > displayBaseMileage && s.startMileage < displayEndMileage) {
+        markerSet.add(s.startMileage);
+      }
+      if (s.endMileage > displayBaseMileage && s.endMileage < displayEndMileage) {
+        markerSet.add(s.endMileage);
+      }
     });
     // 去除跟 100m 格線完全重合的點（避免重複標記）
     const markers = Array.from(markerSet).filter(m => m % 100 !== 0).sort((a, b) => a - b);
