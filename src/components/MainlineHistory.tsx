@@ -146,8 +146,8 @@ export default function MainlineHistory({
     setShowExportModal(false);
 
     // 平板 iOS Safari 畫布與 DOM 大小限制，超過一定長度直接渲染會全白
-    // 設定每段 8 公里 (8000 公尺)，對應高度約 4800px，確保能安全輸出
-    const CHUNK_METERS = 8000; 
+    // 設定每段 4 公里 (4000 公尺)，對應高度約 5600px，確保能安全輸出且不被截斷
+    const CHUNK_METERS = 4000; 
     const totalMeters = end - start;
     const isMobileOrTablet = /iPad|iPhone|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -310,7 +310,7 @@ export default function MainlineHistory({
         ref={el => { if (!segmentRefs.current[segment.id]) segmentRefs.current[segment.id] = el; }}
         onClick={() => onNavigateToEdit(segment.id)}
         className={cn(
-          "absolute w-full border border-black/10 flex flex-col items-center justify-center leading-none cursor-pointer hover:opacity-90 overflow-hidden group transition-all",
+          "absolute w-full border border-black/10 flex flex-col items-center justify-center leading-none cursor-pointer hover:opacity-90 overflow-visible z-10 hover:z-30 group transition-all",
           isFlashing && "segment-flashing z-20"
         )}
         style={{
@@ -332,13 +332,11 @@ export default function MainlineHistory({
         <span className="font-black text-[13px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
           {segment.constructionYear}
         </span>
-        {height >= 40 && (
-          <span className="truncate w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5">
-            {thickness}cm
-          </span>
-        )}
-        {height >= 60 && segment.prevConstructionYear && (
-          <span className="truncate w-full text-center text-[10px] text-slate-950/70 leading-none mt-0.5 px-1">
+        <span className="w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+          {thickness}cm
+        </span>
+        {segment.prevConstructionYear && (
+          <span className="w-full text-center text-[10px] text-slate-900 leading-none mt-0.5 px-1 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
             EX：{segment.prevConstructionYear}{segment.prevConstructionDepth ? `  ${segment.prevConstructionDepth}cm` : ''}
           </span>
         )}

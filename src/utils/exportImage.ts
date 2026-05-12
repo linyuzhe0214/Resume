@@ -222,6 +222,13 @@ export const exportComponentAsImage = async (elementId: string, filename: string
       el.style.setProperty('overflow', 'visible', 'important');
       el.style.setProperty('max-height', 'none', 'important');
       el.style.setProperty('max-width', 'none', 'important');
+      el.scrollTop = 0;
+    });
+
+    const stickyElements = element.querySelectorAll('.sticky');
+    const originalStickyStyles = Array.from(stickyElements).map((el: any) => el.style.getPropertyValue('position'));
+    stickyElements.forEach((el: any) => {
+      el.style.setProperty('position', 'relative', 'important');
     });
 
     // 2. 轉換顏色為 RGB，避免 Tailwind v4 色彩解析失敗
@@ -290,6 +297,13 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     scrollContainers.forEach((el: any, i) => {
       el.style.cssText = originalScrollStyles[i];
     });
+    stickyElements.forEach((el: any, i) => {
+      if (originalStickyStyles[i]) {
+        el.style.setProperty('position', originalStickyStyles[i]);
+      } else {
+        el.style.removeProperty('position');
+      }
+    });
   }
 };
 
@@ -317,6 +331,13 @@ export const exportComponentAsDataUrl = async (elementId: string): Promise<strin
       el.style.setProperty('overflow', 'visible', 'important');
       el.style.setProperty('max-height', 'none', 'important');
       el.style.setProperty('max-width', 'none', 'important');
+      el.scrollTop = 0;
+    });
+
+    const stickyElements = element.querySelectorAll('.sticky');
+    const originalStickyStyles = Array.from(stickyElements).map((el: any) => el.style.getPropertyValue('position'));
+    stickyElements.forEach((el: any) => {
+      el.style.setProperty('position', 'relative', 'important');
     });
 
     restoreColors = convertToComputedRgb(element);
@@ -347,6 +368,13 @@ export const exportComponentAsDataUrl = async (elementId: string): Promise<strin
     element.style.cssText = originalStyle;
     scrollContainers.forEach((el: any, i) => {
       el.style.cssText = originalScrollStyles[i];
+    });
+    stickyElements.forEach((el: any, i) => {
+      if (originalStickyStyles[i]) {
+        el.style.setProperty('position', originalStickyStyles[i]);
+      } else {
+        el.style.removeProperty('position');
+      }
     });
   }
 };
