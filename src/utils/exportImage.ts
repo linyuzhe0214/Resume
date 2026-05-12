@@ -217,10 +217,8 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     expandContainers.forEach((el: any) => {
       el.style.setProperty('height', 'max-content', 'important');
       el.style.setProperty('min-height', 'max-content', 'important');
-      el.style.setProperty('width', 'max-content', 'important');
       el.style.setProperty('overflow', 'visible', 'important');
       el.style.setProperty('max-height', 'none', 'important');
-      el.style.setProperty('max-width', 'none', 'important');
       el.style.setProperty('flex', 'none', 'important');
       if (el.scrollTop) el.scrollTop = 0;
     });
@@ -317,8 +315,8 @@ export const exportComponentAsDataUrl = async (elementId: string): Promise<strin
   
   let restoreColors: (() => void) | null = null;
   const originalStyle = element.style.cssText;
-  const scrollContainers = element.querySelectorAll('.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar');
-  const originalScrollStyles = Array.from(scrollContainers).map((el: any) => el.style.cssText);
+  const expandContainers = element.querySelectorAll('.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar, .overflow-hidden, .flex-1, .min-h-0');
+  const originalExpandStyles = Array.from(expandContainers).map((el: any) => el.style.cssText);
 
   try {
     element.style.setProperty('height', 'max-content', 'important');
@@ -329,10 +327,8 @@ export const exportComponentAsDataUrl = async (elementId: string): Promise<strin
     expandContainers.forEach((el: any) => {
       el.style.setProperty('height', 'max-content', 'important');
       el.style.setProperty('min-height', 'max-content', 'important');
-      el.style.setProperty('width', 'max-content', 'important');
       el.style.setProperty('overflow', 'visible', 'important');
       el.style.setProperty('max-height', 'none', 'important');
-      el.style.setProperty('max-width', 'none', 'important');
       el.style.setProperty('flex', 'none', 'important');
       if (el.scrollTop) el.scrollTop = 0;
     });
@@ -419,10 +415,8 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
       element.style.setProperty('min-width', '900px', 'important');
       scrollContainers.forEach((el: any) => {
         el.style.setProperty('height', 'max-content', 'important');
-        el.style.setProperty('width', 'max-content', 'important');
         el.style.setProperty('overflow', 'visible', 'important');
         el.style.setProperty('max-height', 'none', 'important');
-        el.style.setProperty('max-width', 'none', 'important');
         el.style.setProperty('flex', 'none', 'important');
       });
 
