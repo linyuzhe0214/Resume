@@ -471,7 +471,7 @@ export default function MainlineHistory({
           className="overflow-auto flex-1 min-h-0 relative customize-scrollbar pb-40"
           style={{ cursor: 'grab' }}
         >
-          <div className="min-w-[1100px] flex flex-col">
+          <div className="min-w-[1100px] block">
             {/* Sticky Headers Wrapper */}
             <div className="sticky top-0 z-40 flex flex-col shadow-sm">
               {/* Grid Header */}
@@ -523,7 +523,7 @@ export default function MainlineHistory({
             </div>
 
             {/* Scrollable Content Grid */}
-            <div className="relative flex-1">
+            <div className="relative">
               {/* compute grid row heights */}
               <div 
                 className="absolute inset-0 grid divide-y divide-slate-100 pointer-events-none"

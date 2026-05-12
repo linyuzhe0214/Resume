@@ -377,11 +377,11 @@ export default function RampHistory(props: RampHistoryProps) {
              </div>
           </div>
           <div className="overflow-hidden shadow-inner">
-            {/* Top Scrollbar (Visible on both PC and Mobile) */}
+            {/* Top Scrollbar (Visible only on PC) */}
             <div 
               ref={headerScrollRef}
               onScroll={handleScroll}
-              className="overflow-x-auto border-b border-slate-50 bg-slate-50/50 customize-scrollbar"
+              className="hidden lg:block overflow-x-auto border-b border-slate-50 bg-slate-50/50 customize-scrollbar"
             >
               <div className="min-w-[800px] h-3 sm:h-1.5"></div>
             </div>
@@ -393,7 +393,7 @@ export default function RampHistory(props: RampHistoryProps) {
               onMouseMove={handleTableMouseMove}
               onMouseUp={stopTableDragging}
               onMouseLeave={stopTableDragging}
-              className="overflow-x-auto customize-scrollbar"
+              className="hidden lg:block overflow-x-auto customize-scrollbar"
               style={{ cursor: 'grab' }}
             >
               <table className="w-full text-left border-separate border-spacing-0 min-w-[800px]">
