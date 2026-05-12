@@ -147,46 +147,16 @@ export default function MainlineHistory({
 
     // 平板 iOS Safari 畫布與 DOM 大小限制，超過一定長度直接渲染會全白
     // 設定每段 4 公里 (4000 公尺)，對應高度約 5600px，確保能安全輸出且不被截斷
-    const CHUNK_METERS = 4000; 
-    const totalMeters = end - start;
-    const isMobileOrTablet = /iPad|iPhone|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    if (isMobileOrTablet && totalMeters > CHUNK_METERS) {
-      alert(`⚠️ 匯出範圍較大，系統將自動切換里程分為多段處理，這可能需要一點時間，處理期間請勿點擊畫面。`);
-      const chunks = [];
-      for (let i = start; i < end; i += CHUNK_METERS) {
-        chunks.push({ start: i, end: Math.min(i + CHUNK_METERS, end) });
-      }
-      
-      const dataUrls: string[] = [];
-      
-      for (let i = 0; i < chunks.length; i++) {
-        // 設定目前的顯示範圍，讓 React 只渲染這一段的 DOM
-        setActiveExportRange(chunks[i]);
-        // 必須等待畫面完全渲染與重繪 (給予平板充裕的時間)
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        const url = await exportComponentAsDataUrl('mainline-export-container');
-        if (url) dataUrls.push(url);
-      }
-      
-      setActiveExportRange(null); // 恢復全段顯示
-      
-      if (dataUrls.length > 0) {
-        await downloadDataUrls(dataUrls, `${activeHighway}_${title}`);
-      }
+    // 範圍夠小，直接匯出
+    if (start !== currentHighway.start || end !== currentHighway.end) {
+      setActiveExportRange({ start, end });
+      // 等待 React re-render 網格
+      setTimeout(async () => {
+        await exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}_range`);
+        setActiveExportRange(null); // 恢復原狀
+      }, 500);
     } else {
-      // 範圍夠小，直接匯出
-      if (start !== currentHighway.start || end !== currentHighway.end) {
-        setActiveExportRange({ start, end });
-        // 等待 React re-render 網格
-        setTimeout(async () => {
-          await exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}_range`);
-          setActiveExportRange(null); // 恢復原狀
-        }, 500);
-      } else {
-        await exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`);
-      }
+      await exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`);
     }
   };
 
