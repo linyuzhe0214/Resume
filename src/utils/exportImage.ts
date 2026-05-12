@@ -46,10 +46,61 @@ const convertToComputedRgb = (element: HTMLElement) => {
  * 支援一次分享多個檔案（針對 iOS/iPadOS 自動分段）
  */
 export const downloadDataUrls = async (dataUrls: string[], filename: string) => {
+  const isMobileOrTablet = /iPad|iPhone|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (!isMobileOrTablet) {
+    for (let i = 0; i < dataUrls.length; i++) {
+      const link = document.createElement('a');
+      link.href = dataUrls[i];
+      link.download = dataUrls.length > 1 ? `${filename}_第${i + 1}段_${new Date().getTime()}.png` : `${filename}_${new Date().getTime()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      await new Promise(resolve => setTimeout(resolve, 600));
+    }
+    return;
+  }
+
+  // Tablet/Mobile behavior
+  const showFallbackOverlay = () => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+      background: rgba(15, 23, 42, 0.98); z-index: 999999;
+      display: flex; flex-direction: column; align-items: center;
+      overflow-y: auto; padding: 2rem 1rem; overscroll-behavior: contain;
+    `;
+    
+    const title = document.createElement('h3');
+    title.innerText = '✅ 圖片生成成功！\n請長按下方圖片並選擇「儲存圖片」';
+    title.style.cssText = 'color: white; font-size: 1.1rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center; line-height: 1.5; flex-shrink: 0;';
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.innerText = '我已經儲存了，關閉畫面';
+    closeBtn.style.cssText = 'background: #3b82f6; color: white; border: none; padding: 1rem 2rem; border-radius: 99px; font-weight: 800; margin-bottom: 2rem; flex-shrink: 0; cursor: pointer; font-size: 1rem; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);';
+    closeBtn.onclick = () => document.body.removeChild(overlay);
+
+    overlay.appendChild(title);
+    overlay.appendChild(closeBtn);
+
+    dataUrls.forEach((url, i) => {
+      if (dataUrls.length > 1) {
+        const label = document.createElement('div');
+        label.innerText = `第 ${i + 1} 段圖片`;
+        label.style.cssText = 'color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: bold;';
+        overlay.appendChild(label);
+      }
+      const img = document.createElement('img');
+      img.src = url;
+      img.style.cssText = 'max-width: 100%; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 10px 25px rgba(0,0,0,0.5); user-select: auto; -webkit-user-select: auto; touch-action: auto; pointer-events: auto;';
+      overlay.appendChild(img);
+    });
+
+    document.body.appendChild(overlay);
+  };
+
   try {
     const files: File[] = [];
-    const blobUrls: string[] = [];
-
     dataUrls.forEach((dataUrl, index) => {
       const arr = dataUrl.split(',');
       const mime = arr[0].match(/:(.*?);/)![1];
@@ -58,55 +109,15 @@ export const downloadDataUrls = async (dataUrls: string[], filename: string) => 
       const u8arr = new Uint8Array(n);
       while (n--) u8arr[n] = bstr.charCodeAt(n);
       const blob = new Blob([u8arr], { type: mime });
-      
-      const fileNameWithExt = dataUrls.length > 1 
-        ? `${filename}_第${index + 1}段_${new Date().getTime()}.png`
-        : `${filename}_${new Date().getTime()}.png`;
-      
+      const fileNameWithExt = dataUrls.length > 1 ? `${filename}_第${index + 1}段.png` : `${filename}.png`;
       files.push(new File([blob], fileNameWithExt, { type: mime }));
     });
 
-    const isMobileOrTablet = /iPad|iPhone|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    const triggerShareOrDownload = async () => {
-      if (isMobileOrTablet && navigator.canShare && navigator.share && navigator.canShare({ files })) {
-        try {
-          await navigator.share({
-            files,
-            title: filename,
-          });
-          return true;
-        } catch (shareErr: any) {
-          if (shareErr.name === 'AbortError') return true; // 使用者取消，視為成功處理
-          console.error('Share failed:', shareErr);
-          return false;
-        }
-      }
-      
-      // Fallback 到傳統下載
-      for (const file of files) {
-        const blobUrl = URL.createObjectURL(file);
-        blobUrls.push(blobUrl);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = file.name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        await new Promise(resolve => setTimeout(resolve, 600));
-      }
-      return true;
-    };
-
-    // 嘗試直接呼叫。如果耗時過久，iOS Safari 會丟出 NotAllowedError (遺失使用者點擊授權)
-    const success = await triggerShareOrDownload();
-    
-    // 如果失敗 (通常是 NotAllowedError)，我們在畫面上產生一個按鈕，讓使用者親自點擊來觸發
-    if (!success) {
+    if (navigator.canShare && navigator.share && navigator.canShare({ files })) {
       await new Promise<void>((resolve) => {
         const overlay = document.createElement('div');
         overlay.style.cssText = `
-          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
           background: rgba(15, 23, 42, 0.85); z-index: 999999;
           display: flex; flex-direction: column; align-items: center; justify-content: center;
           backdrop-filter: blur(8px);
@@ -116,29 +127,18 @@ export const downloadDataUrls = async (dataUrls: string[], filename: string) => 
         card.style.cssText = `
           background: white; padding: 2.5rem 2rem; border-radius: 1.5rem; text-align: center;
           width: 90%; max-width: 320px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-          animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         `;
-        
-        // 注入動畫 style
-        if (!document.getElementById('export-anim-style')) {
-          const style = document.createElement('style');
-          style.id = 'export-anim-style';
-          style.innerHTML = `@keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }`;
-          document.head.appendChild(style);
-        }
         
         const icon = document.createElement('div');
         icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
         icon.style.cssText = 'margin: 0 auto 1rem auto; background: #eff6ff; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center;';
         
-        const title = document.createElement('h3');
-        title.innerText = '圖片生成完畢';
-        title.style.cssText = 'margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 900; color: #0f172a;';
+        const titleEl = document.createElement('h3');
+        titleEl.innerText = '圖片生成完畢';
+        titleEl.style.cssText = 'margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 900; color: #0f172a;';
         
         const desc = document.createElement('p');
-        desc.innerText = dataUrls.length > 1 
-          ? `共生成了 ${dataUrls.length} 張分段圖片\n請點擊下方按鈕分享或儲存至相簿`
-          : `請點擊下方按鈕分享或儲存至相簿`;
+        desc.innerText = dataUrls.length > 1 ? `共生成了 ${dataUrls.length} 張分段圖片\n請點擊下方按鈕分享或儲存` : `請點擊下方按鈕分享或儲存`;
         desc.style.cssText = 'margin: 0 0 1.5rem 0; color: #64748b; font-size: 0.875rem; font-weight: 600; line-height: 1.5; white-space: pre-wrap;';
         
         const btn = document.createElement('button');
@@ -149,50 +149,48 @@ export const downloadDataUrls = async (dataUrls: string[], filename: string) => 
           width: 100%; transition: background 0.2s;
         `;
         
-        const closeBtn = document.createElement('button');
-        closeBtn.innerText = '取消';
-        closeBtn.style.cssText = `
-          background: transparent; color: #94a3b8; border: none; padding: 0.75rem;
+        const fallbackBtn = document.createElement('button');
+        fallbackBtn.innerText = '分享沒反應？點此長按儲存';
+        fallbackBtn.style.cssText = `
+          background: transparent; color: #64748b; border: none; padding: 0.75rem;
           font-size: 0.875rem; border-radius: 0.75rem; cursor: pointer; font-weight: 700;
-          width: 100%; margin-top: 0.5rem;
+          width: 100%; margin-top: 0.5rem; text-decoration: underline;
         `;
         
         btn.onclick = async () => {
-          btn.innerText = '處理中...';
-          btn.style.background = '#93c5fd';
-          btn.disabled = true;
-          await triggerShareOrDownload();
-          document.body.removeChild(overlay);
-          resolve();
+          try {
+            await navigator.share({ files, title: filename });
+            document.body.removeChild(overlay);
+            resolve();
+          } catch (e: any) {
+            if (e.name !== 'AbortError') {
+              document.body.removeChild(overlay);
+              showFallbackOverlay();
+              resolve();
+            }
+          }
         };
         
-        closeBtn.onclick = () => {
+        fallbackBtn.onclick = () => {
           document.body.removeChild(overlay);
+          showFallbackOverlay();
           resolve();
         };
         
         card.appendChild(icon);
-        card.appendChild(title);
+        card.appendChild(titleEl);
         card.appendChild(desc);
         card.appendChild(btn);
-        card.appendChild(closeBtn);
+        card.appendChild(fallbackBtn);
         overlay.appendChild(card);
         document.body.appendChild(overlay);
       });
+    } else {
+      showFallbackOverlay();
     }
-
-    setTimeout(() => {
-      blobUrls.forEach(url => URL.revokeObjectURL(url));
-    }, 10000);
-
   } catch (e) {
-    for (let i = 0; i < dataUrls.length; i++) {
-      const link = document.createElement('a');
-      link.href = dataUrls[i];
-      link.download = dataUrls.length > 1 ? `${filename}_第${i + 1}段_${new Date().getTime()}.png` : `${filename}_${new Date().getTime()}.png`;
-      link.click();
-      await new Promise(resolve => setTimeout(resolve, 600));
-    }
+    console.error('Mobile share setup failed:', e);
+    showFallbackOverlay();
   }
 };
 
@@ -205,8 +203,8 @@ export const exportComponentAsImage = async (elementId: string, filename: string
   
   let restoreColors: (() => void) | null = null;
   const originalStyle = element.style.cssText;
-  const scrollContainers = element.querySelectorAll('.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar');
-  const originalScrollStyles = Array.from(scrollContainers).map((el: any) => el.style.cssText);
+  const expandContainers = element.querySelectorAll('.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar, .overflow-hidden, .flex-1, .min-h-0');
+  const originalExpandStyles = Array.from(expandContainers).map((el: any) => el.style.cssText);
 
   try {
     // 1. 簡單展開容器 (還原至原本不會出錯的寫法)
@@ -216,14 +214,17 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     // 強制桌面寬度避免跑版
     element.style.setProperty('min-width', '900px', 'important'); 
     
-    scrollContainers.forEach((el: any) => {
+    expandContainers.forEach((el: any) => {
       el.style.setProperty('height', 'max-content', 'important');
+      el.style.setProperty('min-height', 'max-content', 'important');
       el.style.setProperty('width', 'max-content', 'important');
       el.style.setProperty('overflow', 'visible', 'important');
       el.style.setProperty('max-height', 'none', 'important');
       el.style.setProperty('max-width', 'none', 'important');
-      el.scrollTop = 0;
+      el.style.setProperty('flex', 'none', 'important');
+      if (el.scrollTop) el.scrollTop = 0;
     });
+    element.style.setProperty('flex', 'none', 'important');
 
     const stickyElements = element.querySelectorAll('.sticky');
     const originalStickyStyles = Array.from(stickyElements).map((el: any) => el.style.getPropertyValue('position'));
@@ -294,8 +295,8 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     // 3. 復原一切
     if (restoreColors) restoreColors();
     element.style.cssText = originalStyle;
-    scrollContainers.forEach((el: any, i) => {
-      el.style.cssText = originalScrollStyles[i];
+    expandContainers.forEach((el: any, i) => {
+      el.style.cssText = originalExpandStyles[i];
     });
     stickyElements.forEach((el: any, i) => {
       if (originalStickyStyles[i]) {
@@ -325,14 +326,17 @@ export const exportComponentAsDataUrl = async (elementId: string): Promise<strin
     element.style.setProperty('overflow', 'visible', 'important');
     element.style.setProperty('min-width', '900px', 'important'); 
     
-    scrollContainers.forEach((el: any) => {
+    expandContainers.forEach((el: any) => {
       el.style.setProperty('height', 'max-content', 'important');
+      el.style.setProperty('min-height', 'max-content', 'important');
       el.style.setProperty('width', 'max-content', 'important');
       el.style.setProperty('overflow', 'visible', 'important');
       el.style.setProperty('max-height', 'none', 'important');
       el.style.setProperty('max-width', 'none', 'important');
-      el.scrollTop = 0;
+      el.style.setProperty('flex', 'none', 'important');
+      if (el.scrollTop) el.scrollTop = 0;
     });
+    element.style.setProperty('flex', 'none', 'important');
 
     const stickyElements = element.querySelectorAll('.sticky');
     const originalStickyStyles = Array.from(stickyElements).map((el: any) => el.style.getPropertyValue('position'));
@@ -360,14 +364,15 @@ export const exportComponentAsDataUrl = async (elementId: string): Promise<strin
     });
 
     return dataUrl;
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to generate dataUrl:', err);
+    alert(`匯出分段圖片失敗：${err.message || err}`);
     return null;
   } finally {
     if (restoreColors) restoreColors();
     element.style.cssText = originalStyle;
-    scrollContainers.forEach((el: any, i) => {
-      el.style.cssText = originalScrollStyles[i];
+    expandContainers.forEach((el: any, i) => {
+      el.style.cssText = originalExpandStyles[i];
     });
     stickyElements.forEach((el: any, i) => {
       if (originalStickyStyles[i]) {
@@ -418,6 +423,7 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
         el.style.setProperty('overflow', 'visible', 'important');
         el.style.setProperty('max-height', 'none', 'important');
         el.style.setProperty('max-width', 'none', 'important');
+        el.style.setProperty('flex', 'none', 'important');
       });
 
       restoreFns.push(convertToComputedRgb(element));
