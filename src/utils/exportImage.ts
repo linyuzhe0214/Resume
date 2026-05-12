@@ -85,29 +85,60 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     const targetWidth = Math.max(element.scrollWidth, 900);
     
     // 電腦版大幅提升畫質，預設使用 3 倍解析度。若高度太長則稍微降低以符合 Canvas 限制
-    let pixelRatio = 3;
-    if (targetHeight * pixelRatio > 16000) {
-      pixelRatio = Math.max(1.5, 16000 / targetHeight);
-    }
+    const pixelRatio = 3;
+    const MAX_CANVAS_HEIGHT = 16000;
 
-    const dataUrl = await toPng(element, {
-      backgroundColor: '#ffffff',
-      pixelRatio: pixelRatio,
-      width: targetWidth,
-      height: targetHeight,
-      skipFonts: true,
-      style: {
-        transform: 'none',
-        transition: 'none'
+    if (targetHeight * pixelRatio > MAX_CANVAS_HEIGHT) {
+      alert(`⚠️ 國道全段長度超過單張圖片硬體極限，系統將保持最高畫質，並自動為您無縫分段下載為多張圖片（各段可完美拼接）。`);
+      
+      const chunkDOMHeight = Math.floor(MAX_CANVAS_HEIGHT / pixelRatio);
+      const totalChunks = Math.ceil(targetHeight / chunkDOMHeight);
+      
+      for (let i = 0; i < totalChunks; i++) {
+        const currentY = i * chunkDOMHeight;
+        const currentChunkHeight = Math.min(chunkDOMHeight, targetHeight - currentY);
+        
+        const dataUrl = await toPng(element, {
+          backgroundColor: '#ffffff',
+          pixelRatio: pixelRatio,
+          width: targetWidth,
+          height: currentChunkHeight,
+          skipFonts: true,
+          style: {
+            transform: `translateY(-${currentY}px)`,
+            transition: 'none'
+          }
+        });
+        
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `${filename}_部分${i + 1}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
-    });
+    } else {
+      const dataUrl = await toPng(element, {
+        backgroundColor: '#ffffff',
+        pixelRatio: pixelRatio,
+        width: targetWidth,
+        height: targetHeight,
+        skipFonts: true,
+        style: {
+          transform: 'none',
+          transition: 'none'
+        }
+      });
 
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `${filename}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `${filename}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
 
   } catch (err: any) {
     console.error('Failed to export image:', err);
