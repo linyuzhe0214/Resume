@@ -83,7 +83,12 @@ export const exportComponentAsImage = async (elementId: string, filename: string
 
     const targetHeight = element.scrollHeight;
     const targetWidth = Math.max(element.scrollWidth, 900);
-    const pixelRatio = targetHeight > 2000 ? 1 : 1.5; 
+    
+    // 電腦版大幅提升畫質，預設使用 3 倍解析度。若高度太長則稍微降低以符合 Canvas 限制
+    let pixelRatio = 3;
+    if (targetHeight * pixelRatio > 16000) {
+      pixelRatio = Math.max(1.5, 16000 / targetHeight);
+    }
 
     const dataUrl = await toPng(element, {
       backgroundColor: '#ffffff',
@@ -171,7 +176,11 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
 
     const FIXED_WIDTH = Math.max(...elements.map(el => Math.max(el.scrollWidth, 900)));
     const totalRawHeight = elements.reduce((acc, el) => acc + el.scrollHeight, 0);
-    const pixelRatio = (FIXED_WIDTH * totalRawHeight) > 3000000 ? 1 : 1.5;
+    
+    let pixelRatio = 3;
+    if (totalRawHeight * pixelRatio > 16000) {
+      pixelRatio = Math.max(1.5, 16000 / totalRawHeight);
+    }
     
     const images: HTMLImageElement[] = [];
     for (let i = 0; i < elements.length; i++) {
