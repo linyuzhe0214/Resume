@@ -22,75 +22,27 @@ function replaceModernColors(cssText: string): string {
   });
 }
 
-// ─── 輔助：修補 clone document 裡所有 stylesheet（html2canvas 會直接讀 rules）──
+// ─── 關鍵：在呼叫 html2canvas「之前」patch 原始 document 的 <style> ──────────
+// html2canvas 的 DocumentCloner 在 clone DOM 時就解析 CSS，onclone callback 太晚。
+// 必須在呼叫前改原始 document，clone 時才會複製已修改的版本。
 
-function patchStylesheets(doc: Document): void {
-  // 優先直接改 <style> textContent——最可靠，不受 live CSSRuleList index 偏移影響
-  Array.from(doc.querySelectorAll('style')).forEach((styleEl) => {
+function patchOriginalStyles(): () => void {
+  const restores: { el: HTMLStyleElement; original: string }[] = [];
+
+  Array.from(document.querySelectorAll('style')).forEach((styleEl) => {
     const original = styleEl.textContent ?? '';
-    if (!original.includes('oklch') && !original.includes('oklab')) return;
+    if (
+      !original.includes('oklch') &&
+      !original.includes('oklab') &&
+      !original.includes('color(')
+    ) return;
+    restores.push({ el: styleEl as HTMLStyleElement, original });
     styleEl.textContent = replaceModernColors(original);
   });
 
-  // 對外部 <link> stylesheet（html2canvas clone 時通常已 inline），用倒序處理避免 index 偏移
-  Array.from(doc.styleSheets).forEach((sheet) => {
-    const ownerTag = (sheet.ownerNode as HTMLElement | null)?.tagName;
-    if (ownerTag === 'STYLE') return; // 已在上面處理
-    let rules: CSSRuleList;
-    try { rules = sheet.cssRules; } catch { return; } // cross-origin
-    for (let i = rules.length - 1; i >= 0; i--) {
-      const text = rules[i].cssText;
-      if (!text.includes('oklch') && !text.includes('oklab') && !text.includes('color(')) continue;
-      const fixed = replaceModernColors(text);
-      try {
-        (sheet as CSSStyleSheet).deleteRule(i);
-        (sheet as CSSStyleSheet).insertRule(fixed, i);
-      } catch { /* ignore malformed */ }
-    }
-  });
-}
-
-// ─── 以下保留 inline style 轉換（convertToComputedRgb）用於 onclone 補充處理 ────
-
-function convertToComputedRgb(element: HTMLElement): () => void {
-  const els = [element, ...Array.from(element.querySelectorAll('*'))] as HTMLElement[];
-  const saved: { el: HTMLElement; style: string }[] = [];
-  const updates: { el: HTMLElement; prop: string; value: string }[] = [];
-
-  const COLOR_PROPS: [string, string][] = [
-    ['backgroundColor', 'background-color'],
-    ['color', 'color'],
-    ['borderTopColor', 'border-top-color'],
-    ['borderRightColor', 'border-right-color'],
-    ['borderBottomColor', 'border-bottom-color'],
-    ['borderLeftColor', 'border-left-color'],
-    ['outlineColor', 'outline-color'],
-    ['textDecorationColor', 'text-decoration-color'],
-  ];
-
-  els.forEach(el => {
-    const cs = window.getComputedStyle(el);
-    saved.push({ el, style: el.style.cssText });
-
-    COLOR_PROPS.forEach(([jsProp, cssProp]) => {
-      const v = (cs as any)[jsProp] as string;
-      if (!v) return;
-      if (!v.includes('oklch') && !v.includes('oklab') && !v.includes('color(')) return;
-      try {
-        const resolved = colorStringToRgb(v);
-        updates.push({ el, prop: cssProp, value: resolved });
-      } catch { /* ignore */ }
-    });
-
-    // box-shadow 含 oklch 時直接移除
-    const shadow = cs.boxShadow;
-    if (shadow && shadow !== 'none' && (shadow.includes('oklch') || shadow.includes('oklab'))) {
-      updates.push({ el, prop: 'box-shadow', value: 'none' });
-    }
-  });
-
-  updates.forEach(({ el, prop, value }) => el.style.setProperty(prop, value, 'important'));
-  return () => saved.forEach(({ el, style }) => { el.style.cssText = style; });
+  return () => {
+    restores.forEach(({ el, original }) => { el.textContent = original; });
+  };
 }
 
 // ─── 輔助：展開元素的 overflow/height 限制 ───────────────────────────────────
@@ -99,7 +51,9 @@ function expandElement(element: HTMLElement): () => void {
   const saved: { el: HTMLElement; style: string }[] = [];
 
   const innerContainers = element.querySelectorAll(
-    '.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar, .overflow-hidden, .flex-1, .min-h-0'
+    '[class*="overflow-auto"],[class*="overflow-y-auto"],[class*="overflow-x-auto"],' +
+    '[class*="overflow-hidden"],[class*="hide-scrollbar"],' +
+    '[class*="flex-1"],[class*="min-h-0"],[class*="h-full"],[class*="max-h-"]'
   );
   innerContainers.forEach((el: any) => {
     saved.push({ el, style: el.style.cssText });
@@ -111,7 +65,7 @@ function expandElement(element: HTMLElement): () => void {
     if (el.scrollTop) el.scrollTop = 0;
   });
 
-  element.querySelectorAll('.sticky').forEach((el: any) => {
+  element.querySelectorAll('.sticky, [class*="sticky"]').forEach((el: any) => {
     saved.push({ el, style: el.style.cssText });
     el.style.setProperty('position', 'relative', 'important');
   });
@@ -134,25 +88,25 @@ async function captureChunk(
   width: number,
   scale: number,
 ): Promise<HTMLCanvasElement> {
-  return html2canvas(element, {
-    scale,
-    width,
-    height: chunkH,
-    x: 0,
-    y: offsetY,
-    scrollX: 0,
-    scrollY: 0,
-    backgroundColor: '#ffffff',
-    useCORS: true,
-    allowTaint: true,
-    logging: false,
-    onclone: (clonedDoc, clonedEl) => {
-      // 1. 修補 stylesheet rules 裡的 oklch（這是 html2canvas throw 的根源）
-      patchStylesheets(clonedDoc);
-      // 2. 再對 clone DOM inline style 補一層保險
-      convertToComputedRgb(clonedEl as HTMLElement);
-    },
-  });
+  // ★ 在 html2canvas 呼叫前 patch，clone 階段就已是 rgb，無論如何都還原
+  const unpatch = patchOriginalStyles();
+  try {
+    return await html2canvas(element, {
+      scale,
+      width,
+      height: chunkH,
+      x: 0,
+      y: offsetY,
+      scrollX: 0,
+      scrollY: 0,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+    });
+  } finally {
+    unpatch();
+  }
 }
 
 function downloadCanvas(canvas: HTMLCanvasElement, filename: string) {
@@ -174,17 +128,10 @@ export const exportComponentAsImage = async (elementId: string, filename: string
   }
 
   const restoreExpand = expandElement(element);
-  let restoreColors: (() => void) | null = null;
 
   try {
     // 等待 reflow（確保 scrollHeight 正確）
-    await new Promise(r => setTimeout(r, 200));
-
-    // 用 Canvas pixel 法把所有 oklch → rgb inline style
-    restoreColors = convertToComputedRgb(element);
-
-    // 再等一點讓 style mutation 生效
-    await new Promise(r => setTimeout(r, 80));
+    await new Promise(r => setTimeout(r, 300));
 
     const totalH = element.scrollHeight;
     const totalW = Math.max(element.scrollWidth, 900);
@@ -214,7 +161,6 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     const msg = err instanceof Event ? '不明的 Event 錯誤' : (err.message || String(err));
     alert(`匯出失敗：${msg}`);
   } finally {
-    if (restoreColors) restoreColors();
     restoreExpand();
   }
 };
@@ -239,12 +185,9 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
   desktopTables.forEach(el => el.style.setProperty('display', 'block', 'important'));
 
   const restoreExpands = elements.map(el => expandElement(el));
-  const restoreColorsFns: Array<() => void> = [];
 
   try {
-    await new Promise(r => setTimeout(r, 200));
-    elements.forEach(el => restoreColorsFns.push(convertToComputedRgb(el)));
-    await new Promise(r => setTimeout(r, 80));
+    await new Promise(r => setTimeout(r, 300));
 
     const FIXED_W = Math.max(...elements.map(el => Math.max(el.scrollWidth, 900)));
     const scale = 3;
@@ -272,7 +215,6 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     const msg = err instanceof Event ? '不明的 Event 錯誤' : (err.message || String(err));
     alert(`匯出失敗：${msg}`);
   } finally {
-    restoreColorsFns.forEach(fn => fn());
     restoreExpands.forEach(fn => fn());
     mobileCards.forEach((el, i) => { el.style.display = savedMobile[i]; });
     desktopTables.forEach((el, i) => { el.style.display = savedDesktop[i]; });
