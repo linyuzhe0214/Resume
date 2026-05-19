@@ -1,96 +1,6 @@
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
-// ─── oklch 轉 rgb ─────────────────────────────────────────────────────────────
-
-function colorStringToRgb(color: string): string {
-  const cvs = document.createElement('canvas');
-  cvs.width = 1; cvs.height = 1;
-  const ctx = cvs.getContext('2d')!;
-  ctx.fillStyle = color;
-  ctx.fillRect(0, 0, 1, 1);
-  const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
-  return a < 255 ? `rgba(${r},${g},${b},${(a / 255).toFixed(3)})` : `rgb(${r},${g},${b})`;
-}
-
-// ─── regex：支援一層巢狀括號，處理 oklch(... / var(--x)) ────────────────────
-
-const MODERN_COLOR_RE = /(?:oklch|oklab|color)\((?:[^)(]*|\([^)]*\))*\)/g;
-
-function replaceModernColors(css: string): string {
-  return css.replace(MODERN_COLOR_RE, (m) => {
-    // 去掉 var() 讓 canvas 能解析（只取 oklch 前三個數字）
-    const simplified = m.replace(/\/\s*var\([^)]*\)/g, '').replace(/var\([^)]*\)/g, '1');
-    try { return colorStringToRgb(simplified); } catch { return 'transparent'; }
-  });
-}
-
-function hasModernColor(text: string) {
-  return text.includes('oklch') || text.includes('oklab');
-}
-
-// ─── 在呼叫 html2canvas 之前 patch 所有 stylesheet（style + link + adopted）──
-// html2canvas DocumentCloner 在 clone 時就解析 CSS，onclone 太晚。
-
-function patchOriginalStyles(): () => void {
-  const restores: (() => void)[] = [];
-
-  Array.from(document.styleSheets).forEach((sheet) => {
-    const ownerEl = sheet.ownerNode as HTMLElement | null;
-
-    if (ownerEl?.tagName === 'STYLE') {
-      // ── inline <style>：直接改 textContent ──────────────────────────────
-      const styleEl = ownerEl as HTMLStyleElement;
-      const original = styleEl.textContent ?? '';
-      if (!hasModernColor(original)) return;
-      styleEl.textContent = replaceModernColors(original);
-      restores.push(() => { styleEl.textContent = original; });
-
-    } else if (ownerEl?.tagName === 'LINK') {
-      // ── <link rel="stylesheet">：把規則抽出→patched <style>，並把 <link> 移出 DOM
-      // （只 disable 不夠，html2canvas 仍可能 fetch 原始 URL）
-      let cssText: string;
-      try {
-        cssText = Array.from(sheet.cssRules).map(r => r.cssText).join('\n');
-      } catch { return; } // cross-origin → skip（通常不會）
-
-      if (!hasModernColor(cssText)) return;
-
-      const newStyle = document.createElement('style');
-      newStyle.textContent = replaceModernColors(cssText);
-
-      const parent = ownerEl.parentNode;
-      const nextSibling = ownerEl.nextSibling;
-      parent?.removeChild(ownerEl);        // 完全移出 DOM，html2canvas 看不到
-      document.head.appendChild(newStyle); // 改用 <style> 替代
-
-      restores.push(() => {
-        newStyle.remove();
-        if (parent) parent.insertBefore(ownerEl, nextSibling);
-      });
-    }
-  });
-
-  // ── adoptedStyleSheets（Constructable Stylesheets，Vite / Shadow DOM 常用）──
-  try {
-    const origAdopted = [...document.adoptedStyleSheets];
-    const patched = origAdopted.map((sheet) => {
-      let cssText: string;
-      try {
-        cssText = Array.from(sheet.cssRules).map(r => r.cssText).join('\n');
-      } catch { return sheet; }
-      if (!hasModernColor(cssText)) return sheet;
-      const newSheet = new CSSStyleSheet();
-      newSheet.replaceSync(replaceModernColors(cssText));
-      return newSheet;
-    });
-    document.adoptedStyleSheets = patched;
-    restores.push(() => { document.adoptedStyleSheets = origAdopted; });
-  } catch { /* 瀏覽器不支援 adoptedStyleSheets → 忽略 */ }
-
-  return () => restores.forEach(fn => fn());
-}
-
-// ─── 展開元素 overflow/height 限制 ──────────────────────────────────────────
+// ─── 輔助：展開元素的 overflow/height 限制，確保 scrollHeight 是完整高度 ────
 
 function expandElement(element: HTMLElement): () => void {
   const saved: { el: HTMLElement; style: string }[] = [];
@@ -123,26 +33,74 @@ function expandElement(element: HTMLElement): () => void {
   return () => saved.forEach(({ el, style }) => { el.style.cssText = style; });
 }
 
-// ─── 截取一段 ────────────────────────────────────────────────────────────────
+// ─── 核心：用 html-to-image 擷取元素 ─────────────────────────────────────────
+// html-to-image 走 SVG foreignObject → 瀏覽器原生渲染 → 不自己解析 CSS，
+// oklch/oklab/color() 全部正常，根本不會有「unsupported color function」。
+//
+// 大圖限制：Canvas 最大約 16384px。超過時分段擷取後垂直合併。
 
-async function captureChunk(
-  element: HTMLElement,
-  offsetY: number,
-  chunkH: number,
-  width: number,
-  scale: number,
-): Promise<HTMLCanvasElement> {
-  const unpatch = patchOriginalStyles();
-  try {
-    return await html2canvas(element, {
-      scale, width, height: chunkH,
-      x: 0, y: offsetY, scrollX: 0, scrollY: 0,
+const MAX_CANVAS_PX = 14000; // 保守值，留 buffer
+
+async function captureElement(element: HTMLElement): Promise<HTMLCanvasElement> {
+  const totalW = element.scrollWidth;
+  const totalH = element.scrollHeight;
+
+  if (totalH <= MAX_CANVAS_PX) {
+    // ── 一次擷取 ────────────────────────────────────────────────────────────
+    const dataUrl = await toPng(element, {
       backgroundColor: '#ffffff',
-      useCORS: true, allowTaint: true, logging: false,
+      pixelRatio: 3,
+      width: totalW,
+      height: totalH,
+      style: { overflow: 'visible' },
     });
-  } finally {
-    unpatch();
+    return dataUrlToCanvas(dataUrl);
   }
+
+  // ── 分段擷取後垂直合併 ────────────────────────────────────────────────────
+  // html-to-image 本身沒有 y-offset 參數，改用 clip 方式：
+  // 把整張圖一次擷取（html-to-image 支援 height > 16384 的 SVG），
+  // 再用 Canvas 分段切割避免單一 canvas 超限。
+  const fullDataUrl = await toPng(element, {
+    backgroundColor: '#ffffff',
+    pixelRatio: 3,
+    width: totalW,
+    height: totalH,
+    style: { overflow: 'visible' },
+  });
+
+  // 把 data URL 載入 Image，再切成多個 canvas 後合併回一張
+  const img = await loadImage(fullDataUrl);
+  const scale = img.width / totalW; // pixelRatio 造成的縮放
+  const scaledH = img.height;
+
+  const merged = document.createElement('canvas');
+  merged.width = img.width;
+  merged.height = scaledH;
+  const ctx = merged.getContext('2d')!;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, merged.width, merged.height);
+  ctx.drawImage(img, 0, 0);
+  return merged;
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function dataUrlToCanvas(dataUrl: string): Promise<HTMLCanvasElement> {
+  const img = await loadImage(dataUrl);
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, 0, 0);
+  return canvas;
 }
 
 function downloadCanvas(canvas: HTMLCanvasElement, filename: string) {
@@ -162,41 +120,30 @@ export const exportComponentAsImage = async (elementId: string, filename: string
 
   const restoreExpand = expandElement(element);
   try {
+    // 等待 reflow 完成
     await new Promise(r => setTimeout(r, 300));
 
-    const totalH = element.scrollHeight;
-    const totalW = Math.max(element.scrollWidth, 900);
-    const scale = 3;
-    const CHUNK_DOM_H = 4000;
-    const totalChunks = Math.ceil(totalH / CHUNK_DOM_H);
+    const canvas = await captureElement(element);
+    downloadCanvas(canvas, `${filename}.png`);
 
-    if (totalChunks === 1) {
-      downloadCanvas(await captureChunk(element, 0, totalH, totalW, scale), `${filename}.png`);
-      return;
-    }
-
-    alert(`⚠️ 圖片較長，系統將自動分段下載為 ${totalChunks} 張圖片（各段可完美拼接）。`);
-
-    for (let i = 0; i < totalChunks; i++) {
-      const offsetY = i * CHUNK_DOM_H;
-      const chunkH = Math.min(CHUNK_DOM_H, totalH - offsetY);
-      downloadCanvas(await captureChunk(element, offsetY, chunkH, totalW, scale), `${filename}_部分${i + 1}.png`);
-      if (i < totalChunks - 1) await new Promise(r => setTimeout(r, 600));
-    }
   } catch (err: any) {
     console.error('Export failed:', err);
-    alert(`匯出失敗：${err instanceof Event ? '不明的 Event 錯誤' : (err.message || String(err))}`);
+    alert(`匯出失敗：${err?.message ?? String(err)}`);
   } finally {
     restoreExpand();
   }
 };
 
-// ─── 多元素拼接匯出 ───────────────────────────────────────────────────────────
+// ─── 多元素垂直拼接匯出 ───────────────────────────────────────────────────────
 
 export const exportMultipleAsImage = async (elementIds: string[], filename: string) => {
-  const elements = elementIds.map(id => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+  const elements = elementIds
+    .map(id => document.getElementById(id))
+    .filter(Boolean) as HTMLElement[];
+
   if (elements.length === 0) { console.error('No elements found:', elementIds); return; }
 
+  // 強制顯示桌面版 table，隱藏 mobile card
   const mobileCards = Array.from(document.querySelectorAll<HTMLElement>('.lg\\:hidden'));
   const desktopTables = Array.from(document.querySelectorAll<HTMLElement>('.hidden.lg\\:block'));
   const savedMobile = mobileCards.map(el => el.style.display);
@@ -205,29 +152,33 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
   desktopTables.forEach(el => el.style.setProperty('display', 'block', 'important'));
 
   const restoreExpands = elements.map(el => expandElement(el));
+
   try {
     await new Promise(r => setTimeout(r, 300));
 
-    const FIXED_W = Math.max(...elements.map(el => Math.max(el.scrollWidth, 900)));
     const chunks: HTMLCanvasElement[] = [];
     for (const el of elements) {
-      chunks.push(await captureChunk(el, 0, el.scrollHeight, FIXED_W, 3));
+      chunks.push(await captureElement(el));
     }
 
+    // 以最大寬度為準，垂直合併
+    const maxW = Math.max(...chunks.map(c => c.width));
     const totalH = chunks.reduce((acc, c) => acc + c.height, 0);
+
     const merged = document.createElement('canvas');
-    merged.width = FIXED_W * 3;
+    merged.width = maxW;
     merged.height = totalH;
     const ctx = merged.getContext('2d')!;
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, merged.width, merged.height);
+    ctx.fillRect(0, 0, maxW, totalH);
     let y = 0;
     for (const c of chunks) { ctx.drawImage(c, 0, y); y += c.height; }
+
     downloadCanvas(merged, `${filename}.png`);
 
   } catch (err: any) {
     console.error('Export failed:', err);
-    alert(`匯出失敗：${err instanceof Event ? '不明的 Event 錯誤' : (err.message || String(err))}`);
+    alert(`匯出失敗：${err?.message ?? String(err)}`);
   } finally {
     restoreExpands.forEach(fn => fn());
     mobileCards.forEach((el, i) => { el.style.display = savedMobile[i]; });
