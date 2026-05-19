@@ -453,7 +453,7 @@ export default function RampHistory(props: RampHistoryProps) {
                             </button>
                             <button 
                               onClick={() => {
-                                setDeletingRampId(ramp.rampId);
+                                setDeletingRampId(ramp.rampId || ramp.id);
                                 setShowDeleteConfirm(true);
                               }}
                               className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-90"
@@ -490,7 +490,7 @@ export default function RampHistory(props: RampHistoryProps) {
                         </button>
                         <button 
                           onClick={() => {
-                            setDeletingRampId(ramp.rampId);
+                            setDeletingRampId(ramp.rampId || ramp.id);
                             setShowDeleteConfirm(true);
                           }}
                           className="p-3 bg-red-50 text-red-500 rounded-2xl active:scale-90 transition-all"
@@ -741,8 +741,8 @@ export default function RampHistory(props: RampHistoryProps) {
         title="確定要刪除此匝道資料嗎？"
         message="此操作無法復原，該匝道資料將被永久移除。"
         type="danger"
-        onConfirm={() => {
-          if (deletingRampId && onDeleteRamp) {
+      onConfirm={() => {
+          if (deletingRampId !== null && onDeleteRamp) {
             onDeleteRamp(deletingRampId);
           }
           setShowDeleteConfirm(false);

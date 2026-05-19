@@ -130,8 +130,14 @@ export default function ViewRouter(props: ViewRouterProps) {
         }}
         onDelete={(id) => {
           const seg = rampSegments.find(s => s.id === id);
-          if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.interchange, id, true);
-          setRampSegments(rampSegments.filter(s => s.id !== id));
+          if (seg) {
+            // 刪除整個 rampId 群組的所有 segments（詳細資料代表整個匝道）
+            const toDelete = rampSegments.filter(s => s.rampId === seg.rampId);
+            toDelete.forEach(s => syncGas(RAMP_URL, 'deleteRamp', s.interchange, s.id, true));
+            setRampSegments(rampSegments.filter(s => s.rampId !== seg.rampId));
+          } else {
+            setRampSegments(rampSegments.filter(s => s.id !== id));
+          }
           backFromRampEdit();
         }}
         onBack={backFromRampEdit}
@@ -398,10 +404,10 @@ export default function ViewRouter(props: ViewRouterProps) {
           }
           setSubPage('editRampHistory');
         }}
-        onDeleteRamp={(rampId) => {
-          const toDelete = rampSegments.filter(s => s.rampId === rampId);
+        onDeleteRamp={(identifier) => {
+          const toDelete = rampSegments.filter(s => s.rampId === identifier || (!s.rampId && s.id === identifier));
           toDelete.forEach(seg => syncGas(RAMP_URL, 'deleteRamp', seg.interchange, seg.id, true));
-          setRampSegments(rampSegments.filter(s => s.rampId !== rampId));
+          setRampSegments(rampSegments.filter(s => !(s.rampId === identifier || (!s.rampId && s.id === identifier))));
         }}
       />
     );
