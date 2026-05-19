@@ -1,38 +1,46 @@
 import html2canvas from 'html2canvas';
 
-// ─── 輔助：用 Canvas pixel 讀取把 oklch/oklab/color() 轉成 rgb ─────────────────
-// getComputedStyle 在 Chrome 111+ 回傳原始 oklch 字串，
-// 只有 Canvas 2D fillStyle → getImageData 才能強制轉成 sRGB。
+// ─── 輔助：將 oklch/oklab/color() 字串轉成 rgb（用 Canvas pixel 法）────────────
 
-const _cvs = document.createElement('canvas');
-_cvs.width = 1;
-_cvs.height = 1;
-const _ctx = _cvs.getContext('2d')!;
-const _cache = new Map<string, string>();
-
-function resolveColor(color: string): string {
-  if (!color || color === 'transparent' || color === 'none') return color;
-  if (!color.includes('oklch') && !color.includes('oklab') && !color.includes('color(') && !color.includes('var(')) {
-    return color;
-  }
-  const cached = _cache.get(color);
-  if (cached) return cached;
-
-  try {
-    _ctx.clearRect(0, 0, 1, 1);
-    _ctx.fillStyle = '#000'; // reset
-    _ctx.fillStyle = color;  // apply oklch/var
-    _ctx.fillRect(0, 0, 1, 1);
-    const [r, g, b, a] = _ctx.getImageData(0, 0, 1, 1).data;
-    const result = a === 0 ? 'transparent'
-      : a < 255 ? `rgba(${r},${g},${b},${(a / 255).toFixed(3)})`
-      : `rgb(${r},${g},${b})`;
-    _cache.set(color, result);
-    return result;
-  } catch {
-    return color;
-  }
+function colorStringToRgb(color: string): string {
+  const cvs = document.createElement('canvas');
+  cvs.width = 1; cvs.height = 1;
+  const ctx = cvs.getContext('2d')!;
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+  return a < 255 ? `rgba(${r},${g},${b},${(a / 255).toFixed(3)})` : `rgb(${r},${g},${b})`;
 }
+
+// ─── 輔助：用 regex 把 CSS 文字裡的 oklch(…)/oklab(…)/color(…) 全部替換 ────────
+
+const MODERN_COLOR_RE = /oklch\([^)]+\)|oklab\([^)]+\)|color\([^)]+\)/g;
+
+function replaceModernColors(cssText: string): string {
+  return cssText.replace(MODERN_COLOR_RE, (match) => {
+    try { return colorStringToRgb(match); } catch { return 'transparent'; }
+  });
+}
+
+// ─── 輔助：修補 clone document 裡所有 stylesheet（html2canvas 會直接讀 rules）──
+
+function patchStylesheets(doc: Document): void {
+  Array.from(doc.styleSheets).forEach((sheet) => {
+    let rules: CSSRuleList;
+    try { rules = sheet.cssRules; } catch { return; } // cross-origin
+    Array.from(rules).forEach((rule, i) => {
+      const text = rule.cssText;
+      if (!text.includes('oklch') && !text.includes('oklab') && !text.includes('color(')) return;
+      const fixed = replaceModernColors(text);
+      try {
+        (sheet as CSSStyleSheet).deleteRule(i);
+        (sheet as CSSStyleSheet).insertRule(fixed, i);
+      } catch { /* ignore malformed */ }
+    });
+  });
+}
+
+// ─── 以下保留 inline style 轉換（convertToComputedRgb）用於 onclone 補充處理 ────
 
 function convertToComputedRgb(element: HTMLElement): () => void {
   const els = [element, ...Array.from(element.querySelectorAll('*'))] as HTMLElement[];
@@ -57,11 +65,14 @@ function convertToComputedRgb(element: HTMLElement): () => void {
     COLOR_PROPS.forEach(([jsProp, cssProp]) => {
       const v = (cs as any)[jsProp] as string;
       if (!v) return;
-      const resolved = resolveColor(v);
-      if (resolved !== v) updates.push({ el, prop: cssProp, value: resolved });
+      if (!v.includes('oklch') && !v.includes('oklab') && !v.includes('color(')) return;
+      try {
+        const resolved = colorStringToRgb(v);
+        updates.push({ el, prop: cssProp, value: resolved });
+      } catch { /* ignore */ }
     });
 
-    // box-shadow 含 oklch 時直接移除（無法簡單轉換 multi-part value）
+    // box-shadow 含 oklch 時直接移除
     const shadow = cs.boxShadow;
     if (shadow && shadow !== 'none' && (shadow.includes('oklch') || shadow.includes('oklab'))) {
       updates.push({ el, prop: 'box-shadow', value: 'none' });
@@ -125,6 +136,12 @@ async function captureChunk(
     useCORS: true,
     allowTaint: true,
     logging: false,
+    onclone: (clonedDoc, clonedEl) => {
+      // 1. 修補 stylesheet rules 裡的 oklch（這是 html2canvas throw 的根源）
+      patchStylesheets(clonedDoc);
+      // 2. 再對 clone DOM inline style 補一層保險
+      convertToComputedRgb(clonedEl as HTMLElement);
+    },
   });
 }
 
