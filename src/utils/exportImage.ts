@@ -83,25 +83,39 @@ export const exportComponentAsImage = async (elementId: string, filename: string
 
     const targetHeight = element.scrollHeight;
     const targetWidth = Math.max(element.scrollWidth, 900);
-    
-    // 電腦版大幅提升畫質，預設使用 3 倍解析度。若高度太長則稍微降低以符合 Canvas 限制
-    const pixelRatio = 3;
+
+    // 瀏覽器 Canvas 硬限制約 16384px，留 buffer 用 16000
     const MAX_CANVAS_HEIGHT = 16000;
+    // 計算不超過 canvas 限制的安全 pixelRatio（最低 1.5 倍保畫質）
+    const safePixelRatio = targetHeight > 0
+      ? Math.min(3, Math.max(1.5, Math.floor((MAX_CANVAS_HEIGHT / targetHeight) * 10) / 10))
+      : 3;
+    const willChunk = safePixelRatio < 3;
 
-    if (targetHeight * pixelRatio > MAX_CANVAS_HEIGHT) {
-      alert(`⚠️ 國道全段長度超過單張圖片硬體極限，系統將保持最高畫質，並自動為您無縫分段下載為多張圖片（各段可完美拼接）。`);
+    if (willChunk) {
+      alert(`⚠️ 國道全段長度超過單張圖片硬體極限，系統將自動為您分段下載為多張圖片（各段可完美拼接）。`);
+    }
 
-      // 先截整張（降低 pixelRatio 以符合 Canvas 限制）
-      const safePixelRatio = Math.max(1.5, Math.floor((MAX_CANVAS_HEIGHT / targetHeight) * 10) / 10);
-      const fullDataUrl = await toPng(element, {
-        backgroundColor: '#ffffff',
-        pixelRatio: safePixelRatio,
-        width: targetWidth,
-        height: targetHeight,
-        skipFonts: true,
-        style: { transform: 'none', transition: 'none' }
-      });
+    // ⚠️ 不傳 height 給 toPng！
+    // html-to-image 若收到 height 選項會直接 set 成 CSS height，把元素截斷。
+    // 讓 toPng 自己讀 getBoundingClientRect()（此時已是 max-content 完整高度）。
+    const fullDataUrl = await toPng(element, {
+      backgroundColor: '#ffffff',
+      pixelRatio: safePixelRatio,
+      width: targetWidth,
+      skipFonts: true,
+      style: { transform: 'none', transition: 'none' }
+    });
 
+    if (!willChunk) {
+      // 不需分段，直接下載
+      const link = document.createElement('a');
+      link.href = fullDataUrl;
+      link.download = `${filename}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
       // 把整張圖載入後用 Canvas 分切
       const fullImg = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
@@ -110,23 +124,23 @@ export const exportComponentAsImage = async (elementId: string, filename: string
         img.src = fullDataUrl;
       });
 
-      const fullCanvasWidth = fullImg.naturalWidth;
-      const fullCanvasHeight = fullImg.naturalHeight;
-      // 每段在 canvas 座標系中的高度
-      const chunkCanvasHeight = Math.floor(MAX_CANVAS_HEIGHT * 0.95); // 留一點 buffer
-      const totalChunks = Math.ceil(fullCanvasHeight / chunkCanvasHeight);
+      const fullW = fullImg.naturalWidth;
+      const fullH = fullImg.naturalHeight;
+      // 每段 canvas 高度（留 buffer）
+      const chunkH = Math.floor(MAX_CANVAS_HEIGHT * 0.9);
+      const totalChunks = Math.ceil(fullH / chunkH);
 
       for (let i = 0; i < totalChunks; i++) {
-        const srcY = i * chunkCanvasHeight;
-        const srcH = Math.min(chunkCanvasHeight, fullCanvasHeight - srcY);
+        const srcY = i * chunkH;
+        const srcH = Math.min(chunkH, fullH - srcY);
 
         const chunkCanvas = document.createElement('canvas');
-        chunkCanvas.width = fullCanvasWidth;
+        chunkCanvas.width = fullW;
         chunkCanvas.height = srcH;
         const ctx = chunkCanvas.getContext('2d')!;
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, chunkCanvas.width, chunkCanvas.height);
-        ctx.drawImage(fullImg, 0, srcY, fullCanvasWidth, srcH, 0, 0, fullCanvasWidth, srcH);
+        ctx.fillRect(0, 0, fullW, srcH);
+        ctx.drawImage(fullImg, 0, srcY, fullW, srcH, 0, 0, fullW, srcH);
 
         const chunkDataUrl = chunkCanvas.toDataURL('image/png');
         const link = document.createElement('a');
@@ -138,25 +152,6 @@ export const exportComponentAsImage = async (elementId: string, filename: string
 
         await new Promise(resolve => setTimeout(resolve, 600));
       }
-    } else {
-      const dataUrl = await toPng(element, {
-        backgroundColor: '#ffffff',
-        pixelRatio: pixelRatio,
-        width: targetWidth,
-        height: targetHeight,
-        skipFonts: true,
-        style: {
-          transform: 'none',
-          transition: 'none'
-        }
-      });
-
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = `${filename}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
     }
 
   } catch (err: any) {
