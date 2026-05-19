@@ -90,34 +90,52 @@ export const exportComponentAsImage = async (elementId: string, filename: string
 
     if (targetHeight * pixelRatio > MAX_CANVAS_HEIGHT) {
       alert(`⚠️ 國道全段長度超過單張圖片硬體極限，系統將保持最高畫質，並自動為您無縫分段下載為多張圖片（各段可完美拼接）。`);
-      
-      const chunkDOMHeight = Math.floor(MAX_CANVAS_HEIGHT / pixelRatio);
-      const totalChunks = Math.ceil(targetHeight / chunkDOMHeight);
-      
+
+      // 先截完整圖（以降低的 pixelRatio 避免超過 Canvas 限制）
+      const safeRatio = Math.max(1.5, Math.floor((MAX_CANVAS_HEIGHT / targetHeight) * 10) / 10);
+      const fullDataUrl = await toPng(element, {
+        backgroundColor: '#ffffff',
+        pixelRatio: safeRatio,
+        width: targetWidth,
+        height: targetHeight,
+        skipFonts: true,
+        style: { transform: 'none', transition: 'none' }
+      });
+
+      // 載入完整圖
+      const fullImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = fullDataUrl;
+      });
+
+      const fullCanvasW = fullImg.width;
+      const fullCanvasH = fullImg.height;
+      const chunkCanvasHeight = Math.floor(MAX_CANVAS_HEIGHT * 0.9); // 留一點餘裕
+      const totalChunks = Math.ceil(fullCanvasH / chunkCanvasHeight);
+
       for (let i = 0; i < totalChunks; i++) {
-        const currentY = i * chunkDOMHeight;
-        const currentChunkHeight = Math.min(chunkDOMHeight, targetHeight - currentY);
-        
-        const dataUrl = await toPng(element, {
-          backgroundColor: '#ffffff',
-          pixelRatio: pixelRatio,
-          width: targetWidth,
-          height: currentChunkHeight,
-          skipFonts: true,
-          style: {
-            transform: `translateY(-${currentY}px)`,
-            transition: 'none'
-          }
-        });
-        
+        const srcY = i * chunkCanvasHeight;
+        const srcH = Math.min(chunkCanvasHeight, fullCanvasH - srcY);
+
+        const chunkCanvas = document.createElement('canvas');
+        chunkCanvas.width = fullCanvasW;
+        chunkCanvas.height = srcH;
+        const ctx = chunkCanvas.getContext('2d')!;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, fullCanvasW, srcH);
+        ctx.drawImage(fullImg, 0, srcY, fullCanvasW, srcH, 0, 0, fullCanvasW, srcH);
+
+        const chunkUrl = chunkCanvas.toDataURL('image/png');
         const link = document.createElement('a');
-        link.href = dataUrl;
+        link.href = chunkUrl;
         link.download = `${filename}_部分${i + 1}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
-        await new Promise(resolve => setTimeout(resolve, 800));
+
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     } else {
       const dataUrl = await toPng(element, {
