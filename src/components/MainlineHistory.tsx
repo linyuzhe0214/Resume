@@ -3,7 +3,7 @@ import { Plus, Trash2, Download, Settings, X, AlertTriangle, Route, Filter } fro
 import { cn } from '../App';
 import { Segment } from '../types';
 import { getPavementColor, getPavementDisplayInfo } from '../utils/pavement';
-import { exportComponentAsImage, exportComponentAsDataUrl, downloadDataUrls } from '../utils/exportImage';
+import { exportComponentAsImage } from '../utils/exportImage';
 
 interface MainlineHistoryProps {
   segments: Segment[];

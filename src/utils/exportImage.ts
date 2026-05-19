@@ -1,187 +1,185 @@
-import { toPng } from 'html-to-image';
+/**
+ * 匯出工具 — 以 print-to-PDF 為核心
+ *
+ * 為什麼不用 html2canvas / html-to-image：
+ *   - html2canvas 有內建 CSS parser，遇到 oklch/oklab 就 throw
+ *   - html-to-image 用 SVG foreignObject，在 Chrome 對 oklch 的支援存在渲染問題
+ *
+ * 新策略：
+ *   1. 把目標 element 的 outerHTML 連同所有 stylesheet 貼進新視窗
+ *   2. 套用 print-optimized CSS（白底、無邊距、exact color）
+ *   3. 呼叫 window.print()，瀏覽器原生渲染 → 另存為 PDF
+ *
+ * 優點：
+ *   - 零 CSS 解析：由瀏覽器自己算，oklch/oklab/color() 全部正確
+ *   - 無 Canvas 尺寸限制：pdf 可以任意長
+ *   - 顏色完全保真（-webkit-print-color-adjust: exact）
+ */
 
-// ─── 輔助：展開元素的 overflow/height 限制，確保 scrollHeight 是完整高度 ────
-
-function expandElement(element: HTMLElement): () => void {
-  const saved: { el: HTMLElement; style: string }[] = [];
-
-  element.querySelectorAll<HTMLElement>(
-    '[class*="overflow-auto"],[class*="overflow-y-auto"],[class*="overflow-x-auto"],' +
-    '[class*="overflow-hidden"],[class*="hide-scrollbar"],' +
-    '[class*="flex-1"],[class*="min-h-0"],[class*="h-full"],[class*="max-h-"]'
-  ).forEach(el => {
-    saved.push({ el, style: el.style.cssText });
-    el.style.setProperty('height', 'max-content', 'important');
-    el.style.setProperty('min-height', 'max-content', 'important');
-    el.style.setProperty('overflow', 'visible', 'important');
-    el.style.setProperty('max-height', 'none', 'important');
-    el.style.setProperty('flex', 'none', 'important');
-    if (el.scrollTop) el.scrollTop = 0;
-  });
-
-  element.querySelectorAll<HTMLElement>('.sticky,[class*="sticky"]').forEach(el => {
-    saved.push({ el, style: el.style.cssText });
-    el.style.setProperty('position', 'relative', 'important');
-  });
-
-  saved.push({ el: element, style: element.style.cssText });
-  element.style.setProperty('height', 'max-content', 'important');
-  element.style.setProperty('overflow', 'visible', 'important');
-  element.style.setProperty('min-width', '900px', 'important');
-  element.style.setProperty('flex', 'none', 'important');
-
-  return () => saved.forEach(({ el, style }) => { el.style.cssText = style; });
+/** 把所有 stylesheet rules 抽出成 CSS 文字（跨 origin 忽略）*/
+function collectAllCss(): string {
+  return Array.from(document.styleSheets)
+    .flatMap((sheet) => {
+      try {
+        return Array.from(sheet.cssRules).map((r) => r.cssText);
+      } catch {
+        // cross-origin stylesheet：改用 <link> 帶入
+        const href = (sheet as CSSStyleSheet).href;
+        return href ? [`@import url("${href}");`] : [];
+      }
+    })
+    .join('\n');
 }
 
-// ─── 核心：用 html-to-image 擷取元素 ─────────────────────────────────────────
-// html-to-image 走 SVG foreignObject → 瀏覽器原生渲染 → 不自己解析 CSS，
-// oklch/oklab/color() 全部正常，根本不會有「unsupported color function」。
-//
-// 大圖限制：Canvas 最大約 16384px。超過時分段擷取後垂直合併。
+/**
+ * 核心匯出：把 element 完整內容開新視窗列印（→ PDF）
+ * @param element  要匯出的 DOM 元素
+ * @param title    新視窗標題（也作為 PDF 預設檔名）
+ * @param extraCss 額外注入的 CSS（可用於調整印刷版面）
+ */
+function printElement(element: HTMLElement, title: string, extraCss = '') {
+  // 展開 overflow / height 限制以取得完整 outerHTML
+  const clone = element.cloneNode(true) as HTMLElement;
 
-const MAX_CANVAS_PX = 14000; // 保守值，留 buffer
-
-async function captureElement(element: HTMLElement): Promise<HTMLCanvasElement> {
-  const totalW = element.scrollWidth;
-  const totalH = element.scrollHeight;
-
-  if (totalH <= MAX_CANVAS_PX) {
-    // ── 一次擷取 ────────────────────────────────────────────────────────────
-    const dataUrl = await toPng(element, {
-      backgroundColor: '#ffffff',
-      pixelRatio: 3,
-      width: totalW,
-      height: totalH,
-      style: { overflow: 'visible' },
+  // 移除 overflow hidden / max-height，讓 clone 完整顯示
+  const removeScrollLimits = (el: HTMLElement) => {
+    el.style.removeProperty('overflow');
+    el.style.removeProperty('max-height');
+    el.style.removeProperty('height');
+    el.style.setProperty('overflow', 'visible');
+    el.querySelectorAll<HTMLElement>('*').forEach((child) => {
+      const cs = window.getComputedStyle(child);
+      if (
+        cs.overflow === 'hidden' ||
+        cs.overflowY === 'hidden' ||
+        cs.overflowX === 'hidden'
+      ) {
+        child.style.setProperty('overflow', 'visible', 'important');
+        child.style.setProperty('max-height', 'none', 'important');
+        child.style.setProperty('height', 'auto', 'important');
+      }
     });
-    return dataUrlToCanvas(dataUrl);
+  };
+  removeScrollLimits(clone);
+
+  const css = collectAllCss();
+
+  const html = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>${title}</title>
+  <style>
+    /* ── reset ── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      color-adjust: exact;
+    }
+    /* ── print page ── */
+    @media print {
+      @page { margin: 0; size: auto; }
+      body { background: #fff !important; }
+      /* 移除互動用 class 對應的 height/overflow 限制 */
+      .overflow-hidden, .overflow-auto, .overflow-y-auto,
+      .flex-1, .min-h-0, [class*="h-full"], [class*="max-h-"] {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+        flex: none !important;
+      }
+      .sticky, [class*="sticky"] {
+        position: relative !important;
+      }
+      /* 隱藏非列印用元件 */
+      button, .fixed, [class*="z-50"], [class*="z-["] {
+        display: none !important;
+      }
+    }
+    /* ── screen preview ── */
+    body {
+      overflow: visible !important;
+    }
+    .overflow-hidden, .overflow-auto, .overflow-y-auto,
+    .flex-1, .min-h-0, [class*="h-full"], [class*="max-h-"] {
+      overflow: visible !important;
+      max-height: none !important;
+      height: auto !important;
+      flex: none !important;
+    }
+    .sticky, [class*="sticky"] {
+      position: relative !important;
+    }
+    button, .fixed { display: none !important; }
+    ${extraCss}
+  </style>
+  <style id="app-styles">
+    ${css}
+  </style>
+</head>
+<body>
+${clone.outerHTML}
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=1200,height=900');
+  if (!win) {
+    alert('請允許本頁彈出視窗（Pop-up），再重試一次。');
+    return;
   }
 
-  // ── 分段擷取後垂直合併 ────────────────────────────────────────────────────
-  // html-to-image 本身沒有 y-offset 參數，改用 clip 方式：
-  // 把整張圖一次擷取（html-to-image 支援 height > 16384 的 SVG），
-  // 再用 Canvas 分段切割避免單一 canvas 超限。
-  const fullDataUrl = await toPng(element, {
-    backgroundColor: '#ffffff',
-    pixelRatio: 3,
-    width: totalW,
-    height: totalH,
-    style: { overflow: 'visible' },
-  });
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
 
-  // 把 data URL 載入 Image，再切成多個 canvas 後合併回一張
-  const img = await loadImage(fullDataUrl);
-  const scale = img.width / totalW; // pixelRatio 造成的縮放
-  const scaledH = img.height;
-
-  const merged = document.createElement('canvas');
-  merged.width = img.width;
-  merged.height = scaledH;
-  const ctx = merged.getContext('2d')!;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, merged.width, merged.height);
-  ctx.drawImage(img, 0, 0);
-  return merged;
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
+  // 等字型/圖片載入後再 print
+  win.addEventListener('load', () => {
+    setTimeout(() => {
+      win.focus();
+      win.print();
+      // print dialog 關閉後不自動 close，讓使用者確認結果
+    }, 500);
   });
 }
 
-async function dataUrlToCanvas(dataUrl: string): Promise<HTMLCanvasElement> {
-  const img = await loadImage(dataUrl);
-  const canvas = document.createElement('canvas');
-  canvas.width = img.width;
-  canvas.height = img.height;
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(img, 0, 0);
-  return canvas;
-}
+// ─── 公開 API ─────────────────────────────────────────────────────────────────
 
-function downloadCanvas(canvas: HTMLCanvasElement, filename: string) {
-  const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
-
-// ─── 主要匯出 ─────────────────────────────────────────────────────────────────
-
-export const exportComponentAsImage = async (elementId: string, filename: string) => {
+/**
+ * 匯出單一元素（by id）為 PDF
+ */
+export function exportComponentAsImage(elementId: string, filename: string) {
   const element = document.getElementById(elementId);
-  if (!element) { console.error('Element not found:', elementId); return; }
-
-  const restoreExpand = expandElement(element);
-  try {
-    // 等待 reflow 完成
-    await new Promise(r => setTimeout(r, 300));
-
-    const canvas = await captureElement(element);
-    downloadCanvas(canvas, `${filename}.png`);
-
-  } catch (err: any) {
-    console.error('Export failed:', err);
-    alert(`匯出失敗：${err?.message ?? String(err)}`);
-  } finally {
-    restoreExpand();
+  if (!element) {
+    console.error('exportComponentAsImage: Element not found:', elementId);
+    alert(`找不到元素 #${elementId}，無法匯出。`);
+    return;
   }
-};
+  printElement(element, filename);
+}
 
-// ─── 多元素垂直拼接匯出 ───────────────────────────────────────────────────────
-
-export const exportMultipleAsImage = async (elementIds: string[], filename: string) => {
+/**
+ * 匯出多個元素（by ids）垂直拼接為 PDF
+ */
+export function exportMultipleAsImage(elementIds: string[], filename: string) {
   const elements = elementIds
-    .map(id => document.getElementById(id))
+    .map((id) => document.getElementById(id))
     .filter(Boolean) as HTMLElement[];
 
-  if (elements.length === 0) { console.error('No elements found:', elementIds); return; }
-
-  // 強制顯示桌面版 table，隱藏 mobile card
-  const mobileCards = Array.from(document.querySelectorAll<HTMLElement>('.lg\\:hidden'));
-  const desktopTables = Array.from(document.querySelectorAll<HTMLElement>('.hidden.lg\\:block'));
-  const savedMobile = mobileCards.map(el => el.style.display);
-  const savedDesktop = desktopTables.map(el => el.style.display);
-  mobileCards.forEach(el => el.style.setProperty('display', 'none', 'important'));
-  desktopTables.forEach(el => el.style.setProperty('display', 'block', 'important'));
-
-  const restoreExpands = elements.map(el => expandElement(el));
-
-  try {
-    await new Promise(r => setTimeout(r, 300));
-
-    const chunks: HTMLCanvasElement[] = [];
-    for (const el of elements) {
-      chunks.push(await captureElement(el));
-    }
-
-    // 以最大寬度為準，垂直合併
-    const maxW = Math.max(...chunks.map(c => c.width));
-    const totalH = chunks.reduce((acc, c) => acc + c.height, 0);
-
-    const merged = document.createElement('canvas');
-    merged.width = maxW;
-    merged.height = totalH;
-    const ctx = merged.getContext('2d')!;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, maxW, totalH);
-    let y = 0;
-    for (const c of chunks) { ctx.drawImage(c, 0, y); y += c.height; }
-
-    downloadCanvas(merged, `${filename}.png`);
-
-  } catch (err: any) {
-    console.error('Export failed:', err);
-    alert(`匯出失敗：${err?.message ?? String(err)}`);
-  } finally {
-    restoreExpands.forEach(fn => fn());
-    mobileCards.forEach((el, i) => { el.style.display = savedMobile[i]; });
-    desktopTables.forEach((el, i) => { el.style.display = savedDesktop[i]; });
+  if (elements.length === 0) {
+    console.error('exportMultipleAsImage: No elements found:', elementIds);
+    alert('找不到任何可匯出的元素。');
+    return;
   }
-};
+
+  // 建立容器把所有 element clone 垂直排列
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'display:flex;flex-direction:column;gap:0;background:#fff;';
+  elements.forEach((el) => {
+    wrapper.appendChild(el.cloneNode(true));
+  });
+
+  printElement(wrapper, filename);
+}
