@@ -279,10 +279,15 @@ export default function MainlineHistory({
 
     const isFlashing = flashingId === segment.id;
 
-    // 行內文字顯示門檻（px）— 全部設 0 代表永遠顯示，小色塊靠 overflow-hidden 裁切
-    const SHOW_YEAR_THRESHOLD = 0;
-    const SHOW_DETAIL_THRESHOLD = 0;
-    const SHOW_MILEAGE_THRESHOLD = 0;
+    // 行內文字顯示門檻（px = 公尺 × SCALE 1.4）
+    // < 20px (~14m)：純色塊，答 tooltip
+    // 20~38px：只顯示年份
+    // 38~55px：年份 + 厚度
+    // >= 55px：完整顯示
+    const SHOW_YEAR_THRESHOLD = 20;
+    const SHOW_CM_THRESHOLD = 38;
+    const SHOW_DETAIL_THRESHOLD = 55;
+    const SHOW_MILEAGE_THRESHOLD = 38;
 
     const tooltipContent = `${segment.constructionYear}年: ${thickness}cm ${combinedType}${segment.property ? ` [${segment.property}]` : ''} (${formatMileage(segment.startMileage)} - ${formatMileage(segment.endMileage)})`;
 
@@ -312,15 +317,17 @@ export default function MainlineHistory({
           </span>
         )}
 
-        {/* 主要資訊：只在色塊夠高時顯示 */}
+        {/* 主要資訊：分段顯示 */}
         {height >= SHOW_YEAR_THRESHOLD && (
           <>
             <span className="font-black text-[13px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
               {segment.constructionYear}
             </span>
-            <span className="w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-              {thickness}cm
-            </span>
+            {height >= SHOW_CM_THRESHOLD && (
+              <span className="w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                {thickness}cm
+              </span>
+            )}
             {height >= SHOW_DETAIL_THRESHOLD && segment.property && (
               <span className="px-1 py-px mt-0.5 text-[9px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
                 {segment.property}
