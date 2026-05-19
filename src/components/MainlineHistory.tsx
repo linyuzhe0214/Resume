@@ -309,6 +309,11 @@ export default function MainlineHistory({
         <span className="w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
           {thickness}cm
         </span>
+        {segment.property && (
+          <span className="px-1 py-px mt-0.5 text-[9px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
+            {segment.property}
+          </span>
+        )}
         {segment.prevConstructionYear && (
           <span className="w-full text-center text-[10px] text-slate-900 leading-none mt-0.5 px-1 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
             EX：{segment.prevConstructionYear}{segment.prevConstructionDepth ? `  ${segment.prevConstructionDepth}cm` : ''}
@@ -325,7 +330,7 @@ export default function MainlineHistory({
         {/* Tooltip */}
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
           <div className="bg-gray-900 text-white text-[10px] rounded py-1 px-2 whitespace-nowrap shadow-xl">
-            {segment.constructionYear}年: {thickness}cm {combinedType} ({formatMileage(segment.startMileage)} - {formatMileage(segment.endMileage)})
+            {segment.constructionYear}年: {thickness}cm {combinedType}{segment.property ? ` [${segment.property}]` : ''} ({formatMileage(segment.startMileage)} - {formatMileage(segment.endMileage)})
           </div>
         </div>
       </div>
