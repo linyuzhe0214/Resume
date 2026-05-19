@@ -1,37 +1,82 @@
 import html2canvas from 'html2canvas';
 
-// ─── 輔助：將 oklch/oklab 顏色 bake 成 rgb inline style（html2canvas 不支援 oklch）─────
+// ─── 輔助：用 Canvas pixel 讀取把 oklch/oklab/color() 轉成 rgb ─────────────────
+// getComputedStyle 在 Chrome 111+ 回傳原始 oklch 字串，
+// 只有 Canvas 2D fillStyle → getImageData 才能強制轉成 sRGB。
+
+const _cvs = document.createElement('canvas');
+_cvs.width = 1;
+_cvs.height = 1;
+const _ctx = _cvs.getContext('2d')!;
+const _cache = new Map<string, string>();
+
+function resolveColor(color: string): string {
+  if (!color || color === 'transparent' || color === 'none') return color;
+  if (!color.includes('oklch') && !color.includes('oklab') && !color.includes('color(') && !color.includes('var(')) {
+    return color;
+  }
+  const cached = _cache.get(color);
+  if (cached) return cached;
+
+  try {
+    _ctx.clearRect(0, 0, 1, 1);
+    _ctx.fillStyle = '#000'; // reset
+    _ctx.fillStyle = color;  // apply oklch/var
+    _ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = _ctx.getImageData(0, 0, 1, 1).data;
+    const result = a === 0 ? 'transparent'
+      : a < 255 ? `rgba(${r},${g},${b},${(a / 255).toFixed(3)})`
+      : `rgb(${r},${g},${b})`;
+    _cache.set(color, result);
+    return result;
+  } catch {
+    return color;
+  }
+}
 
 function convertToComputedRgb(element: HTMLElement): () => void {
   const els = [element, ...Array.from(element.querySelectorAll('*'))] as HTMLElement[];
   const saved: { el: HTMLElement; style: string }[] = [];
   const updates: { el: HTMLElement; prop: string; value: string }[] = [];
 
+  const COLOR_PROPS: [string, string][] = [
+    ['backgroundColor', 'background-color'],
+    ['color', 'color'],
+    ['borderTopColor', 'border-top-color'],
+    ['borderRightColor', 'border-right-color'],
+    ['borderBottomColor', 'border-bottom-color'],
+    ['borderLeftColor', 'border-left-color'],
+    ['outlineColor', 'outline-color'],
+    ['textDecorationColor', 'text-decoration-color'],
+  ];
+
   els.forEach(el => {
     const cs = window.getComputedStyle(el);
     saved.push({ el, style: el.style.cssText });
-    (['backgroundColor', 'color', 'borderColor', 'boxShadow', 'outlineColor'] as const).forEach(prop => {
-      const v = (cs as any)[prop] as string;
-      if (v && (v.includes('oklch') || v.includes('oklab') || v.includes('var('))) {
-        const cssProp = prop === 'backgroundColor' ? 'background-color'
-          : prop === 'borderColor' ? 'border-color'
-          : prop === 'boxShadow' ? 'box-shadow'
-          : prop.replace(/([A-Z])/g, '-$1').toLowerCase();
-        updates.push({ el, prop: cssProp, value: v });
-      }
+
+    COLOR_PROPS.forEach(([jsProp, cssProp]) => {
+      const v = (cs as any)[jsProp] as string;
+      if (!v) return;
+      const resolved = resolveColor(v);
+      if (resolved !== v) updates.push({ el, prop: cssProp, value: resolved });
     });
+
+    // box-shadow 含 oklch 時直接移除（無法簡單轉換 multi-part value）
+    const shadow = cs.boxShadow;
+    if (shadow && shadow !== 'none' && (shadow.includes('oklch') || shadow.includes('oklab'))) {
+      updates.push({ el, prop: 'box-shadow', value: 'none' });
+    }
   });
 
   updates.forEach(({ el, prop, value }) => el.style.setProperty(prop, value, 'important'));
   return () => saved.forEach(({ el, style }) => { el.style.cssText = style; });
 }
 
-// ─── 輔助：展開元素及其祖先的 overflow/height 限制 ───────────────────────────
+// ─── 輔助：展開元素的 overflow/height 限制 ───────────────────────────────────
 
-function expandElement(element: HTMLElement) {
+function expandElement(element: HTMLElement): () => void {
   const saved: { el: HTMLElement; style: string }[] = [];
 
-  // 展開元素內的捲動/flex 子容器
   const innerContainers = element.querySelectorAll(
     '.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar, .overflow-hidden, .flex-1, .min-h-0'
   );
@@ -45,29 +90,21 @@ function expandElement(element: HTMLElement) {
     if (el.scrollTop) el.scrollTop = 0;
   });
 
-  // sticky → relative（避免截圖時卡在頂部重複出現）
-  const stickyEls = element.querySelectorAll('.sticky');
-  stickyEls.forEach((el: any) => {
+  element.querySelectorAll('.sticky').forEach((el: any) => {
     saved.push({ el, style: el.style.cssText });
     el.style.setProperty('position', 'relative', 'important');
   });
 
-  // 展開元素本身
   saved.push({ el: element, style: element.style.cssText });
   element.style.setProperty('height', 'max-content', 'important');
   element.style.setProperty('overflow', 'visible', 'important');
   element.style.setProperty('min-width', '900px', 'important');
   element.style.setProperty('flex', 'none', 'important');
 
-  // bake oklch → rgb——移到主函式內 reflow 後才執行
-  // const restoreColors = convertToComputedRgb(element);
-
-  return () => {
-    saved.forEach(({ el, style }) => { el.style.cssText = style; });
-  };
+  return () => saved.forEach(({ el, style }) => { el.style.cssText = style; });
 }
 
-// ─── 輔助：截取元素的某一段（y 偏移 + 高度）───────────────────────────────────
+// ─── 輔助：截取元素某一段 ──────────────────────────────────────────────────────
 
 async function captureChunk(
   element: HTMLElement,
@@ -91,8 +128,6 @@ async function captureChunk(
   });
 }
 
-// ─── 下載 canvas ──────────────────────────────────────────────────────────────
-
 function downloadCanvas(canvas: HTMLCanvasElement, filename: string) {
   const link = document.createElement('a');
   link.href = canvas.toDataURL('image/png');
@@ -111,31 +146,32 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     return;
   }
 
+  const restoreExpand = expandElement(element);
   let restoreColors: (() => void) | null = null;
-  const restore = expandElement(element);
 
   try {
-    // 等待 reflow，再 bake oklch → rgb
+    // 等待 reflow（確保 scrollHeight 正確）
     await new Promise(r => setTimeout(r, 200));
+
+    // 用 Canvas pixel 法把所有 oklch → rgb inline style
     restoreColors = convertToComputedRgb(element);
-    // html2canvas 需要多一點時間讓顏色生效
-    await new Promise(r => setTimeout(r, 50));
+
+    // 再等一點讓 style mutation 生效
+    await new Promise(r => setTimeout(r, 80));
+
     const totalH = element.scrollHeight;
     const totalW = Math.max(element.scrollWidth, 900);
-
     const scale = 3;
-    // 每段截 4000px DOM（= 12000px canvas @ 3x），安全不超 16384 限制
-    const CHUNK_DOM_H = 4000;
+    const CHUNK_DOM_H = 4000; // × 3 = 12000px canvas，安全不超 16384
+
     const totalChunks = Math.ceil(totalH / CHUNK_DOM_H);
 
     if (totalChunks === 1) {
-      // 不需分段，直接截整張
       const canvas = await captureChunk(element, 0, totalH, totalW, scale);
       downloadCanvas(canvas, `${filename}.png`);
       return;
     }
 
-    // 分段截圖
     alert(`⚠️ 圖片較長，系統將自動分段下載為 ${totalChunks} 張圖片（各段可完美拼接）。`);
 
     for (let i = 0; i < totalChunks; i++) {
@@ -152,7 +188,7 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     alert(`匯出失敗：${msg}`);
   } finally {
     if (restoreColors) restoreColors();
-    restore();
+    restoreExpand();
   }
 };
 
@@ -168,7 +204,6 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     return;
   }
 
-  // 強制桌面版 layout
   const mobileCards = Array.from(document.querySelectorAll('.lg\\:hidden')) as HTMLElement[];
   const desktopTables = Array.from(document.querySelectorAll('.hidden.lg\\:block')) as HTMLElement[];
   const savedMobile = mobileCards.map(el => el.style.display);
@@ -176,15 +211,17 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
   mobileCards.forEach(el => el.style.setProperty('display', 'none', 'important'));
   desktopTables.forEach(el => el.style.setProperty('display', 'block', 'important'));
 
-  const restoreFns = elements.map(el => expandElement(el));
+  const restoreExpands = elements.map(el => expandElement(el));
+  const restoreColorsFns: Array<() => void> = [];
 
   try {
-    await new Promise(r => setTimeout(r, 150));
+    await new Promise(r => setTimeout(r, 200));
+    elements.forEach(el => restoreColorsFns.push(convertToComputedRgb(el)));
+    await new Promise(r => setTimeout(r, 80));
 
     const FIXED_W = Math.max(...elements.map(el => Math.max(el.scrollWidth, 900)));
     const scale = 3;
 
-    // 逐一截圖，在 canvas 上垂直拼接
     const chunks: HTMLCanvasElement[] = [];
     for (const el of elements) {
       const c = await captureChunk(el, 0, el.scrollHeight, FIXED_W, scale);
@@ -198,12 +235,8 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     const ctx = merged.getContext('2d')!;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, merged.width, merged.height);
-
     let y = 0;
-    for (const c of chunks) {
-      ctx.drawImage(c, 0, y);
-      y += c.height;
-    }
+    for (const c of chunks) { ctx.drawImage(c, 0, y); y += c.height; }
 
     downloadCanvas(merged, `${filename}.png`);
 
@@ -212,7 +245,8 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     const msg = err instanceof Event ? '不明的 Event 錯誤' : (err.message || String(err));
     alert(`匯出失敗：${msg}`);
   } finally {
-    restoreFns.forEach(fn => fn());
+    restoreColorsFns.forEach(fn => fn());
+    restoreExpands.forEach(fn => fn());
     mobileCards.forEach((el, i) => { el.style.display = savedMobile[i]; });
     desktopTables.forEach((el, i) => { el.style.display = savedDesktop[i]; });
   }
