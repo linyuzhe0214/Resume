@@ -59,6 +59,17 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
       }
     }
 
+    // 防呆：施工時間必須與鋪面斷面第一層施工月份一致
+    if (formData.pavementLayers.length > 0 && formData.constructionYear && formData.constructionMonth) {
+      const segMonth = `${formData.constructionYear.padStart(3, '0')}${formData.constructionMonth.padStart(2, '0')}`;
+      const layer0Month = formData.pavementLayers[0].month;
+      if (segMonth !== layer0Month) {
+        const layerYear = parseInt(layer0Month.substring(0, 3)).toString();
+        const layerMon = parseInt(layer0Month.substring(3, 5)).toString().padStart(2, '0');
+        errors.push(`施工時間（${formData.constructionYear}年${formData.constructionMonth}月）須與鋪面斷面第一層施工月份（${layerYear}年${layerMon}月）相同`);
+      }
+    }
+
     const fStart = Math.round(formData.startMileage);
     const fEnd = Math.round(formData.endMileage);
 

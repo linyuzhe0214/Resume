@@ -328,9 +328,13 @@ export default function ViewRouter(props: ViewRouterProps) {
   }
 
   if (subPage === 'editPavement') {
+    const defaultMonth = draftSegment?.constructionYear && draftSegment?.constructionMonth
+      ? `${draftSegment.constructionYear.padStart(3, '0')}${draftSegment.constructionMonth.padStart(2, '0')}`
+      : undefined;
     return (
       <EditPavement
         layers={draftSegment?.pavementLayers || []}
+        defaultMonth={defaultMonth}
         onSave={(layers) => {
           if (draftSegment) setDraftSegment({ ...draftSegment, pavementLayers: layers });
           setSubPage('editSegment');

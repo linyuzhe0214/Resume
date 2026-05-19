@@ -280,14 +280,15 @@ export default function MainlineHistory({
     const isFlashing = flashingId === segment.id;
 
     // 行內文字顯示門檻（px = 公尺 × SCALE 1.4）
-    // < 20px (~14m)：純色塊，答 tooltip
-    // 20~38px：只顯示年份
-    // 38~55px：年份 + 厚度
-    // >= 55px：完整顯示
-    const SHOW_YEAR_THRESHOLD = 20;
-    const SHOW_CM_THRESHOLD = 38;
-    const SHOW_DETAIL_THRESHOLD = 55;
-    const SHOW_MILEAGE_THRESHOLD = 38;
+    // < 18px：純色塊，僅 tooltip
+    // 18~32px：只顯示年份（無里程）
+    // 32~52px：年份 + 厚度
+    // 52~72px：年份 + 厚度 + 起訖里程（起點top, 終點bottom）
+    // >= 72px：完整顯示（含屬性/前次）
+    const SHOW_YEAR_THRESHOLD = 18;
+    const SHOW_CM_THRESHOLD = 32;
+    const SHOW_MILEAGE_THRESHOLD = 52;
+    const SHOW_DETAIL_THRESHOLD = 72;
 
     const tooltipContent = `${segment.constructionYear}年: ${thickness}cm ${combinedType}${segment.property ? ` [${segment.property}]` : ''} (${formatMileage(segment.startMileage)} - ${formatMileage(segment.endMileage)})`;
 
@@ -299,7 +300,7 @@ export default function MainlineHistory({
         onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, content: tooltipContent })}
         onMouseLeave={() => setTooltip(null)}
         className={cn(
-          "absolute w-full border border-black/10 flex flex-col items-center justify-center leading-none cursor-pointer hover:opacity-90 overflow-hidden z-10 hover:z-30 transition-all",
+          "absolute w-full border border-black/10 flex flex-col overflow-hidden z-10 cursor-pointer hover:opacity-90 hover:z-30 transition-all",
           isFlashing && "segment-flashing z-20"
         )}
         style={{
@@ -310,42 +311,44 @@ export default function MainlineHistory({
         data-seg-start={segment.startMileage}
         data-seg-end={segment.endMileage}
       >
-        {/* 頂部起始里程標記 */}
-        {height >= SHOW_MILEAGE_THRESHOLD && (
-          <span className="absolute top-[2px] left-0 text-[9px] font-bold text-black/50 leading-none px-1 pointer-events-none">
-            {formatMileage(segment.startMileage)}
-          </span>
-        )}
-
-        {/* 主要資訊：分段顯示 */}
-        {height >= SHOW_YEAR_THRESHOLD && (
+        {height < SHOW_YEAR_THRESHOLD ? null : (
           <>
-            <span className="font-black text-[13px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
-              {segment.constructionYear}
-            </span>
-            {height >= SHOW_CM_THRESHOLD && (
-              <span className="w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                {thickness}cm
+            {/* 頂部起始里程 */}
+            {height >= SHOW_MILEAGE_THRESHOLD && (
+              <span className="shrink-0 text-[9px] font-bold text-black/50 leading-none px-1 pt-[2px] pointer-events-none">
+                {formatMileage(segment.startMileage)}
               </span>
             )}
-            {height >= SHOW_DETAIL_THRESHOLD && segment.property && (
-              <span className="px-1 py-px mt-0.5 text-[9px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
-                {segment.property}
+
+            {/* 中間主資訊區塊：flex-1 撐滿，置中對齊 */}
+            <div className="flex-1 flex flex-col items-center justify-center leading-none overflow-hidden">
+              <span className="font-black text-[13px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
+                {segment.constructionYear}
               </span>
-            )}
-            {height >= SHOW_DETAIL_THRESHOLD && segment.prevConstructionYear && (
-              <span className="w-full text-center text-[10px] text-slate-900 leading-none mt-0.5 px-1 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                EX：{segment.prevConstructionYear}{segment.prevConstructionDepth ? `  ${segment.prevConstructionDepth}cm` : ''}
+              {height >= SHOW_CM_THRESHOLD && (
+                <span className="w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                  {thickness}cm
+                </span>
+              )}
+              {height >= SHOW_DETAIL_THRESHOLD && segment.property && (
+                <span className="px-1 py-px mt-0.5 text-[9px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
+                  {segment.property}
+                </span>
+              )}
+              {height >= SHOW_DETAIL_THRESHOLD && segment.prevConstructionYear && (
+                <span className="w-full text-center text-[9px] text-slate-900 leading-none mt-0.5 px-1 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                  EX:{segment.prevConstructionYear}{segment.prevConstructionDepth ? ` ${segment.prevConstructionDepth}cm` : ''}
+                </span>
+              )}
+            </div>
+
+            {/* 底部終點里程 */}
+            {height >= SHOW_MILEAGE_THRESHOLD && (
+              <span className="shrink-0 text-[9px] font-bold text-black/50 leading-none px-1 pb-[2px] text-right pointer-events-none">
+                {formatMileage(segment.endMileage)}
               </span>
             )}
           </>
-        )}
-
-        {/* 底部結束里程標記 */}
-        {height >= SHOW_MILEAGE_THRESHOLD && (
-          <span className="absolute bottom-[2px] right-0 text-[9px] font-bold text-black/50 leading-none px-1 pointer-events-none">
-            {formatMileage(segment.endMileage)}
-          </span>
         )}
       </div>
     );
