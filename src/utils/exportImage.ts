@@ -12,7 +12,7 @@ const convertToComputedRgb = (element: HTMLElement) => {
   elements.forEach((el) => {
     const style = window.getComputedStyle(el);
     const colorProps = ['backgroundColor', 'color', 'borderColor', 'boxShadow', 'outlineColor', 'textDecorationColor'];
-    
+
     savedStyles.push({ el, style: el.style.cssText });
 
     colorProps.forEach((prop) => {
@@ -20,11 +20,11 @@ const convertToComputedRgb = (element: HTMLElement) => {
       if (value && (value.includes('oklch') || value.includes('oklab') || value.includes('var('))) {
         updates.push({
           el,
-          prop: prop === 'backgroundColor' ? 'background-color' : 
-                prop === 'borderColor' ? 'border-color' : 
-                prop === 'boxShadow' ? 'box-shadow' : 
-                prop.replace(/([A-Z])/g, '-$1').toLowerCase(),
-          value
+          prop: prop === 'backgroundColor' ? 'background-color'
+              : prop === 'borderColor' ? 'border-color'
+              : prop === 'boxShadow' ? 'box-shadow'
+              : prop.replace(/([A-Z])/g, '-$1').toLowerCase(),
+          value,
         });
       }
     });
@@ -48,20 +48,44 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     return;
   }
 
-  let viewport: HTMLDivElement | null = null;
+  // ---- 收集需要還原的 style ----
+  const originalStyle = element.style.cssText;
+
+  const expandContainers = element.querySelectorAll(
+    '.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar, .overflow-hidden, .flex-1, .min-h-0'
+  );
+  const originalExpandStyles = Array.from(expandContainers).map((el: any) => el.style.cssText);
+
+  const stickyElements = element.querySelectorAll('.sticky');
+  const originalStickyStyles = Array.from(stickyElements).map((el: any) => el.style.cssText);
+
+  // 收集所有祖先（到 body 為止），後續一起展開 overflow
+  const ancestors: HTMLElement[] = [];
+  const ancestorStyles: string[] = [];
+  let cursor = element.parentElement;
+  while (cursor && cursor !== document.documentElement) {
+    ancestors.push(cursor);
+    ancestorStyles.push(cursor.style.cssText);
+    cursor = cursor.parentElement;
+  }
+
+  let restoreColors: (() => void) | null = null;
 
   try {
-    // 1. 暫時展開原始元素，讀取完整尺寸
-    const originalStyle = element.style.cssText;
+    // 1. 展開祖先的 overflow / height 限制
+    ancestors.forEach((el) => {
+      el.style.setProperty('overflow', 'visible', 'important');
+      el.style.setProperty('height', 'max-content', 'important');
+      el.style.setProperty('max-height', 'none', 'important');
+      el.style.setProperty('flex', 'none', 'important');
+    });
+
+    // 2. 展開元素本身
     element.style.setProperty('height', 'max-content', 'important');
     element.style.setProperty('overflow', 'visible', 'important');
     element.style.setProperty('min-width', '900px', 'important');
     element.style.setProperty('flex', 'none', 'important');
 
-    const expandContainers = element.querySelectorAll(
-      '.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar, .overflow-hidden, .flex-1, .min-h-0'
-    );
-    const originalExpandStyles = Array.from(expandContainers).map((el: any) => el.style.cssText);
     expandContainers.forEach((el: any) => {
       el.style.setProperty('height', 'max-content', 'important');
       el.style.setProperty('min-height', 'max-content', 'important');
@@ -71,119 +95,70 @@ export const exportComponentAsImage = async (elementId: string, filename: string
       if (el.scrollTop) el.scrollTop = 0;
     });
 
-    const stickyElements = element.querySelectorAll('.sticky');
     stickyElements.forEach((el: any) => el.style.setProperty('position', 'relative', 'important'));
 
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // 3. bake oklch → rgb
+    restoreColors = convertToComputedRgb(element);
+
+    // 4. 等待瀏覽器 reflow
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     const targetHeight = element.scrollHeight;
     const targetWidth = Math.max(element.scrollWidth, 900);
 
-    // 復原原始元素（後面用 clone 截圖，不影響原始頁面）
-    element.style.cssText = originalStyle;
-    expandContainers.forEach((el: any, i) => { el.style.cssText = originalExpandStyles[i]; });
-    stickyElements.forEach((el: any) => el.style.removeProperty('position'));
-
-    // 2. 建離屏 viewport 容器（overflow:hidden，固定高度 ≤ CHUNK_DOM_HEIGHT）
-    //
-    //    核心原理：html-to-image 用 SVG foreignObject 渲染 DOM，
-    //    當 foreignObject 高度超過瀏覽器限制（約視窗高度的幾倍）時，
-    //    超出部分直接渲染成空白，不管 CSS 怎麼設都無效。
-    //
-    //    正確做法：讓截圖目標（viewport）永遠維持小高度，
-    //    把 clone 放在裡面用 translateY 偏移，每次截不同的段。
+    // 5. 計算 safePixelRatio（確保 canvas 不超 16384px 硬限制）
+    const MAX_CANVAS_PX = 16384;
     const pixelRatio = 3;
-    const CHUNK_DOM_HEIGHT = 5000; // 5000px × 3 = 15000px canvas，安全不超限
-    const totalChunks = Math.ceil(targetHeight / CHUNK_DOM_HEIGHT);
+    const safePixelRatio = targetHeight * pixelRatio > MAX_CANVAS_PX
+      ? Math.max(1.5, Math.floor((MAX_CANVAS_PX / targetHeight) * 10) / 10)
+      : pixelRatio;
+
+    // 6. 截整張圖（⚠️ 不傳 height，讓 html-to-image 讀 getBoundingClientRect 完整高度）
+    const fullDataUrl = await toPng(element, {
+      backgroundColor: '#ffffff',
+      pixelRatio: safePixelRatio,
+      width: targetWidth,
+      skipFonts: true,
+      style: { transform: 'none', transition: 'none' },
+    });
+
+    // 7. 判斷是否需要分段（截出的圖超過 16384px 才分切）
+    const fullImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('圖片載入失敗'));
+      img.src = fullDataUrl;
+    });
+
+    const fullW = fullImg.naturalWidth;
+    const fullH = fullImg.naturalHeight;
+    const CHUNK_PX = Math.floor(MAX_CANVAS_PX * 0.9);
+    const totalChunks = Math.ceil(fullH / CHUNK_PX);
 
     if (totalChunks > 1) {
-      alert(`⚠️ 國道全段長度較長，系統將自動分段下載為 ${totalChunks} 張圖片（各段可完美拼接）。`);
+      alert(`⚠️ 圖片較長，系統將自動分段下載為 ${totalChunks} 張圖片（各段可完美拼接）。`);
     }
-
-    viewport = document.createElement('div');
-    viewport.style.cssText = [
-      `position:fixed`,
-      `top:0`,
-      `left:-${targetWidth + 20}px`,
-      `width:${targetWidth}px`,
-      `height:${CHUNK_DOM_HEIGHT}px`,
-      `overflow:hidden`,
-      `z-index:-9999`,
-      `pointer-events:none`,
-      `background:#ffffff`,
-    ].join(';');
-    document.body.appendChild(viewport);
-
-    // clone 完整 DOM，清除 inline style 後重設
-    const clone = element.cloneNode(true) as HTMLElement;
-    clone.removeAttribute('id');
-    clone.style.cssText = '';
-    clone.style.setProperty('width', `${targetWidth}px`, 'important');
-    clone.style.setProperty('height', 'max-content', 'important');
-    clone.style.setProperty('overflow', 'visible', 'important');
-    clone.style.setProperty('flex', 'none', 'important');
-    clone.style.setProperty('transform-origin', 'top left', 'important');
-    viewport.appendChild(clone);
-
-    // 展開 clone 內所有捲動/flex 容器
-    clone.querySelectorAll(
-      '.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar, .overflow-hidden, .flex-1, .min-h-0'
-    ).forEach((el: any) => {
-      el.style.setProperty('height', 'max-content', 'important');
-      el.style.setProperty('min-height', 'max-content', 'important');
-      el.style.setProperty('overflow', 'visible', 'important');
-      el.style.setProperty('max-height', 'none', 'important');
-      el.style.setProperty('flex', 'none', 'important');
-    });
-    clone.querySelectorAll('.sticky').forEach((el: any) => {
-      el.style.setProperty('position', 'relative', 'important');
-    });
-
-    // bake 所有 oklch/oklab 顏色為 rgb（Tailwind v4 相容）
-    convertToComputedRgb(clone);
-
-    await new Promise(resolve => setTimeout(resolve, 150));
-
-    // 3. 分段截圖
-    const chunkDataUrls: string[] = [];
 
     for (let i = 0; i < totalChunks; i++) {
-      const offsetY = i * CHUNK_DOM_HEIGHT;
-      const chunkHeight = Math.min(CHUNK_DOM_HEIGHT, targetHeight - offsetY);
+      const srcY = i * CHUNK_PX;
+      const srcH = Math.min(CHUNK_PX, fullH - srcY);
 
-      // 調整 viewport 高度，clone 往上偏移 offsetY
-      viewport.style.height = `${chunkHeight}px`;
-      clone.style.setProperty('transform', `translateY(-${offsetY}px)`, 'important');
+      const chunkCanvas = document.createElement('canvas');
+      chunkCanvas.width = fullW;
+      chunkCanvas.height = srcH;
+      const ctx = chunkCanvas.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, fullW, srcH);
+      ctx.drawImage(fullImg, 0, srcY, fullW, srcH, 0, 0, fullW, srcH);
 
-      await new Promise(resolve => setTimeout(resolve, 80));
-
-      // 截 viewport（高度 ≤ CHUNK_DOM_HEIGHT，foreignObject 不會超限）
-      const dataUrl = await toPng(viewport, {
-        backgroundColor: '#ffffff',
-        pixelRatio,
-        width: targetWidth,
-        height: chunkHeight,
-        skipFonts: true,
-        style: { transform: 'none', transition: 'none' },
-      });
-
-      chunkDataUrls.push(dataUrl);
-    }
-
-    document.body.removeChild(viewport);
-    viewport = null;
-
-    // 4. 逐段下載
-    for (let i = 0; i < chunkDataUrls.length; i++) {
       const link = document.createElement('a');
-      link.href = chunkDataUrls[i];
+      link.href = chunkCanvas.toDataURL('image/png');
       link.download = totalChunks > 1 ? `${filename}_部分${i + 1}.png` : `${filename}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      if (i < chunkDataUrls.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 600));
-      }
+
+      if (i < totalChunks - 1) await new Promise(r => setTimeout(r, 600));
     }
 
   } catch (err: any) {
@@ -191,9 +166,11 @@ export const exportComponentAsImage = async (elementId: string, filename: string
     const errMsg = (err instanceof Event) ? '處理圖片時發生不明的 Event 錯誤' : (err.message || err);
     alert(`匯出圖片失敗：${errMsg}`);
   } finally {
-    if (viewport && viewport.parentNode) {
-      document.body.removeChild(viewport);
-    }
+    if (restoreColors) restoreColors();
+    element.style.cssText = originalStyle;
+    expandContainers.forEach((el: any, i) => { el.style.cssText = originalExpandStyles[i]; });
+    stickyElements.forEach((el: any, i) => { el.style.cssText = originalStickyStyles[i]; });
+    ancestors.forEach((el, i) => { el.style.cssText = ancestorStyles[i]; });
   }
 };
 
@@ -211,7 +188,6 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
   const originalStyles = elements.map(el => el.style.cssText);
   const allScrollContainers: Array<{ el: any; style: string }[]> = [];
 
-  // 強制桌面版 layout
   const mobileCards = Array.from(document.querySelectorAll('.lg\\:hidden')) as HTMLElement[];
   const desktopTables = Array.from(document.querySelectorAll('.hidden.lg\\:block')) as HTMLElement[];
   const savedMobile: string[] = mobileCards.map(el => el.style.display);
@@ -221,7 +197,7 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
   desktopTables.forEach(el => el.style.setProperty('display', 'block', 'important'));
 
   try {
-    elements.forEach((element, idx) => {
+    elements.forEach((element) => {
       const scrollContainers = element.querySelectorAll('.overflow-auto, .overflow-y-auto, .overflow-x-auto, .hide-scrollbar');
       const saved = Array.from(scrollContainers).map((el: any) => ({ el, style: el.style.cssText }));
       allScrollContainers.push(saved);
@@ -243,22 +219,22 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
 
     const FIXED_WIDTH = Math.max(...elements.map(el => Math.max(el.scrollWidth, 900)));
     const totalRawHeight = elements.reduce((acc, el) => acc + el.scrollHeight, 0);
-    
+
     let pixelRatio = 3;
     if (totalRawHeight * pixelRatio > 16000) {
       pixelRatio = Math.max(1.5, 16000 / totalRawHeight);
     }
-    
+
     const images: HTMLImageElement[] = [];
     for (let i = 0; i < elements.length; i++) {
       const el = elements[i];
       const url = await toPng(el, {
         backgroundColor: '#ffffff',
-        pixelRatio: pixelRatio,
+        pixelRatio,
         width: FIXED_WIDTH,
         height: el.scrollHeight,
         skipFonts: true,
-        style: { transform: 'none', transition: 'none' }
+        style: { transform: 'none', transition: 'none' },
       });
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
@@ -270,7 +246,6 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
     }
 
     const totalHeight = images.reduce((acc, img, i) => acc + elements[i].scrollHeight * pixelRatio, 0);
-
     const canvas = document.createElement('canvas');
     canvas.width = FIXED_WIDTH * pixelRatio;
     canvas.height = totalHeight;
@@ -284,10 +259,8 @@ export const exportMultipleAsImage = async (elementIds: string[], filename: stri
       y += elements[i].scrollHeight * pixelRatio;
     });
 
-    const finalDataUrl = canvas.toDataURL('image/png');
-    
     const link = document.createElement('a');
-    link.href = finalDataUrl;
+    link.href = canvas.toDataURL('image/png');
     link.download = `${filename}.png`;
     document.body.appendChild(link);
     link.click();
