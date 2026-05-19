@@ -28,10 +28,8 @@ function hasModernColor(text: string) {
   return text.includes('oklch') || text.includes('oklab');
 }
 
-// ─── 在呼叫 html2canvas 之前 patch 所有 stylesheet（style + link）──────────
+// ─── 在呼叫 html2canvas 之前 patch 所有 stylesheet（style + link + adopted）──
 // html2canvas DocumentCloner 在 clone 時就解析 CSS，onclone 太晚。
-// <link> stylesheet 需要先 disable 並注入 <style> 替代，否則 html2canvas 仍會
-// 自己 fetch 原始 .css 檔並解析（就算我們改了 DOM 也沒用）。
 
 function patchOriginalStyles(): () => void {
   const restores: (() => void)[] = [];
@@ -40,33 +38,54 @@ function patchOriginalStyles(): () => void {
     const ownerEl = sheet.ownerNode as HTMLElement | null;
 
     if (ownerEl?.tagName === 'STYLE') {
-      // ── inline <style> ──────────────────────────────────────────────────
+      // ── inline <style>：直接改 textContent ──────────────────────────────
       const styleEl = ownerEl as HTMLStyleElement;
       const original = styleEl.textContent ?? '';
       if (!hasModernColor(original)) return;
       styleEl.textContent = replaceModernColors(original);
       restores.push(() => { styleEl.textContent = original; });
 
-    } else {
-      // ── <link rel="stylesheet"> ─────────────────────────────────────────
+    } else if (ownerEl?.tagName === 'LINK') {
+      // ── <link rel="stylesheet">：把規則抽出→patched <style>，並把 <link> 移出 DOM
+      // （只 disable 不夠，html2canvas 仍可能 fetch 原始 URL）
       let cssText: string;
       try {
         cssText = Array.from(sheet.cssRules).map(r => r.cssText).join('\n');
-      } catch { return; } // cross-origin → skip
+      } catch { return; } // cross-origin → skip（通常不會）
+
       if (!hasModernColor(cssText)) return;
 
-      // 建一個 <style> 替換，並 disable 原始 sheet
       const newStyle = document.createElement('style');
       newStyle.textContent = replaceModernColors(cssText);
-      document.head.appendChild(newStyle);
-      (sheet as CSSStyleSheet).disabled = true;
+
+      const parent = ownerEl.parentNode;
+      const nextSibling = ownerEl.nextSibling;
+      parent?.removeChild(ownerEl);        // 完全移出 DOM，html2canvas 看不到
+      document.head.appendChild(newStyle); // 改用 <style> 替代
 
       restores.push(() => {
         newStyle.remove();
-        try { (sheet as CSSStyleSheet).disabled = false; } catch { /* ignore */ }
+        if (parent) parent.insertBefore(ownerEl, nextSibling);
       });
     }
   });
+
+  // ── adoptedStyleSheets（Constructable Stylesheets，Vite / Shadow DOM 常用）──
+  try {
+    const origAdopted = [...document.adoptedStyleSheets];
+    const patched = origAdopted.map((sheet) => {
+      let cssText: string;
+      try {
+        cssText = Array.from(sheet.cssRules).map(r => r.cssText).join('\n');
+      } catch { return sheet; }
+      if (!hasModernColor(cssText)) return sheet;
+      const newSheet = new CSSStyleSheet();
+      newSheet.replaceSync(replaceModernColors(cssText));
+      return newSheet;
+    });
+    document.adoptedStyleSheets = patched;
+    restores.push(() => { document.adoptedStyleSheets = origAdopted; });
+  } catch { /* 瀏覽器不支援 adoptedStyleSheets → 忽略 */ }
 
   return () => restores.forEach(fn => fn());
 }
