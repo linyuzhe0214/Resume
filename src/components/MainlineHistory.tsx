@@ -41,6 +41,7 @@ export default function MainlineHistory({
   const [exportStart, setExportStart] = useState('');
   const [exportEnd, setExportEnd] = useState('');
   const [activeExportRange, setActiveExportRange] = useState<{ start: number, end: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
   const segmentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
@@ -278,13 +279,22 @@ export default function MainlineHistory({
 
     const isFlashing = flashingId === segment.id;
 
+    // 行內文字顯示門檻（px）— 全部設 0 代表永遠顯示，小色塊靠 overflow-hidden 裁切
+    const SHOW_YEAR_THRESHOLD = 0;
+    const SHOW_DETAIL_THRESHOLD = 0;
+    const SHOW_MILEAGE_THRESHOLD = 0;
+
+    const tooltipContent = `${segment.constructionYear}年: ${thickness}cm ${combinedType}${segment.property ? ` [${segment.property}]` : ''} (${formatMileage(segment.startMileage)} - ${formatMileage(segment.endMileage)})`;
+
     return (
       <div
         key={`${segment.id}-${lane}`}
         ref={el => { if (!segmentRefs.current[segment.id]) segmentRefs.current[segment.id] = el; }}
         onClick={() => onNavigateToEdit(segment.id)}
+        onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, content: tooltipContent })}
+        onMouseLeave={() => setTooltip(null)}
         className={cn(
-          "absolute w-full border border-black/10 flex flex-col items-center justify-center leading-none cursor-pointer hover:opacity-90 overflow-visible z-10 hover:z-30 group transition-all",
+          "absolute w-full border border-black/10 flex flex-col items-center justify-center leading-none cursor-pointer hover:opacity-90 overflow-hidden z-10 hover:z-30 transition-all",
           isFlashing && "segment-flashing z-20"
         )}
         style={{
@@ -296,43 +306,40 @@ export default function MainlineHistory({
         data-seg-end={segment.endMileage}
       >
         {/* 頂部起始里程標記 */}
-        {height >= 28 && (
+        {height >= SHOW_MILEAGE_THRESHOLD && (
           <span className="absolute top-[2px] left-0 text-[9px] font-bold text-black/50 leading-none px-1 pointer-events-none">
             {formatMileage(segment.startMileage)}
           </span>
         )}
 
-        {/* 主要資訊 */}
-        <span className="font-black text-[13px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
-          {segment.constructionYear}
-        </span>
-        <span className="w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-          {thickness}cm
-        </span>
-        {segment.property && (
-          <span className="px-1 py-px mt-0.5 text-[9px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
-            {segment.property}
-          </span>
-        )}
-        {segment.prevConstructionYear && (
-          <span className="w-full text-center text-[10px] text-slate-900 leading-none mt-0.5 px-1 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-            EX：{segment.prevConstructionYear}{segment.prevConstructionDepth ? `  ${segment.prevConstructionDepth}cm` : ''}
-          </span>
+        {/* 主要資訊：只在色塊夠高時顯示 */}
+        {height >= SHOW_YEAR_THRESHOLD && (
+          <>
+            <span className="font-black text-[13px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
+              {segment.constructionYear}
+            </span>
+            <span className="w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+              {thickness}cm
+            </span>
+            {height >= SHOW_DETAIL_THRESHOLD && segment.property && (
+              <span className="px-1 py-px mt-0.5 text-[9px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
+                {segment.property}
+              </span>
+            )}
+            {height >= SHOW_DETAIL_THRESHOLD && segment.prevConstructionYear && (
+              <span className="w-full text-center text-[10px] text-slate-900 leading-none mt-0.5 px-1 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                EX：{segment.prevConstructionYear}{segment.prevConstructionDepth ? `  ${segment.prevConstructionDepth}cm` : ''}
+              </span>
+            )}
+          </>
         )}
 
         {/* 底部結束里程標記 */}
-        {height >= 28 && (
+        {height >= SHOW_MILEAGE_THRESHOLD && (
           <span className="absolute bottom-[2px] right-0 text-[9px] font-bold text-black/50 leading-none px-1 pointer-events-none">
             {formatMileage(segment.endMileage)}
           </span>
         )}
-        
-        {/* Tooltip */}
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
-          <div className="bg-gray-900 text-white text-[10px] rounded py-1 px-2 whitespace-nowrap shadow-xl">
-            {segment.constructionYear}年: {thickness}cm {combinedType}{segment.property ? ` [${segment.property}]` : ''} ({formatMileage(segment.startMileage)} - {formatMileage(segment.endMileage)})
-          </div>
-        </div>
       </div>
     );
   };
@@ -344,6 +351,17 @@ export default function MainlineHistory({
 
   return (
     <div className="flex flex-col h-[100dvh] bg-slate-50 relative overflow-hidden">
+      {/* 游標跟隨 Tooltip */}
+      {tooltip && (
+        <div
+          className="fixed z-[9999] pointer-events-none"
+          style={{ left: tooltip.x + 14, top: tooltip.y - 8 }}
+        >
+          <div className="bg-gray-900 text-white text-[10px] rounded py-1.5 px-2.5 whitespace-nowrap shadow-xl leading-snug">
+            {tooltip.content}
+          </div>
+        </div>
+      )}
       {/* Top Navigation Shell */}
       <header className="bg-white/80 backdrop-blur-md z-50 w-full pt-4 px-4 sm:px-6 flex flex-col border-b border-slate-200 shrink-0 shadow-sm">
         <div className="flex items-center justify-between pb-4 gap-4">
