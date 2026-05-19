@@ -25,18 +25,28 @@ function replaceModernColors(cssText: string): string {
 // ─── 輔助：修補 clone document 裡所有 stylesheet（html2canvas 會直接讀 rules）──
 
 function patchStylesheets(doc: Document): void {
+  // 優先直接改 <style> textContent——最可靠，不受 live CSSRuleList index 偏移影響
+  Array.from(doc.querySelectorAll('style')).forEach((styleEl) => {
+    const original = styleEl.textContent ?? '';
+    if (!original.includes('oklch') && !original.includes('oklab')) return;
+    styleEl.textContent = replaceModernColors(original);
+  });
+
+  // 對外部 <link> stylesheet（html2canvas clone 時通常已 inline），用倒序處理避免 index 偏移
   Array.from(doc.styleSheets).forEach((sheet) => {
+    const ownerTag = (sheet.ownerNode as HTMLElement | null)?.tagName;
+    if (ownerTag === 'STYLE') return; // 已在上面處理
     let rules: CSSRuleList;
     try { rules = sheet.cssRules; } catch { return; } // cross-origin
-    Array.from(rules).forEach((rule, i) => {
-      const text = rule.cssText;
-      if (!text.includes('oklch') && !text.includes('oklab') && !text.includes('color(')) return;
+    for (let i = rules.length - 1; i >= 0; i--) {
+      const text = rules[i].cssText;
+      if (!text.includes('oklch') && !text.includes('oklab') && !text.includes('color(')) continue;
       const fixed = replaceModernColors(text);
       try {
         (sheet as CSSStyleSheet).deleteRule(i);
         (sheet as CSSStyleSheet).insertRule(fixed, i);
       } catch { /* ignore malformed */ }
-    });
+    }
   });
 }
 
