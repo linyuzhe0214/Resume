@@ -285,10 +285,10 @@ export default function MainlineHistory({
     // 32~52px：年份 + 厚度
     // 52~72px：年份 + 厚度 + 起訖里程（起點top, 終點bottom）
     // >= 72px：完整顯示（含屬性/前次）
-    const SHOW_YEAR_THRESHOLD = 18;
-    const SHOW_CM_THRESHOLD = 32;
-    const SHOW_MILEAGE_THRESHOLD = 52;
-    const SHOW_DETAIL_THRESHOLD = 72;
+    const SHOW_YEAR_THRESHOLD = 14;
+    const SHOW_CM_THRESHOLD = 26;
+    const SHOW_MILEAGE_THRESHOLD = 44;
+    const SHOW_DETAIL_THRESHOLD = 64;
 
     const tooltipContent = `${segment.constructionYear}年: ${thickness}cm ${combinedType}${segment.property ? ` [${segment.property}]` : ''} (${formatMileage(segment.startMileage)} - ${formatMileage(segment.endMileage)})`;
 
@@ -299,6 +299,15 @@ export default function MainlineHistory({
         onClick={() => onNavigateToEdit(segment.id)}
         onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, content: tooltipContent })}
         onMouseLeave={() => setTooltip(null)}
+        onTouchStart={(e) => {
+          const t = e.touches[0];
+          setTooltip({ x: t.clientX, y: t.clientY - 60, content: tooltipContent });
+        }}
+        onTouchEnd={() => setTooltip(null)}
+        onTouchMove={(e) => {
+          const t = e.touches[0];
+          setTooltip({ x: t.clientX, y: t.clientY - 60, content: tooltipContent });
+        }}
         className={cn(
           "absolute w-full border border-black/10 flex flex-col overflow-hidden z-10 cursor-pointer hover:opacity-90 hover:z-30 transition-all",
           isFlashing && "segment-flashing z-20"
