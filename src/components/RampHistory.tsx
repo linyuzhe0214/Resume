@@ -48,6 +48,7 @@ export default function RampHistory(props: RampHistoryProps) {
   const [deletingRampId, setDeletingRampId] = useState<string | null>(null);
   const [selectedRampId, setSelectedRampId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -294,10 +295,16 @@ export default function RampHistory(props: RampHistoryProps) {
 
           {/* 匯出按鈕移到頂部 Header */}
           <button 
-            onClick={() => exportMultipleAsImage(
-              ['ramp-details-export', 'ramp-export-container'],
-              `${selectedHighway}_${selectedInterchange}_匝道資料`
-            )}
+            onClick={() => {
+              setIsExporting(true);
+              setTimeout(() => {
+                exportMultipleAsImage(
+                  ['ramp-details-export', 'ramp-export-container'],
+                  `${selectedHighway}_${selectedInterchange}_匝道資料`
+                );
+                setTimeout(() => setIsExporting(false), 500);
+              }, 100);
+            }}
             className="hidden xl:flex items-center justify-center gap-2 px-5 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-2xl text-sm font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95 col-span-2 lg:col-span-1"
             title="匯出（含施工履歷與詳細資料）"
           >
@@ -576,7 +583,63 @@ export default function RampHistory(props: RampHistoryProps) {
                 </div>
               </div>
 
-              {displayRamps.map((group, idx) => (
+              {displayRamps.map((group, idx) => {
+                const allItems: any[] = [];
+                group.segments.forEach(ramp => {
+                  const start = ramp.startMileage || 0;
+                  const end = ramp.endMileage || group.length;
+                  if (end > start) {
+                    const data = getSegmentData(ramp);
+                    allItems.push({
+                      id: ramp.id,
+                      type: 'pavement',
+                      start,
+                      end,
+                      color: data.color,
+                      year: ramp.constructionYear,
+                      depth: data.depth,
+                      laneCount: ramp.laneCount,
+                      prevYear: ramp.prevConstructionYear,
+                      prevDepth: ramp.prevConstructionDepth
+                    });
+                  }
+                  ramp.maintenanceHistory?.forEach(event => {
+                    const start = event.startMileage;
+                    const end = event.endMileage;
+                    if (end > start) {
+                      allItems.push({
+                        id: event.id,
+                        type: 'maintenance',
+                        start,
+                        end,
+                        color: getColorFromLabel(event.label),
+                        year: event.year,
+                        depth: event.depth,
+                        laneCount: 0,
+                      });
+                    }
+                  });
+                });
+
+                const INLINE_MIN_M = group.length * 0.08; 
+                const smallItems = allItems.filter(item => (item.end - item.start) < INLINE_MIN_M);
+                
+                const levels: number[] = [];
+                const callouts = smallItems.sort((a, b) => a.start - b.start).map(item => {
+                  const midPercent = ((item.start + item.end) / 2 / group.length) * 100;
+                  const percentWidth = 14; 
+                  let level = 0;
+                  while (levels[level] !== undefined && levels[level] > midPercent - percentWidth/2) {
+                    level++;
+                  }
+                  levels[level] = midPercent + percentWidth/2 + 1;
+                  return { ...item, midPercent, level };
+                });
+
+                const maxLevel = callouts.length > 0 ? Math.max(...callouts.map(c => c.level)) : -1;
+                const exportPaddingBottom = isExporting && maxLevel >= 0 ? `${maxLevel * 40 + 44}px` : '8px';
+
+                return (
                 <div 
                   key={group.groupId} 
                   className="grid grid-cols-[140px_80px_1fr] sm:grid-cols-[180px_100px_1fr] items-stretch group transition-colors"
@@ -601,11 +664,14 @@ export default function RampHistory(props: RampHistoryProps) {
                       <div key={val} className="absolute top-0 bottom-0 w-[1px] bg-slate-200/40" style={{ left: `${(val / maxLength) * 100}%` }}></div>
                     ))}
                     <div 
-                      className="relative z-10 w-full mt-7 mb-2" 
-                      style={{ width: `${(group.length / maxLength) * 100}%` }}
+                      className="relative z-10 w-full mt-7 transition-all" 
+                      style={{ width: `${(group.length / maxLength) * 100}%`, paddingBottom: exportPaddingBottom }}
                     >
                       <div
-                        className="h-9 w-full bg-[#e7e6e6]/30 hover:bg-[#e7e6e6]/80 rounded-md shadow-inner relative overflow-hidden flex border border-slate-200 cursor-pointer transition-colors"
+                        className={cn(
+                          "h-9 w-full bg-[#e7e6e6]/30 hover:bg-[#e7e6e6]/80 rounded-md relative flex border border-slate-200 cursor-pointer transition-colors",
+                          isExporting ? "overflow-visible" : "overflow-hidden shadow-inner"
+                        )}
                         onClick={(e) => {
                           if (e.target === e.currentTarget && group.segments[0]) {
                             const rect = e.currentTarget.getBoundingClientRect();
@@ -647,6 +713,8 @@ export default function RampHistory(props: RampHistoryProps) {
                           if (end <= start) return null;
                           const segmentColor = segmentData.color;
                           
+                          const isSmall = (end - start) < INLINE_MIN_M;
+                          
                           return (
                             <div
                               key={ramp.id}
@@ -658,21 +726,25 @@ export default function RampHistory(props: RampHistoryProps) {
                                 backgroundColor: segmentColor 
                               }}
                             >
-                              <span className="drop-shadow-sm truncate w-full text-center px-0.5 text-[10px] sm:text-[11px] font-black leading-none text-slate-950">
-                                {ramp.constructionYear}
-                              </span>
-                              <span className="text-[9px] sm:text-[10px] font-black leading-none mt-0.5 text-slate-950 truncate w-full text-center px-0.5">
-                                {segmentData.depth}cm
-                              </span>
-                              {ramp.laneCount > 0 && (
-                                <span className="px-1 py-px mt-0.5 text-[8px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
-                                  {ramp.laneCount}車道
-                                </span>
-                              )}
-                              {ramp.prevConstructionYear && (
-                                <span className="text-[8px] sm:text-[9px] leading-none mt-0.5 text-slate-950/70 truncate w-full text-center px-0.5">
-                                  EX:{ramp.prevConstructionYear}{ramp.prevConstructionDepth ? ` ${ramp.prevConstructionDepth}cm` : ''}
-                                </span>
+                              {(!isExporting || !isSmall) && (
+                                <>
+                                  <span className="drop-shadow-sm truncate w-full text-center px-0.5 text-[10px] sm:text-[11px] font-black leading-none text-slate-950">
+                                    {ramp.constructionYear}
+                                  </span>
+                                  <span className="text-[9px] sm:text-[10px] font-black leading-none mt-0.5 text-slate-950 truncate w-full text-center px-0.5">
+                                    {segmentData.depth}cm
+                                  </span>
+                                  {ramp.laneCount > 0 && (
+                                    <span className="px-1 py-px mt-0.5 text-[8px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
+                                      {ramp.laneCount}車道
+                                    </span>
+                                  )}
+                                  {ramp.prevConstructionYear && (
+                                    <span className="text-[8px] sm:text-[9px] leading-none mt-0.5 text-slate-950/70 truncate w-full text-center px-0.5">
+                                      EX:{ramp.prevConstructionYear}{ramp.prevConstructionDepth ? ` ${ramp.prevConstructionDepth}cm` : ''}
+                                    </span>
+                                  )}
+                                </>
                               )}
                             </div>
                           );
@@ -685,6 +757,8 @@ export default function RampHistory(props: RampHistoryProps) {
                             if (width <= 0) return null;
                             const eventColor = getColorFromLabel(event.label);
                             
+                            const isSmall = (event.endMileage - event.startMileage) < INLINE_MIN_M;
+                            
                             return (
                               <div
                                 key={event.id}
@@ -692,18 +766,65 @@ export default function RampHistory(props: RampHistoryProps) {
                                 className="h-full absolute flex flex-col items-center justify-center border-r border-black/10 last:border-0 transition-all hover:brightness-95 group cursor-pointer z-10 border-2 border-black/10 overflow-hidden"
                                 style={{ left: `${left}%`, width: `${width}%`, backgroundColor: eventColor }}
                               >
-                                <span className="drop-shadow-sm truncate w-full text-center px-0.5 text-[10px] sm:text-[11px] font-black leading-none text-slate-950">
-                                  {event.year}
-                                </span>
-                                {event.depth && (
-                                   <span className="text-[9px] sm:text-[10px] font-black leading-none mt-0.5 text-slate-950 truncate w-full text-center px-0.5">
-                                     {event.depth}cm
-                                   </span>
+                                {(!isExporting || !isSmall) && (
+                                  <>
+                                    <span className="drop-shadow-sm truncate w-full text-center px-0.5 text-[10px] sm:text-[11px] font-black leading-none text-slate-950">
+                                      {event.year}
+                                    </span>
+                                    {event.depth && (
+                                       <span className="text-[9px] sm:text-[10px] font-black leading-none mt-0.5 text-slate-950 truncate w-full text-center px-0.5">
+                                         {event.depth}cm
+                                       </span>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             );
                           })
                         )}
+                        
+                        {/* 匯出時的小色塊 Callouts */}
+                        {isExporting && callouts.map(co => (
+                          <div 
+                            key={`co-${co.id}`} 
+                            className="absolute pointer-events-none z-30 flex flex-col items-center" 
+                            style={{ 
+                              left: `${co.midPercent}%`, 
+                              top: `${36 + co.level * 40}px`, 
+                              transform: 'translateX(-50%)' 
+                            }}
+                          >
+                            {/* 連接線 */}
+                            <div 
+                              className="w-[1px]" 
+                              style={{ 
+                                height: `${4 + co.level * 40}px`, 
+                                position: 'absolute', 
+                                bottom: '100%',
+                                background: 'repeating-linear-gradient(to bottom, rgba(0,0,0,0.4) 0px, rgba(0,0,0,0.4) 3px, transparent 3px, transparent 6px)'
+                              }}
+                            />
+                            {/* 標籤框 */}
+                            <div 
+                              className="bg-white border border-slate-300 shadow-sm flex flex-col justify-center px-1.5 py-0.5 whitespace-nowrap relative rounded-[2px]" 
+                              style={{ borderLeft: `3px solid ${co.color}` }}
+                            >
+                              <span className="font-black text-slate-900 leading-none mb-0.5" style={{fontSize:'8.5px'}}>
+                                {co.year}年 {co.depth ? `${co.depth}cm` : ''}
+                              </span>
+                              {co.type === 'pavement' && co.laneCount > 0 && (
+                                <span className="text-slate-500 leading-none mb-0.5" style={{fontSize:'7.5px'}}>
+                                  {co.laneCount}車道
+                                </span>
+                              )}
+                              {co.type === 'pavement' && co.prevYear && (
+                                <span className="text-slate-400 leading-none" style={{fontSize:'7px'}}>
+                                  EX:{co.prevYear}{co.prevDepth ? ` ${co.prevDepth}cm` : ''}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
 
                       {Array.from(new Set<number>(
@@ -734,7 +855,7 @@ export default function RampHistory(props: RampHistoryProps) {
                     </div>
                   </div>
                 </div>
-              ))}
+              })}
             </div>
           </div>
         </div>
