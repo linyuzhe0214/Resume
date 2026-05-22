@@ -529,9 +529,10 @@ export default function RampHistory(props: RampHistoryProps) {
                 <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-[#00488d]" />
-            <h3 className="font-black text-lg tracking-tight text-slate-800">
-              施工履歷 (Construction History)
-            </h3>
+            <div className="flex flex-col gap-1">
+              <h3 className="font-black text-xl tracking-tight text-slate-800">施工履歷</h3>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Construction History</span>
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
@@ -663,6 +664,11 @@ export default function RampHistory(props: RampHistoryProps) {
                               <span className="text-[9px] sm:text-[10px] font-black leading-none mt-0.5 text-slate-950 truncate w-full text-center px-0.5">
                                 {segmentData.depth}cm
                               </span>
+                              {ramp.laneCount > 0 && (
+                                <span className="px-1 py-px mt-0.5 text-[8px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
+                                  {ramp.laneCount}車道
+                                </span>
+                              )}
                               {ramp.prevConstructionYear && (
                                 <span className="text-[8px] sm:text-[9px] leading-none mt-0.5 text-slate-950/70 truncate w-full text-center px-0.5">
                                   EX:{ramp.prevConstructionYear}{ramp.prevConstructionDepth ? ` ${ramp.prevConstructionDepth}cm` : ''}
