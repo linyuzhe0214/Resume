@@ -13,6 +13,7 @@ interface PlanningViewProps {
   handleUpdateLaneOrder: (lanes: string[]) => void;
   setShowConfirmDeleteAll: (show: boolean) => void;
   onNavigateToEdit: (id?: string) => void;
+  onCompleteRenovation: (seg: Segment) => void;
   currentTime: Date;
 }
 
@@ -26,6 +27,7 @@ export default function PlanningView({
   handleUpdateLaneOrder,
   setShowConfirmDeleteAll,
   onNavigateToEdit,
+  onCompleteRenovation,
   currentTime,
 }: PlanningViewProps) {
   const mainlineHistoryHeader = (
@@ -58,6 +60,7 @@ export default function PlanningView({
         onUpdateLaneOrder={handleUpdateLaneOrder}
         onDeleteAll={() => setShowConfirmDeleteAll(true)}
         onNavigateToEdit={onNavigateToEdit}
+        onCompleteRenovation={onCompleteRenovation}
       />
     </div>
   );

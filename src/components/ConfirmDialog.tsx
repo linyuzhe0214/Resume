@@ -9,7 +9,7 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   confirmText?: string;
   cancelText?: string;
-  type?: 'danger' | 'info';
+  type?: 'danger' | 'info' | 'warning';
 }
 
 export default function ConfirmDialog({ 
@@ -42,7 +42,9 @@ export default function ConfirmDialog({
             onClick={onConfirm}
             className={cn(
               "flex-1 py-4 text-sm font-bold transition-colors",
-              type === 'danger' ? "text-red-500 hover:bg-red-50" : "text-[#005FB8] hover:bg-blue-50"
+              type === 'danger' ? "text-red-500 hover:bg-red-50" :
+              type === 'warning' ? "text-amber-600 hover:bg-amber-50" :
+              "text-[#005FB8] hover:bg-blue-50"
             )}
           >
             {confirmText}

@@ -435,6 +435,97 @@ export default function ViewRouter(props: ViewRouterProps) {
           }
           setSubPage('editSegment');
         }}
+        onCompleteRenovation={(planningSeg) => {
+          const pStart = planningSeg.startMileage;
+          const pEnd = planningSeg.endMileage;
+
+          // 找出主線所有里程重疊、同方向、有共同車道的路段
+          const overlapping = segments.filter(s =>
+            s.highway === planningSeg.highway &&
+            s.direction === planningSeg.direction &&
+            s.lanes.some(l => planningSeg.lanes.includes(l)) &&
+            s.startMileage < pEnd &&
+            s.endMileage > pStart
+          );
+
+          if (overlapping.length === 0) {
+            showToast('找不到對應的主線路段', 'error');
+            return;
+          }
+
+          let newSegments = [...segments];
+          const updatedIds: string[] = [];
+
+          overlapping.forEach(orig => {
+            const oStart = orig.startMileage;
+            const oEnd = orig.endMileage;
+
+            // 前次施工深度 = 原主線路段在其施工年月鋪設的層厚加總
+            const origMonth = `${orig.constructionYear.padStart(3, '0')}${orig.constructionMonth.padStart(2, '0')}`;
+            const prevDepth = orig.pavementLayers
+              .filter(l => l.month === origMonth)
+              .reduce((sum, l) => sum + l.thickness, 0);
+
+            // 移除原始段（稍後加回切割後的段）
+            newSegments = newSegments.filter(s => s.id !== orig.id);
+
+            // ① 左側未重疊部分（oStart < pStart），保持原始資料
+            if (oStart < pStart) {
+              newSegments.push({
+                ...orig,
+                id: Math.random().toString(36).substr(2, 9),
+                endMileage: pStart,
+              });
+            }
+
+            // ② 重疊部分 → 套用規劃資料
+            const midId = Math.random().toString(36).substr(2, 9);
+            updatedIds.push(midId);
+            newSegments.push({
+              ...orig,
+              id: midId,
+              startMileage: Math.max(oStart, pStart),
+              endMileage: Math.min(oEnd, pEnd),
+              constructionYear: planningSeg.constructionYear,
+              constructionMonth: planningSeg.constructionMonth,
+              pavementLayers: planningSeg.pavementLayers.map(l => ({
+                ...l,
+                id: Math.random().toString(36).substr(2, 9),
+              })),
+              prevConstructionYear: orig.constructionYear,
+              prevConstructionDepth: prevDepth,
+            });
+
+            // ③ 右側未重疊部分（oEnd > pEnd），保持原始資料
+            if (oEnd > pEnd) {
+              newSegments.push({
+                ...orig,
+                id: Math.random().toString(36).substr(2, 9),
+                startMileage: pEnd,
+              });
+            }
+          });
+
+          setSegments(newSegments);
+
+          // GAS 同步：刪除原始段，儲存所有新段
+          overlapping.forEach(orig => {
+            syncGas(MAINLINE_URL, 'deleteMainline', orig.highway, orig.id, true);
+          });
+          newSegments
+            .filter(s => !segments.find(orig => orig.id === s.id))
+            .forEach(s => syncGas(MAINLINE_URL, 'saveMainline', s.highway, s));
+
+          // 刪除規劃路段
+          setPlanningSegments(prev => prev.filter(p => p.id !== planningSeg.id));
+          if (PLANNING_URL) syncGas(PLANNING_URL, 'deletePlanning', planningSeg.highway + ' (規劃)', planningSeg.id, true);
+
+          // 跳至主線頁並 highlight 第一個更新的段
+          setActiveHistoryHighway(planningSeg.highway);
+          setHighlightSegmentId(updatedIds[0] || null);
+          setActiveTab('mainline');
+          showToast(`✅ 施工完成！已更新 ${overlapping.length} 條主線路段`, 'success');
+        }}
       />
     );
   }

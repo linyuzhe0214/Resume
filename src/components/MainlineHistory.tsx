@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, Download, Settings, X, AlertTriangle, Route, Filter } from 'lucide-react';
+import { Plus, Trash2, Download, Settings, X, AlertTriangle, Route, Filter, CheckCircle2 } from 'lucide-react';
 import { cn } from '../App';
 import { Segment } from '../types';
 import { getPavementColor, getPavementDisplayInfo } from '../utils/pavement';
 import { exportComponentAsImage } from '../utils/exportImage';
+import ConfirmDialog from './ConfirmDialog';
 
 interface MainlineHistoryProps {
   segments: Segment[];
@@ -18,6 +19,7 @@ interface MainlineHistoryProps {
   highlightSegmentId?: string | null;
   onHighlightClear?: () => void;
   title?: string;
+  onCompleteRenovation?: (seg: Segment) => void;
 }
 
 export default function MainlineHistory({ 
@@ -32,7 +34,8 @@ export default function MainlineHistory({
   onDeleteAll, 
   highlightSegmentId,
   onHighlightClear,
-  title = '路面整修歷史' 
+  title = '路面整修歷史',
+  onCompleteRenovation,
 }: MainlineHistoryProps) {
   const [newLaneName, setNewLaneName] = useState('');
   const [isLaneSettingsOpen, setIsLaneSettingsOpen] = useState(false);
@@ -43,6 +46,7 @@ export default function MainlineHistory({
   const [activeExportRange, setActiveExportRange] = useState<{ start: number, end: number } | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [pendingCompleteSeg, setPendingCompleteSeg] = useState<Segment | null>(null);
   const segmentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
@@ -311,7 +315,7 @@ export default function MainlineHistory({
           setTooltip({ x: t.clientX, y: t.clientY - 60, content: tooltipContent });
         }}
         className={cn(
-          "absolute w-full border border-black/10 flex flex-col overflow-hidden z-10 cursor-pointer hover:opacity-90 hover:z-30 transition-all",
+          "absolute w-full border border-black/10 flex flex-col z-10 cursor-pointer hover:opacity-90 hover:z-30 transition-all group",
           isFlashing && "segment-flashing z-20"
         )}
         style={{
@@ -322,44 +326,53 @@ export default function MainlineHistory({
         data-seg-start={segment.startMileage}
         data-seg-end={segment.endMileage}
       >
-        {height < SHOW_YEAR_THRESHOLD ? null : (
-          <>
-            {/* 頂部起始里程 */}
-            {height >= SHOW_MILEAGE_THRESHOLD && (
-              <span className="shrink-0 text-[9px] font-bold text-black/50 leading-none px-1 pt-[2px] pointer-events-none">
-                {formatMileage(segment.startMileage)}
-              </span>
-            )}
-
-            {/* 中間主資訊區塊：flex-1 撐滿，置中對齊 */}
-            <div className="flex-1 flex flex-col items-center justify-center leading-none overflow-hidden">
-              <span className="font-black text-[13px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
-                {segment.constructionYear}
-              </span>
-              {height >= SHOW_CM_THRESHOLD && (
-                <span className="w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                  {thickness}cm
+        {/* 內容包裝（有 overflow-hidden 避免文字溢出色塊） */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {height < SHOW_YEAR_THRESHOLD ? null : (
+            <>
+              {height >= SHOW_MILEAGE_THRESHOLD && (
+                <span className="shrink-0 text-[9px] font-bold text-black/50 leading-none px-1 pt-[2px] pointer-events-none">
+                  {formatMileage(segment.startMileage)}
                 </span>
               )}
-              {height >= SHOW_DETAIL_THRESHOLD && segment.property && (
-                <span className="px-1 py-px mt-0.5 text-[9px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
-                  {segment.property}
+              <div className="flex-1 flex flex-col items-center justify-center leading-none overflow-hidden">
+                <span className="font-black text-[13px] text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] px-1 leading-none">
+                  {segment.constructionYear}
+                </span>
+                {height >= SHOW_CM_THRESHOLD && (
+                  <span className="w-full text-center font-black text-[12px] text-slate-950 leading-none mt-0.5 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                    {thickness}cm
+                  </span>
+                )}
+                {height >= SHOW_DETAIL_THRESHOLD && segment.property && (
+                  <span className="px-1 py-px mt-0.5 text-[9px] font-black leading-none rounded bg-black/15 text-slate-900 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
+                    {segment.property}
+                  </span>
+                )}
+                {height >= SHOW_DETAIL_THRESHOLD && segment.prevConstructionYear && (
+                  <span className="w-full text-center text-[9px] text-slate-900 leading-none mt-0.5 px-1 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+                    EX:{segment.prevConstructionYear}{segment.prevConstructionDepth ? ` ${segment.prevConstructionDepth}cm` : ''}
+                  </span>
+                )}
+              </div>
+              {height >= SHOW_MILEAGE_THRESHOLD && (
+                <span className="shrink-0 text-[9px] font-bold text-black/50 leading-none px-1 pb-[2px] text-right pointer-events-none">
+                  {formatMileage(segment.endMileage)}
                 </span>
               )}
-              {height >= SHOW_DETAIL_THRESHOLD && segment.prevConstructionYear && (
-                <span className="w-full text-center text-[9px] text-slate-900 leading-none mt-0.5 px-1 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                  EX:{segment.prevConstructionYear}{segment.prevConstructionDepth ? ` ${segment.prevConstructionDepth}cm` : ''}
-                </span>
-              )}
-            </div>
-
-            {/* 底部終點里程 */}
-            {height >= SHOW_MILEAGE_THRESHOLD && (
-              <span className="shrink-0 text-[9px] font-bold text-black/50 leading-none px-1 pb-[2px] text-right pointer-events-none">
-                {formatMileage(segment.endMileage)}
-              </span>
-            )}
-          </>
+            </>
+          )}
+        </div>
+        {/* 施工完成按鈕（整修規劃模式，hover 顯示） */}
+        {onCompleteRenovation && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setPendingCompleteSeg(segment); }}
+            title="標記施工完成，套用至主線"
+            className="absolute bottom-0.5 right-0.5 bg-amber-500 hover:bg-amber-600 active:scale-90 text-white rounded-full h-3.5 px-1 text-[7px] font-black leading-none opacity-0 group-hover:opacity-100 transition-all z-30 shadow flex items-center gap-0.5"
+          >
+            <CheckCircle2 className="w-2 h-2" />
+            完工
+          </button>
         )}
       </div>
     );
@@ -993,6 +1006,25 @@ export default function MainlineHistory({
           </div>
         </div>
       )}
+
+      {/* 施工完成確認 Dialog */}
+      <ConfirmDialog
+        isOpen={!!pendingCompleteSeg}
+        title="確認施工完成？"
+        message={
+          pendingCompleteSeg
+            ? `將「${pendingCompleteSeg.constructionYear}年 ${pendingCompleteSeg.lanes.join(',')} ${formatMileage(pendingCompleteSeg.startMileage)}～${formatMileage(pendingCompleteSeg.endMileage)}」套用至主線履歷，並自動更新前次施工年份與深度。此操作無法復原。`
+            : ''
+        }
+        confirmText="✓ 施工完成，套用主線"
+        cancelText="取消"
+        type="warning"
+        onConfirm={() => {
+          if (pendingCompleteSeg && onCompleteRenovation) onCompleteRenovation(pendingCompleteSeg);
+          setPendingCompleteSeg(null);
+        }}
+        onCancel={() => setPendingCompleteSeg(null)}
+      />
     </div>
   );
 }
