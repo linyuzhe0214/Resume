@@ -42,6 +42,7 @@ export default function MainlineHistory({
   const [exportEnd, setExportEnd] = useState('');
   const [activeExportRange, setActiveExportRange] = useState<{ start: number, end: number } | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const segmentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
@@ -145,19 +146,20 @@ export default function MainlineHistory({
     }
 
     setShowExportModal(false);
+    setIsExporting(true);
 
-    // 平板 iOS Safari 畫布與 DOM 大小限制，超過一定長度直接渲染會全白
-    // 設定每段 4 公里 (4000 公尺)，對應高度約 5600px，確保能安全輸出且不被截斷
-    // 範圍夠小，直接匯出
     if (start !== currentHighway.start || end !== currentHighway.end) {
       setActiveExportRange({ start, end });
-      // 等待 React re-render 網格
       setTimeout(async () => {
         await exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}_range`);
-        setActiveExportRange(null); // 恢復原狀
+        setActiveExportRange(null);
+        setIsExporting(false);
       }, 500);
     } else {
-      await exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`);
+      setTimeout(async () => {
+        await exportComponentAsImage('mainline-export-container', `${activeHighway}_${title}`);
+        setIsExporting(false);
+      }, 300);
     }
   };
 
@@ -360,6 +362,138 @@ export default function MainlineHistory({
           </>
         )}
       </div>
+    );
+  };
+
+  // ── 匯出專用：渲染整個車道（inline大色塊 + callout小色塊）──
+  const renderExportLane = (segs: Segment[], lane: string) => {
+    const INLINE_MIN = 36;   // px - 高於此值完整 inline
+    const CALLOUT_H = 58;    // 每個 callout 標籤高度 px
+    const CALLOUT_GAP = 2;
+
+    const visible = segs
+      .filter(s =>
+        s.lanes.includes(lane) &&
+        s.endMileage > displayBaseMileage &&
+        s.startMileage < displayEndMileage
+      )
+      .map(s => {
+        const top = (Math.max(s.startMileage, displayBaseMileage) - displayBaseMileage) * SCALE;
+        const height = (Math.min(s.endMileage, displayEndMileage) - Math.max(s.startMileage, displayBaseMileage)) * SCALE;
+        const targetMonth = s.constructionYear + s.constructionMonth;
+        let info = getPavementDisplayInfo(s.pavementLayers, targetMonth);
+        if (info.thickness === 0 && s.pavementLayers.length > 0) {
+          const latestMonth = [...s.pavementLayers].sort((a, b) => b.month.localeCompare(a.month))[0].month;
+          info = getPavementDisplayInfo(s.pavementLayers, latestMonth);
+        }
+        const bgColor = info.thickness === 0 ? '#ffffff' : info.color;
+        return { s, top, height, info, bgColor };
+      })
+      .filter(x => x.height > 0);
+
+    const inlineSegs = visible.filter(x => x.height >= INLINE_MIN);
+    const smallSegs  = visible.filter(x => x.height < INLINE_MIN);
+
+    // 計算 callout 堆疊位置（避免重疊）
+    let nextY = 0;
+    const callouts = smallSegs
+      .sort((a, b) => a.top - b.top)
+      .map(x => {
+        const mid = x.top + x.height / 2;
+        const ideal = mid - CALLOUT_H / 2;
+        const y = Math.max(ideal, nextY);
+        nextY = y + CALLOUT_H + CALLOUT_GAP;
+        return { ...x, mid, calloutY: y };
+      });
+
+    return (
+      <>
+        {/* 大色塊：完整 inline */}
+        {inlineSegs.map(({ s, top, height, info, bgColor }) => (
+          <div
+            key={`${s.id}-${lane}-exp`}
+            onClick={() => onNavigateToEdit(s.id)}
+            className="absolute w-full border border-black/10 overflow-hidden z-10 cursor-pointer flex flex-col"
+            style={{ top, height, backgroundColor: bgColor }}
+          >
+            <span className="shrink-0 font-bold text-black/50 px-1 pt-px leading-none" style={{fontSize:'7.5px'}}>
+              {formatMileage(s.startMileage)}
+            </span>
+            <div className="flex-1 flex flex-col items-center justify-center leading-none overflow-hidden px-0.5 gap-px">
+              <span className="font-black text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] leading-none" style={{fontSize:'11px'}}>
+                {s.constructionYear}年
+              </span>
+              <span className="font-black text-slate-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] leading-none" style={{fontSize:'10px'}}>
+                {info.thickness}cm
+              </span>
+              {s.prevConstructionYear && (
+                <span className="text-slate-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] leading-none whitespace-nowrap" style={{fontSize:'8px'}}>
+                  前:{s.prevConstructionYear}{s.prevConstructionDepth ? `/${s.prevConstructionDepth}cm` : ''}
+                </span>
+              )}
+            </div>
+            <span className="shrink-0 text-right font-bold text-black/50 px-1 pb-px leading-none" style={{fontSize:'7.5px'}}>
+              {formatMileage(s.endMileage)}
+            </span>
+          </div>
+        ))}
+
+        {/* 小色塊：只顯示色塊，資訊放在 callout */}
+        {smallSegs.map(({ s, top, height, bgColor }) => (
+          <div
+            key={`${s.id}-${lane}-small`}
+            onClick={() => onNavigateToEdit(s.id)}
+            className="absolute w-full border-2 border-black/30 z-10 cursor-pointer"
+            style={{ top, height, backgroundColor: bgColor }}
+          />
+        ))}
+
+        {/* Callout 標籤（堆疊排列） */}
+        {callouts.map(({ s, top, height, info, bgColor, mid, calloutY }) => {
+          const lineTop = Math.min(mid, calloutY + CALLOUT_H / 2);
+          const lineBot = Math.max(mid, calloutY + CALLOUT_H / 2);
+          return (
+            <React.Fragment key={`co-${s.id}-${lane}`}>
+              {/* 連接線 */}
+              <div
+                className="absolute pointer-events-none z-20"
+                style={{
+                  left: '50%',
+                  top: lineTop,
+                  width: 1,
+                  height: lineBot - lineTop,
+                  background: 'repeating-linear-gradient(to bottom, rgba(0,0,0,0.4) 0px, rgba(0,0,0,0.4) 3px, transparent 3px, transparent 6px)',
+                }}
+              />
+              {/* 左側色條 */}
+              <div
+                className="absolute pointer-events-none z-20"
+                style={{ top: calloutY, left: 0, width: 3, height: CALLOUT_H, backgroundColor: bgColor, border: '1px solid rgba(0,0,0,0.2)' }}
+              />
+              {/* 標籤框 */}
+              <div
+                className="absolute pointer-events-none z-20 bg-white border border-slate-300 rounded-sm shadow-sm"
+                style={{ top: calloutY, left: 4, right: 1, height: CALLOUT_H, overflow: 'hidden', padding: '2px 4px' }}
+              >
+                <div className="font-black text-slate-900 leading-tight" style={{fontSize:'8.5px'}}>
+                  {s.constructionYear}年 {info.thickness}cm
+                </div>
+                <div className="text-slate-500 leading-tight" style={{fontSize:'7.5px'}}>
+                  {formatMileage(s.startMileage)}
+                </div>
+                <div className="text-slate-500 leading-tight" style={{fontSize:'7.5px'}}>
+                  ~{formatMileage(s.endMileage)}
+                </div>
+                {s.prevConstructionYear && (
+                  <div className="text-slate-400 leading-tight" style={{fontSize:'7px'}}>
+                    前:{s.prevConstructionYear}{s.prevConstructionDepth ? `/${s.prevConstructionDepth}cm` : ''}
+                  </div>
+                )}
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </>
     );
   };
 
@@ -587,7 +721,7 @@ export default function MainlineHistory({
                 >
                   {southColumns.map(lane => (
                     <div key={lane} className="relative">
-                      {southSegments.map(s => renderSegment(s, lane))}
+                      {isExporting ? renderExportLane(southSegments, lane) : southSegments.map(s => renderSegment(s, lane))}
                     </div>
                   ))}
                 </div>
@@ -645,7 +779,7 @@ export default function MainlineHistory({
                 >
                   {northColumns.map(lane => (
                     <div key={lane} className="relative">
-                      {northSegments.map(s => renderSegment(s, lane))}
+                      {isExporting ? renderExportLane(northSegments, lane) : northSegments.map(s => renderSegment(s, lane))}
                     </div>
                   ))}
                 </div>
