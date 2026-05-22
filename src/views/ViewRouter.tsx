@@ -89,6 +89,35 @@ export default function ViewRouter(props: ViewRouterProps) {
     currentKmlPoint, searchMode, setSearchMode, searchQuery, setSearchQuery,
   } = props;
 
+  // ── 復原施工完成功能 ──
+  const [undoRenovation, setUndoRenovation] = React.useState<{
+    prevSegments: Segment[];
+    prevPlanningSegs: Segment[];
+    planSeg: Segment;
+    allNewIds: string[];
+    origSegs: Segment[];
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (!undoRenovation) return;
+    const t = setTimeout(() => setUndoRenovation(null), 10000);
+    return () => clearTimeout(t);
+  }, [undoRenovation]);
+
+  const handleUndoRenovation = () => {
+    if (!undoRenovation) return;
+    setSegments(undoRenovation.prevSegments);
+    setPlanningSegments(undoRenovation.prevPlanningSegs);
+    // GAS 同步復原
+    undoRenovation.allNewIds.forEach(id =>
+      syncGas(MAINLINE_URL, 'deleteMainline', undoRenovation.planSeg.highway, id, true)
+    );
+    undoRenovation.origSegs.forEach(s => syncGas(MAINLINE_URL, 'saveMainline', s.highway, s));
+    if (PLANNING_URL) syncGas(PLANNING_URL, 'savePlanning', undoRenovation.planSeg.highway + ' (規劃)', { ...undoRenovation.planSeg, type: 'planning' });
+    setUndoRenovation(null);
+    showToast('已復原施工完成操作', 'info');
+  };
+
   const backFromEdit = () => {
     setDraftSegment(null);
     setEditingSegmentId(null);
@@ -439,7 +468,6 @@ export default function ViewRouter(props: ViewRouterProps) {
           const pStart = planningSeg.startMileage;
           const pEnd = planningSeg.endMileage;
 
-          // 找出主線所有里程重疊、同方向、有共同車道的路段
           const overlapping = segments.filter(s =>
             s.highway === planningSeg.highway &&
             s.direction === planningSeg.direction &&
@@ -455,32 +483,28 @@ export default function ViewRouter(props: ViewRouterProps) {
 
           let newSegments = [...segments];
           const updatedIds: string[] = [];
+          const allNewIds: string[] = [];
 
           overlapping.forEach(orig => {
             const oStart = orig.startMileage;
             const oEnd = orig.endMileage;
 
-            // 前次施工深度 = 原主線路段在其施工年月鋪設的層厚加總
             const origMonth = `${orig.constructionYear.padStart(3, '0')}${orig.constructionMonth.padStart(2, '0')}`;
             const prevDepth = orig.pavementLayers
               .filter(l => l.month === origMonth)
               .reduce((sum, l) => sum + l.thickness, 0);
 
-            // 移除原始段（稍後加回切割後的段）
             newSegments = newSegments.filter(s => s.id !== orig.id);
 
-            // ① 左側未重疊部分（oStart < pStart），保持原始資料
             if (oStart < pStart) {
-              newSegments.push({
-                ...orig,
-                id: Math.random().toString(36).substr(2, 9),
-                endMileage: pStart,
-              });
+              const leftId = Math.random().toString(36).substr(2, 9);
+              allNewIds.push(leftId);
+              newSegments.push({ ...orig, id: leftId, endMileage: pStart });
             }
 
-            // ② 重疊部分 → 套用規劃資料
             const midId = Math.random().toString(36).substr(2, 9);
             updatedIds.push(midId);
+            allNewIds.push(midId);
             newSegments.push({
               ...orig,
               id: midId,
@@ -496,19 +520,24 @@ export default function ViewRouter(props: ViewRouterProps) {
               prevConstructionDepth: prevDepth,
             });
 
-            // ③ 右側未重疊部分（oEnd > pEnd），保持原始資料
             if (oEnd > pEnd) {
-              newSegments.push({
-                ...orig,
-                id: Math.random().toString(36).substr(2, 9),
-                startMileage: pEnd,
-              });
+              const rightId = Math.random().toString(36).substr(2, 9);
+              allNewIds.push(rightId);
+              newSegments.push({ ...orig, id: rightId, startMileage: pEnd });
             }
+          });
+
+          // 儲存復原資料
+          setUndoRenovation({
+            prevSegments: [...segments],
+            prevPlanningSegs: [...planningSegments],
+            planSeg: planningSeg,
+            allNewIds,
+            origSegs: overlapping,
           });
 
           setSegments(newSegments);
 
-          // GAS 同步：刪除原始段，儲存所有新段
           overlapping.forEach(orig => {
             syncGas(MAINLINE_URL, 'deleteMainline', orig.highway, orig.id, true);
           });
@@ -516,11 +545,9 @@ export default function ViewRouter(props: ViewRouterProps) {
             .filter(s => !segments.find(orig => orig.id === s.id))
             .forEach(s => syncGas(MAINLINE_URL, 'saveMainline', s.highway, s));
 
-          // 刪除規劃路段
           setPlanningSegments(prev => prev.filter(p => p.id !== planningSeg.id));
           if (PLANNING_URL) syncGas(PLANNING_URL, 'deletePlanning', planningSeg.highway + ' (規劃)', planningSeg.id, true);
 
-          // 跳至主線頁並 highlight 第一個更新的段
           setActiveHistoryHighway(planningSeg.highway);
           setHighlightSegmentId(updatedIds[0] || null);
           setActiveTab('mainline');
@@ -532,40 +559,60 @@ export default function ViewRouter(props: ViewRouterProps) {
 
   if (activeTab === 'mainline') {
     return (
-      <MainlineView
-        segments={segments}
-        activeHistoryHighway={activeHistoryHighway}
-        setActiveHistoryHighway={setActiveHistoryHighway}
-        laneOptions={laneOptions[activeHistoryHighway] || []}
-        handleAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
-        handleDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
-        handleUpdateLaneOrder={(lanes) => handleUpdateLaneOrder(activeHistoryHighway, lanes)}
-        highlightSegmentId={highlightSegmentId}
-        onHighlightClear={() => setHighlightSegmentId(null)}
-        currentTime={currentTime}
-        onNavigateToEdit={(id) => {
-          setEditingSegmentId(id || null);
-          if (id) {
-            const seg = segments.find(s => s.id === id);
-            setDraftSegment(seg ? { ...seg } : null);
-          } else {
-            let mappedDir: 'Northbound' | 'Southbound' | 'Eastbound' | 'Westbound' =
-              activeHistoryHighway === '國道4號' ? 'Westbound' : 'Southbound';
-            if (direction === '北上車道') mappedDir = activeHistoryHighway === '國道4號' ? 'Eastbound' : 'Northbound';
-            else if (direction === '東向車道') mappedDir = 'Eastbound';
-            else if (direction === '西向車道') mappedDir = 'Westbound';
-            setDraftSegment({
-              id: '', highway: activeHistoryHighway, property: '路堤', laneCategory: '一般路段',
-              constructionYear: (new Date().getFullYear() - 1911).toString(),
-              constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
-              startMileage: mileage, endMileage: mileage + 100,
-              direction: mappedDir, lanes: ['第一車道'], pavementLayers: [],
-              notes: '', prevConstructionYear: '', prevConstructionDepth: 0,
-            });
-          }
-          setSubPage('editSegment');
-        }}
-      />
+      <>
+        <MainlineView
+          segments={segments}
+          activeHistoryHighway={activeHistoryHighway}
+          setActiveHistoryHighway={setActiveHistoryHighway}
+          laneOptions={laneOptions[activeHistoryHighway] || []}
+          handleAddLane={(lane) => handleAddLane(lane, activeHistoryHighway)}
+          handleDeleteLane={(lane) => handleDeleteLane(lane, activeHistoryHighway)}
+          handleUpdateLaneOrder={(lanes) => handleUpdateLaneOrder(activeHistoryHighway, lanes)}
+          highlightSegmentId={highlightSegmentId}
+          onHighlightClear={() => setHighlightSegmentId(null)}
+          currentTime={currentTime}
+          onNavigateToEdit={(id) => {
+            setEditingSegmentId(id || null);
+            if (id) {
+              const seg = segments.find(s => s.id === id);
+              setDraftSegment(seg ? { ...seg } : null);
+            } else {
+              let mappedDir: 'Northbound' | 'Southbound' | 'Eastbound' | 'Westbound' =
+                activeHistoryHighway === '國道4號' ? 'Westbound' : 'Southbound';
+              if (direction === '北上車道') mappedDir = activeHistoryHighway === '國道4號' ? 'Eastbound' : 'Northbound';
+              else if (direction === '東向車道') mappedDir = 'Eastbound';
+              else if (direction === '西向車道') mappedDir = 'Westbound';
+              setDraftSegment({
+                id: '', highway: activeHistoryHighway, property: '路堤', laneCategory: '一般路段',
+                constructionYear: (new Date().getFullYear() - 1911).toString(),
+                constructionMonth: (new Date().getMonth() + 1).toString().padStart(2, '0'),
+                startMileage: mileage, endMileage: mileage + 100,
+                direction: mappedDir, lanes: ['第一車道'], pavementLayers: [],
+                notes: '', prevConstructionYear: '', prevConstructionDepth: 0,
+              });
+            }
+            setSubPage('editSegment');
+          }}
+        />
+        {/* 复原施工完成 Banner（10 秒倍數） */}
+        {undoRenovation && (
+          <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[500] bg-amber-500 text-white rounded-2xl shadow-2xl px-5 py-3 flex items-center gap-3 animate-in slide-in-from-bottom-4 duration-300 whitespace-nowrap">
+            <span className="text-sm font-black">施工完成已套用</span>
+            <button
+              onClick={handleUndoRenovation}
+              className="bg-white text-amber-600 rounded-xl px-4 py-1.5 text-xs font-black hover:bg-amber-50 active:scale-95 transition-all"
+            >
+              ↩ 復原
+            </button>
+            <button
+              onClick={() => setUndoRenovation(null)}
+              className="text-white/70 hover:text-white text-sm font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </>
     );
   }
 
