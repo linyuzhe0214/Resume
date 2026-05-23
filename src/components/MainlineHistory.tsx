@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2, Download, Settings, X, AlertTriangle, Route, Filter, CheckCircle2 } from 'lucide-react';
 import { cn } from '../App';
 import { Segment } from '../types';
-import { getPavementColor, getPavementDisplayInfo } from '../utils/pavement';
+import { getPavementColor, getPavementDisplayInfo, sortLegendItems } from '../utils/pavement';
 import { exportComponentAsImage } from '../utils/exportImage';
 import ConfirmDialog from './ConfirmDialog';
 
@@ -247,10 +247,10 @@ export default function MainlineHistory({
       }
     });
 
-    return Object.entries(periodMap).map(([label, data]) => ({
+    return sortLegendItems(Object.entries(periodMap).map(([label, data]) => ({
       label,
       color: data.color
-    }));
+    })));
   };
 
   const legendItems = getLegendItems();

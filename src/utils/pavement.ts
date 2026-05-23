@@ -87,3 +87,46 @@ export function formatMonth(monthStr: string): string {
   }
   return monthStr;
 }
+
+/**
+ * 排序圖例項目 (依序：OG -> PAC -> SMA -> DGAC -> 其他，同類依厚度排序)
+ */
+export function sortLegendItems(items: { label: string, color: string }[]) {
+  const getWeight = (label: string) => {
+    const upper = label.toUpperCase();
+    if (upper.includes('OG')) return 1;
+    if (upper.includes('PAC')) return 2;
+    if (upper.includes('SMA')) return 3;
+    if (upper.includes('DG')) return 4;
+    return 5;
+  };
+
+  const getThickness = (label: string) => {
+    const match = label.match(/(\d+)cm/i);
+    return match ? parseInt(match[1], 10) : 0;
+  };
+
+  return items.sort((a, b) => {
+    // 1. 特殊項目 (其他/舊有) 放到最後
+    if (a.label === '其他/舊有') return 1;
+    if (b.label === '其他/舊有') return -1;
+
+    const weightA = getWeight(a.label);
+    const weightB = getWeight(b.label);
+    
+    // 2. 依材料類別排序
+    if (weightA !== weightB) {
+      return weightA - weightB;
+    }
+    
+    // 3. 依厚度排序
+    const thickA = getThickness(a.label);
+    const thickB = getThickness(b.label);
+    if (thickA !== thickB) {
+      return thickA - thickB;
+    }
+    
+    // 4. 名稱字母排序
+    return a.label.localeCompare(b.label);
+  });
+}

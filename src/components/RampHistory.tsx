@@ -4,7 +4,7 @@ import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
 import { HIGHWAY_INTERCHANGE_MAP } from '../constants';
-import { getPavementColor, getPavementDisplayInfo, getColorFromLabel } from '../utils/pavement';
+import { getPavementColor, getPavementDisplayInfo, getColorFromLabel, sortLegendItems } from '../utils/pavement';
 import { exportComponentAsImage, exportMultipleAsImage } from '../utils/exportImage';
 
 interface RampHistoryProps {
@@ -225,10 +225,10 @@ export default function RampHistory(props: RampHistoryProps) {
       }
     });
 
-    return Object.entries(methodMap).map(([label, data]) => ({
+    return sortLegendItems(Object.entries(methodMap).map(([label, data]) => ({
       label,
       color: getColorFromLabel(label)
-    }));
+    })));
   };
 
   const legendItems = getLegendItems();
