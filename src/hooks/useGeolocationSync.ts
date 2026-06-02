@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as turf from '@turf/turf';
 import type { Feature, LineString } from 'geojson';
 import {
@@ -31,6 +31,13 @@ export function useGeolocationSync() {
   const [direction, setDirection] = useState<string>('北上車道');
   const [searchMode, setSearchMode] = useState<SearchMode>('auto');
   const [autoTracking, setAutoTracking] = useState(true);
+
+  // 用 ref 追蹤最新方向，給 watchPosition callback 讀取（避免 effect 依賴 direction）
+  const directionRef = useRef(direction);
+  useEffect(() => { directionRef.current = direction; }, [direction]);
+
+  // 追蹤上次里程，用於計算里程增減方向（硬規則：增=南下/東向，減=北上/西向）
+  const prevMileageRef = useRef<number | null>(null);
 
   // ── 1. 載入 KML 資料庫 ──
   useEffect(() => {
@@ -91,18 +98,28 @@ export function useGeolocationSync() {
         if (!autoTracking) return;
 
         if (kmlIndex && kmlIndex.allMainlinePoints.length > 0) {
+          // 取得 GPS heading（行進方向），用於區分南下/北上車道
+          const gpsHeading = (pos.coords.heading !== null && pos.coords.heading !== undefined && !isNaN(pos.coords.heading))
+            ? pos.coords.heading
+            : null;
+
           const result = findNearestPointByGps(
             kmlIndex,
             pos.coords.longitude,
             pos.coords.latitude,
             500,
             searchMode,
+            gpsHeading,
+            directionRef.current,
+            prevMileageRef.current, // 傳入上次里程，用於推斷行車方向
           );
           if (result) {
             const { point, exactMileage } = result;
             setCurrentKmlPoint(point);
             setCurrentKmlType(point.isRamp ? 'ramp' : 'mainline');
-            setMileage(Math.round(exactMileage));
+            const roundedMileage = Math.round(exactMileage);
+            prevMileageRef.current = roundedMileage; // 更新上次里程
+            setMileage(roundedMileage);
             setHighwayName(point.highway);
             if (point.direction) setDirection(point.direction);
             return;

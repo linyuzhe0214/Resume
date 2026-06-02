@@ -450,16 +450,76 @@ function haversineMeters(lon1: number, lat1: number, lon2: number, lat2: number)
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// ── 方位角計算 (degree, 0=北, 順時鐘) ──────────────────────────────
+function bearingDeg(lon1: number, lat1: number, lon2: number, lat2: number): number {
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+// ── 兩個角度的最小夾角 (0~180) ──────────────────────────────────────
+function angleDiff(a: number, b: number): number {
+  let d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+/**
+ * 根據 KML 相鄰點計算某點的路段方位角（取前後點的平均方位角）
+ */
+function getSegmentBearing(
+  pt: KmlPoint,
+  sameLineArr: KmlPoint[],
+): number | null {
+  const idx = sameLineArr.indexOf(pt);
+  if (idx === -1) return null;
+
+  const prev = idx > 0 ? sameLineArr[idx - 1] : null;
+  const next = idx < sameLineArr.length - 1 ? sameLineArr[idx + 1] : null;
+
+  if (prev && next) {
+    // 取前→後的方位角（沿里程遞增方向）
+    return bearingDeg(prev.lon, prev.lat, next.lon, next.lat);
+  } else if (next) {
+    return bearingDeg(pt.lon, pt.lat, next.lon, next.lat);
+  } else if (prev) {
+    return bearingDeg(prev.lon, prev.lat, pt.lon, pt.lat);
+  }
+  return null;
+}
+
+// ── 里程增減 → 行車方向推斷（硬規則）──────────────────────────────
+// 國道行車方向：里程遞增 = 南下/東向，里程遞減 = 北上/西向
+const INCREASING_DIRS = ['南下車道', '東向車道'];
+const DECREASING_DIRS = ['北上車道', '西向車道'];
+
+function isDirectionConsistentWithDelta(direction: string, mileageDelta: number): boolean {
+  if (mileageDelta > 0) return INCREASING_DIRS.includes(direction);
+  if (mileageDelta < 0) return DECREASING_DIRS.includes(direction);
+  return true; // delta === 0 → 無法判定，全部一致
+}
+
 /**
  * 從 GPS 經緯度，在所有主線(或匝道)點中找最近的，並透過鄰近點計算更精確的里程。
- * @param maxDistanceMeters GPS 可接受的最大距離（公尺），預設 500m
+ * 
+ * 利用三層訊號提升定位準確性：
+ * 1. 里程增減推斷方向（最強 — 物理硬規則，里程增=南下/東向，減=北上/西向）
+ * 2. GPS heading 與路段方位角比對
+ * 3. 方向穩定性 hysteresis
+ *
+ * @param prevMileage 上次定位的里程值，null 表示無歷史（用於推斷行車方向：里程增=南下/東向）
  */
 export function findNearestPointByGps(
   index: KmlIndex,
   lon: number,
   lat: number,
   maxDistanceMeters = 500,
-  mode: 'auto' | 'mainline' | 'ramp' = 'auto'
+  mode: 'auto' | 'mainline' | 'ramp' = 'auto',
+  heading: number | null = null,
+  prevDirection: string | null = null,
+  prevMileage: number | null = null,
 ): { point: KmlPoint; distanceM: number; exactMileage: number } | null {
   let pointsToSearch: KmlPoint[] = [];
   
@@ -474,29 +534,103 @@ export function findNearestPointByGps(
 
   if (pointsToSearch.length === 0) return null;
 
-  let bestIndex = -1;
-  let bestDist = Infinity;
-
-  // 1. 找出絕對最近的樁點
+  // ── 1. 收集 top-N 候選點（距離在最近點的 2 倍或 80m 以內）──
+  const candidates: { pt: KmlPoint; dist: number; idx: number }[] = [];
   for (let i = 0; i < pointsToSearch.length; i++) {
     const pt = pointsToSearch[i];
     const d = haversineMeters(lon, lat, pt.lon, pt.lat);
-    if (d < bestDist) {
-      bestDist = d;
-      bestIndex = i;
+    if (d <= maxDistanceMeters) {
+      candidates.push({ pt, dist: d, idx: i });
     }
   }
 
-  const bestPt = pointsToSearch[bestIndex];
-  if (!bestPt || bestDist > maxDistanceMeters) {
-    return null;
+  if (candidates.length === 0) return null;
+
+  // 排序，取最近的 top-N
+  candidates.sort((a, b) => a.dist - b.dist);
+  const closestDist = candidates[0].dist;
+  // 候選範圍：最近距離 × 2 或 80m 內，至少取 top 20
+  const candidateThreshold = Math.max(closestDist * 2, 80);
+  const topCandidates = candidates.filter(c => c.dist <= candidateThreshold).slice(0, 20);
+
+  // ── 2. 里程增減硬規則 + heading + 穩定性綜合評分 ──
+  let bestCandidate = topCandidates[0];
+
+  // 里程增減是否可用（需要有上次里程紀錄）
+  const hasPrevMileage = prevMileage !== null;
+  const hasHeading = heading !== null && !isNaN(heading);
+  const needsScoring = topCandidates.length > 1 && (hasPrevMileage || hasHeading || prevDirection);
+
+  if (needsScoring) {
+    let bestScore = Infinity;
+
+    for (const cand of topCandidates) {
+      const pt = cand.pt;
+      
+      // 取得該點所屬的同方向排序陣列
+      let lineArr: KmlPoint[] = [];
+      if (pt.isRamp && index.ramp[pt.highway]) {
+        lineArr = index.ramp[pt.highway];
+      } else if (!pt.isRamp && index.mainline[pt.highway]?.[pt.direction]) {
+        lineArr = index.mainline[pt.highway][pt.direction] as KmlPoint[];
+      }
+
+      // ── A. 里程增減方向一致性（最強訊號）──
+      // 里程增加 → 必定南下/東向；里程減少 → 必定北上/西向
+      let mileageDirPenalty = 0;
+      if (hasPrevMileage && !pt.isRamp) {
+        const delta = pt.mileage - prevMileage!;
+        // 只有移動距離 >50m 才算有意義，避免 GPS 飄移噪聲
+        if (Math.abs(delta) > 50) {
+          const consistent = isDirectionConsistentWithDelta(pt.direction, delta);
+          mileageDirPenalty = consistent ? 0 : 1; // 不一致 → 重罰
+        }
+      }
+
+      // ── B. GPS heading 與路段方位角一致性 ──
+      let headingScore = 0;
+      if (hasHeading) {
+        const segBearing = lineArr.length > 1 ? getSegmentBearing(pt, lineArr) : null;
+        if (segBearing !== null) {
+          const diff = angleDiff(heading!, segBearing);
+          const alignDiff = Math.min(diff, Math.abs(180 - diff)); // 0 = 完美對齊, 90 = 垂直
+          headingScore = alignDiff / 90;
+        }
+      }
+
+      // ── C. 距離分數 ──
+      const distScore = cand.dist / candidateThreshold;
+
+      // ── D. 方向穩定性 (hysteresis) ──
+      let stabilityBonus = 0;
+      if (prevDirection && !pt.isRamp && (pt.direction === prevDirection)) {
+        stabilityBonus = -0.1;
+      }
+
+      // ── 綜合評分 ──
+      // 里程方向 40%（硬規則，不一致直接 +0.4）
+      // heading  25%
+      // 距離     25%
+      // 穩定性   10%
+      const score = mileageDirPenalty * 0.4
+                  + headingScore * 0.25
+                  + distScore * 0.25
+                  + stabilityBonus;
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestCandidate = cand;
+      }
+    }
   }
 
-  // 2. 為了更精準的里程，找出屬於同一國道/方向的相鄰樁點的集合進行內插
-  // 取出同 highway 與 同 direction 的點列
+  const bestPt = bestCandidate.pt;
+  const bestDist = bestCandidate.dist;
+
+  // ── 3. 精準里程內插 ──
   let sameLineArr: KmlPoint[] = [];
   if (bestPt.isRamp && index.ramp[bestPt.highway]) {
-    sameLineArr = index.ramp[bestPt.highway]; // 匝道僅依 highway 排序
+    sameLineArr = index.ramp[bestPt.highway];
   } else if (!bestPt.isRamp && index.mainline[bestPt.highway] && index.mainline[bestPt.highway][bestPt.direction]) {
     sameLineArr = index.mainline[bestPt.highway][bestPt.direction] as KmlPoint[];
   }
@@ -504,10 +638,8 @@ export function findNearestPointByGps(
   let exactMileage = bestPt.mileage;
 
   if (sameLineArr.length > 1) {
-    // 在 sameLineArr 中找到 bestPt 的位置
     const idx = sameLineArr.findIndex(p => p === bestPt);
     if (idx !== -1) {
-      // 查看前一個與後一個點，找與目前 GPS 點最近的那個構成線段
       const prev = idx > 0 ? sameLineArr[idx - 1] : null;
       const next = idx < sameLineArr.length - 1 ? sameLineArr[idx + 1] : null;
 
@@ -521,20 +653,15 @@ export function findNearestPointByGps(
       }
 
       if (partner) {
-        // 使用簡單向量投影計算比例 t
         const dx = partner.lon - bestPt.lon;
         const dy = partner.lat - bestPt.lat;
         const segLenSq = dx * dx + dy * dy;
 
-        if (segLenSq > 1e-12) { // 避免重合點
+        if (segLenSq > 1e-12) {
           const vx = lon - bestPt.lon;
           const vy = lat - bestPt.lat;
-          // 投影比例 t
           let t = (vx * dx + vy * dy) / segLenSq;
-          
-          // 由於最佳點為 bestPt，GPS 點投影到連線上，t理應在 0 到 0.5 之間 (大於0.5這點就不會是bestPt)
           t = Math.max(0, Math.min(1, t));
-          
           exactMileage = bestPt.mileage + t * (partner.mileage - bestPt.mileage);
         }
       }
