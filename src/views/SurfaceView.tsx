@@ -1,14 +1,24 @@
-import React from 'react';
-import { MapPin, Route, Search, Split, Layers } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { MapPin, Route, Search, Split, Layers, HardHat, Clock, Ruler } from 'lucide-react';
 import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { KmlPoint, KmlMainlinePoint, KmlRampPoint } from '../utils/kmlParser';
 import type { SearchMode } from '../hooks/useGeolocationSync';
+import type { Segment, RampSegment } from '../types';
+import { getPavementDisplayInfo } from '../utils/pavement';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// UI direction ↔ Segment direction 映射
+const DIR_UI_TO_DATA: Record<string, string> = {
+  '南下車道': 'Southbound',
+  '北上車道': 'Northbound',
+  '東向車道': 'Eastbound',
+  '西向車道': 'Westbound',
+};
 
 function formatMileage(meters: number) {
   const km = Math.floor(meters / 1000);
@@ -36,6 +46,9 @@ interface SurfaceViewProps {
   currentKmlPoint: KmlPoint | null;
   searchMode: SearchMode;
   onSearchModeChange: (mode: SearchMode) => void;
+  // 履歷資料
+  segments: Segment[];
+  rampSegments: RampSegment[];
 }
 
 export default function SurfaceView({
@@ -58,7 +71,43 @@ export default function SurfaceView({
   currentKmlPoint,
   searchMode,
   onSearchModeChange,
+  segments,
+  rampSegments,
 }: SurfaceViewProps) {
+  // ── 匹配當前位置的主線履歷 ──
+  const matchedMainlineSegs = useMemo(() => {
+    const dataDir = DIR_UI_TO_DATA[direction];
+    if (!dataDir) return [];
+    return segments.filter(s =>
+      s.highway === highwayName &&
+      s.direction === dataDir &&
+      mileage >= s.startMileage &&
+      mileage < s.endMileage
+    );
+  }, [segments, highwayName, direction, mileage]);
+
+  // ── 匹配當前位置的匝道履歷 ──
+  const matchedRampSegs = useMemo(() => {
+    if (!currentKmlPoint?.isRamp) return [];
+    const rp = currentKmlPoint as KmlRampPoint;
+    // 用 rampId 比對匝道履歷中的 rampId
+    return rampSegments.filter(rs =>
+      rs.rampId === rp.rampId &&
+      rp.distFromRampStart >= rs.startMileage &&
+      rp.distFromRampStart < rs.endMileage
+    );
+  }, [rampSegments, currentKmlPoint]);
+
+  // 計算 segment 深度
+  const getSegDepth = (seg: Segment) => {
+    if (!seg.pavementLayers || seg.pavementLayers.length === 0) return 0;
+    const targetMonth = seg.constructionYear + seg.constructionMonth;
+    const info = getPavementDisplayInfo(seg.pavementLayers, targetMonth);
+    if (info.thickness > 0) return info.thickness;
+    // fallback: 最新 month
+    const latestMonth = [...seg.pavementLayers].sort((a, b) => b.month.localeCompare(a.month))[0].month;
+    return getPavementDisplayInfo(seg.pavementLayers, latestMonth).thickness;
+  };
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-40 flex flex-col items-center">
       <div className="responsive-container flex flex-col gap-4 py-4">
@@ -222,6 +271,146 @@ export default function SurfaceView({
             ))}
           </div>
         </section>
+
+        {/* ── 施工履歷資訊卡（隨 GPS 移動自動顯示） ── */}
+        {(matchedMainlineSegs.length > 0 || matchedRampSegs.length > 0) && (
+          <section className="flex flex-col gap-3">
+            {/* 主線履歷 */}
+            {matchedMainlineSegs.length > 0 && (
+              <div className="bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600">
+                  <HardHat className="w-4 h-4 text-white" />
+                  <span className="text-xs font-black text-white tracking-widest uppercase">主線施工履歷</span>
+                  <span className="ml-auto text-[10px] font-bold text-blue-200">{matchedMainlineSegs.length} 筆匹配</span>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {matchedMainlineSegs.map(seg => {
+                    const depth = getSegDepth(seg);
+                    const info = seg.pavementLayers.length > 0
+                      ? getPavementDisplayInfo(seg.pavementLayers, seg.constructionYear + seg.constructionMonth)
+                      : null;
+                    return (
+                      <div key={seg.id} className="p-4 flex flex-col gap-3 hover:bg-slate-50 transition-colors">
+                        {/* 年度 & 車道 */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl font-black text-slate-900">{seg.constructionYear}<span className="text-base font-bold text-slate-400">年</span></span>
+                            {seg.constructionMonth && (
+                              <span className="text-sm font-bold text-slate-500">{seg.constructionMonth}月</span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {seg.lanes.map(l => (
+                              <span key={l} className="px-2 py-0.5 bg-blue-50 text-[10px] font-bold rounded-full border border-blue-100 text-blue-700">{l}</span>
+                            ))}
+                          </div>
+                        </div>
+                        {/* 詳細資訊 grid */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                          <div className="flex items-center gap-2">
+                            <Ruler className="w-3.5 h-3.5 text-indigo-500" />
+                            <span className="text-xs text-slate-500 font-bold">深度</span>
+                            <span className="text-sm font-black text-slate-800">{depth > 0 ? `${depth}cm` : '-'}</span>
+                            {info && info.combinedType && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold rounded" style={{ backgroundColor: info.color, color: '#333' }}>{info.combinedType}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3.5 h-3.5 text-indigo-500" />
+                            <span className="text-xs text-slate-500 font-bold">屬性</span>
+                            <span className="text-sm font-black text-slate-800">{seg.property || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="text-xs text-slate-500 font-bold">前次施工</span>
+                            <span className="text-sm font-black text-amber-700">{seg.prevConstructionYear ? `${seg.prevConstructionYear}年` : '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Ruler className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="text-xs text-slate-500 font-bold">前次深度</span>
+                            <span className="text-sm font-black text-amber-700">{seg.prevConstructionDepth ? `${seg.prevConstructionDepth}cm` : '-'}</span>
+                          </div>
+                        </div>
+                        {/* 里程範圍 */}
+                        <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono font-bold">
+                          <span>{formatMileage(seg.startMileage)}</span>
+                          <span>~</span>
+                          <span>{formatMileage(seg.endMileage)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 匝道履歷 */}
+            {matchedRampSegs.length > 0 && (
+              <div className="bg-white border border-amber-200 shadow-sm rounded-2xl overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-500 to-orange-500">
+                  <Split className="w-4 h-4 text-white" />
+                  <span className="text-xs font-black text-white tracking-widest uppercase">匝道施工履歷</span>
+                  <span className="ml-auto text-[10px] font-bold text-amber-200">{matchedRampSegs.length} 筆匹配</span>
+                </div>
+                <div className="divide-y divide-amber-50">
+                  {matchedRampSegs.map(seg => {
+                    const depth = getSegDepth(seg);
+                    const info = seg.pavementLayers.length > 0
+                      ? getPavementDisplayInfo(seg.pavementLayers, seg.constructionYear + seg.constructionMonth)
+                      : null;
+                    return (
+                      <div key={seg.id} className="p-4 flex flex-col gap-3 hover:bg-amber-50/30 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl font-black text-slate-900">{seg.constructionYear}<span className="text-base font-bold text-slate-400">年</span></span>
+                            {seg.constructionMonth && (
+                              <span className="text-sm font-bold text-slate-500">{seg.constructionMonth}月</span>
+                            )}
+                          </div>
+                          <span className="px-2 py-1 bg-amber-50 text-[10px] font-black rounded-lg border border-amber-200 text-amber-700">
+                            {seg.rampName || seg.rampId}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                          <div className="flex items-center gap-2">
+                            <Ruler className="w-3.5 h-3.5 text-amber-600" />
+                            <span className="text-xs text-slate-500 font-bold">深度</span>
+                            <span className="text-sm font-black text-slate-800">{depth > 0 ? `${depth}cm` : '-'}</span>
+                            {info && info.combinedType && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold rounded" style={{ backgroundColor: info.color, color: '#333' }}>{info.combinedType}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3.5 h-3.5 text-amber-600" />
+                            <span className="text-xs text-slate-500 font-bold">屬性</span>
+                            <span className="text-sm font-black text-slate-800">{seg.property || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="text-xs text-slate-500 font-bold">前次施工</span>
+                            <span className="text-sm font-black text-amber-700">{seg.prevConstructionYear ? `${seg.prevConstructionYear}年` : '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Ruler className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="text-xs text-slate-500 font-bold">前次深度</span>
+                            <span className="text-sm font-black text-amber-700">{seg.prevConstructionDepth ? `${seg.prevConstructionDepth}cm` : '-'}</span>
+                          </div>
+                        </div>
+                        {/* 匝道里程 */}
+                        <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono font-bold">
+                          <span>{seg.startMileage}m</span>
+                          <span>~</span>
+                          <span>{seg.endMileage}m</span>
+                          <span className="text-amber-500">· {seg.laneCount}車道</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Road Information Dashboard */}
         <main className="flex-grow flex flex-col gap-3">

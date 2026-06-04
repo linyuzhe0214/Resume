@@ -665,6 +665,8 @@ export default function ViewRouter(props: ViewRouterProps) {
       currentKmlPoint={currentKmlPoint}
       searchMode={searchMode}
       onSearchModeChange={setSearchMode}
+      segments={segments}
+      rampSegments={rampSegments}
     />
   );
 }
