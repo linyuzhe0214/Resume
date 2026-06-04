@@ -852,6 +852,7 @@ export default function RampHistory(props: RampHistoryProps) {
                           </div>
                         );
                       })}
+                    </div>
                   </div>
                 </div>
                 );
