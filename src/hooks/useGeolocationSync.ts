@@ -8,6 +8,7 @@ import {
   findNearestPointByGps,
   type KmlIndex,
   type KmlPoint,
+  type KmlRampPoint,
 } from '../utils/kmlParser';
 
 export type SearchMode = 'auto' | 'mainline' | 'ramp';
@@ -38,6 +39,10 @@ export function useGeolocationSync() {
 
   // 追蹤上次里程，用於計算里程增減方向（硬規則：增=南下/東向，減=北上/西向）
   const prevMileageRef = useRef<number | null>(null);
+
+  // 追蹤上次匝道資訊，用於匝道連續性 hysteresis 和行進方向一致性
+  const prevRampIdRef = useRef<string | null>(null);
+  const prevDistFromRampStartRef = useRef<number | null>(null);
 
   // ── 1. 載入 KML 資料庫 ──
   useEffect(() => {
@@ -112,6 +117,8 @@ export function useGeolocationSync() {
             gpsHeading,
             directionRef.current,
             prevMileageRef.current, // 傳入上次里程，用於推斷行車方向
+            prevRampIdRef.current,  // 傳入上次匝道編號，用於匝道連續性
+            prevDistFromRampStartRef.current, // 傳入上次匝道距離
           );
           if (result) {
             const { point, exactMileage } = result;
@@ -119,6 +126,15 @@ export function useGeolocationSync() {
             setCurrentKmlType(point.isRamp ? 'ramp' : 'mainline');
             const roundedMileage = Math.round(exactMileage);
             prevMileageRef.current = roundedMileage; // 更新上次里程
+            // 更新匝道追蹤狀態
+            if (point.isRamp) {
+              const rp = point as KmlRampPoint;
+              prevRampIdRef.current = rp.rampId || null;
+              prevDistFromRampStartRef.current = rp.distFromRampStart;
+            } else {
+              prevRampIdRef.current = null;
+              prevDistFromRampStartRef.current = null;
+            }
             setMileage(roundedMileage);
             setHighwayName(point.highway);
             if (point.direction) setDirection(point.direction);

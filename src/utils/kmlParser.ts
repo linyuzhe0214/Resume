@@ -279,6 +279,8 @@ export interface KmlIndex {
   mainline: Record<string, Record<string, KmlMainlinePoint[]>>;
   /** 匝道索引: { '國道1號': KmlRampPoint[] } */
   ramp: Record<string, KmlRampPoint[]>;
+  /** 匝道二級索引: { 'R01-001': KmlRampPoint[] } — 按 rampId 分組並按 distFromRampStart 排序 */
+  rampByRampId: Record<string, KmlRampPoint[]>;
   /** 所有主線點 (for GPS line building) */
   allMainlinePoints: KmlMainlinePoint[];
   /** 所有匝道點 */
@@ -291,6 +293,7 @@ export interface KmlIndex {
 export function buildKmlIndex(points: KmlPoint[]): KmlIndex {
   const mainline: Record<string, Record<string, KmlMainlinePoint[]>> = {};
   const ramp: Record<string, KmlRampPoint[]> = {};
+  const rampByRampId: Record<string, KmlRampPoint[]> = {};
   const allMainlinePoints: KmlMainlinePoint[] = [];
   const allRampPoints: KmlRampPoint[] = [];
 
@@ -300,6 +303,11 @@ export function buildKmlIndex(points: KmlPoint[]): KmlIndex {
       if (!ramp[rampPt.highway]) ramp[rampPt.highway] = [];
       ramp[rampPt.highway].push(rampPt);
       allRampPoints.push(rampPt);
+      // 二級索引：按 rampId 分組
+      if (rampPt.rampId) {
+        if (!rampByRampId[rampPt.rampId]) rampByRampId[rampPt.rampId] = [];
+        rampByRampId[rampPt.rampId].push(rampPt);
+      }
     } else {
       const mainPt = pt as KmlMainlinePoint;
       if (!mainline[mainPt.highway]) mainline[mainPt.highway] = {};
@@ -318,8 +326,12 @@ export function buildKmlIndex(points: KmlPoint[]): KmlIndex {
   for (const key of Object.keys(ramp)) {
     ramp[key].sort((a, b) => a.mileage - b.mileage);
   }
+  // 匝道二級索引按 distFromRampStart 排序（更精準的匝道內定位）
+  for (const key of Object.keys(rampByRampId)) {
+    rampByRampId[key].sort((a, b) => a.distFromRampStart - b.distFromRampStart);
+  }
 
-  return { mainline, ramp, allMainlinePoints, allRampPoints };
+  return { mainline, ramp, rampByRampId, allMainlinePoints, allRampPoints };
 }
 
 /**
@@ -504,12 +516,16 @@ function isDirectionConsistentWithDelta(direction: string, mileageDelta: number)
 /**
  * 從 GPS 經緯度，在所有主線(或匝道)點中找最近的，並透過鄰近點計算更精確的里程。
  * 
- * 利用三層訊號提升定位準確性：
+ * 利用多層訊號提升定位準確性：
  * 1. 里程增減推斷方向（最強 — 物理硬規則，里程增=南下/東向，減=北上/西向）
- * 2. GPS heading 與路段方位角比對
- * 3. 方向穩定性 hysteresis
+ * 2. GPS heading 與路段方位角比對（主線 + 匝道共用）
+ * 3. 方向穩定性 hysteresis（主線）
+ * 4. 匝道連續性 hysteresis（prevRampId — 避免跳匝道）
+ * 5. 匝道 distFromRampStart 遞增一致性（行進方向檢查）
  *
  * @param prevMileage 上次定位的里程值，null 表示無歷史（用於推斷行車方向：里程增=南下/東向）
+ * @param prevRampId 上次定位的匝道編號，null 表示不在匝道上
+ * @param prevDistFromRampStart 上次匝道內距離，用於判斷匝道行進方向一致性
  */
 export function findNearestPointByGps(
   index: KmlIndex,
@@ -520,6 +536,8 @@ export function findNearestPointByGps(
   heading: number | null = null,
   prevDirection: string | null = null,
   prevMileage: number | null = null,
+  prevRampId: string | null = null,
+  prevDistFromRampStart: number | null = null,
 ): { point: KmlPoint; distanceM: number; exactMileage: number } | null {
   let pointsToSearch: KmlPoint[] = [];
   
@@ -559,7 +577,9 @@ export function findNearestPointByGps(
   // 里程增減是否可用（需要有上次里程紀錄）
   const hasPrevMileage = prevMileage !== null;
   const hasHeading = heading !== null && !isNaN(heading);
-  const needsScoring = topCandidates.length > 1 && (hasPrevMileage || hasHeading || prevDirection);
+  const hasPrevRamp = prevRampId !== null && prevRampId !== '';
+  const hasPrevRampDist = prevDistFromRampStart !== null;
+  const needsScoring = topCandidates.length > 1 && (hasPrevMileage || hasHeading || prevDirection || hasPrevRamp);
 
   if (needsScoring) {
     let bestScore = Infinity;
@@ -567,15 +587,21 @@ export function findNearestPointByGps(
     for (const cand of topCandidates) {
       const pt = cand.pt;
       
-      // 取得該點所屬的同方向排序陣列
+      // 取得該點所屬的同方向/同匝道排序陣列
       let lineArr: KmlPoint[] = [];
-      if (pt.isRamp && index.ramp[pt.highway]) {
-        lineArr = index.ramp[pt.highway];
-      } else if (!pt.isRamp && index.mainline[pt.highway]?.[pt.direction]) {
+      if (pt.isRamp) {
+        const rampPt = pt as KmlRampPoint;
+        // 優先用 rampByRampId（同一匝道的點序列），fallback 到 highway 級
+        if (rampPt.rampId && index.rampByRampId[rampPt.rampId]) {
+          lineArr = index.rampByRampId[rampPt.rampId];
+        } else if (index.ramp[pt.highway]) {
+          lineArr = index.ramp[pt.highway];
+        }
+      } else if (index.mainline[pt.highway]?.[pt.direction]) {
         lineArr = index.mainline[pt.highway][pt.direction] as KmlPoint[];
       }
 
-      // ── A. 里程增減方向一致性（最強訊號）──
+      // ── A. 里程增減方向一致性（最強訊號，僅主線）──
       // 里程增加 → 必定南下/東向；里程減少 → 必定北上/西向
       let mileageDirPenalty = 0;
       if (hasPrevMileage && !pt.isRamp) {
@@ -587,7 +613,22 @@ export function findNearestPointByGps(
         }
       }
 
-      // ── B. GPS heading 與路段方位角一致性 ──
+      // ── A2. 匝道 distFromRampStart 行進方向一致性 ──
+      // 若上次也在匝道上且有 distFromRampStart，檢查是否在同一匝道上連續行進
+      let rampDirPenalty = 0;
+      if (pt.isRamp && hasPrevRamp && hasPrevRampDist) {
+        const rampPt = pt as KmlRampPoint;
+        if (rampPt.rampId === prevRampId) {
+          // 同一匝道，distFromRampStart 應該單調遞增（正常行駛）
+          const distDelta = rampPt.distFromRampStart - prevDistFromRampStart!;
+          // 回頭行駛（距離遞減超過 10m）→ 輕微懲罰（不像主線那麼嚴格，匝道較短）
+          if (distDelta < -10) {
+            rampDirPenalty = 0.3;
+          }
+        }
+      }
+
+      // ── B. GPS heading 與路段方位角一致性（主線+匝道共用）──
       let headingScore = 0;
       if (hasHeading) {
         const segBearing = lineArr.length > 1 ? getSegmentBearing(pt, lineArr) : null;
@@ -601,18 +642,27 @@ export function findNearestPointByGps(
       // ── C. 距離分數 ──
       const distScore = cand.dist / candidateThreshold;
 
-      // ── D. 方向穩定性 (hysteresis) ──
+      // ── D. 方向穩定性 / 匝道連續性 (hysteresis) ──
       let stabilityBonus = 0;
-      if (prevDirection && !pt.isRamp && (pt.direction === prevDirection)) {
-        stabilityBonus = -0.1;
+      if (pt.isRamp) {
+        // 匝道連續性：如果上次也在同一匝道，給予 bonus 避免跳匝道
+        if (hasPrevRamp && (pt as KmlRampPoint).rampId === prevRampId) {
+          stabilityBonus = -0.15; // 比主線方向穩定性更強，匝道短小容易跳
+        }
+      } else {
+        // 主線方向穩定性
+        if (prevDirection && pt.direction === prevDirection) {
+          stabilityBonus = -0.1;
+        }
       }
 
       // ── 綜合評分 ──
-      // 里程方向 40%（硬規則，不一致直接 +0.4）
-      // heading  25%
-      // 距離     25%
-      // 穩定性   10%
-      const score = mileageDirPenalty * 0.4
+      // 里程方向/匝道行進   35%（硬規則）
+      // heading             25%
+      // 距離                25%
+      // 穩定性/匝道連續     15%
+      const dirPenalty = pt.isRamp ? rampDirPenalty : mileageDirPenalty;
+      const score = dirPenalty * 0.35
                   + headingScore * 0.25
                   + distScore * 0.25
                   + stabilityBonus;
@@ -628,10 +678,16 @@ export function findNearestPointByGps(
   const bestDist = bestCandidate.dist;
 
   // ── 3. 精準里程內插 ──
+  // 匝道使用 rampByRampId（同一匝道內的點序列更連續、更精準）
   let sameLineArr: KmlPoint[] = [];
-  if (bestPt.isRamp && index.ramp[bestPt.highway]) {
-    sameLineArr = index.ramp[bestPt.highway];
-  } else if (!bestPt.isRamp && index.mainline[bestPt.highway] && index.mainline[bestPt.highway][bestPt.direction]) {
+  if (bestPt.isRamp) {
+    const rampPt = bestPt as KmlRampPoint;
+    if (rampPt.rampId && index.rampByRampId[rampPt.rampId]) {
+      sameLineArr = index.rampByRampId[rampPt.rampId];
+    } else if (index.ramp[bestPt.highway]) {
+      sameLineArr = index.ramp[bestPt.highway];
+    }
+  } else if (index.mainline[bestPt.highway] && index.mainline[bestPt.highway][bestPt.direction]) {
     sameLineArr = index.mainline[bestPt.highway][bestPt.direction] as KmlPoint[];
   }
 
