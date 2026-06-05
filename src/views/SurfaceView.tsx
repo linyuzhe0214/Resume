@@ -109,36 +109,38 @@ export default function SurfaceView({
     return getPavementDisplayInfo(seg.pavementLayers, latestMonth).thickness;
   };
 
-  const renderHistoryColumn = (historySeg: Segment | RampSegment | undefined) => {
+  const renderHistoryCard = (historySeg: Segment | RampSegment | undefined) => {
     if (!historySeg) {
       return (
-        <div className="w-full flex items-center justify-center bg-slate-50 border border-dashed border-slate-300 border-t-0 rounded-b-sm py-4">
+        <div className="w-full flex-1 flex flex-col items-center justify-center bg-slate-50 border border-dashed border-slate-300 rounded-lg p-2 min-h-[120px]">
           <span className="text-slate-400 font-bold text-[9px] opacity-50">無履歷</span>
         </div>
       );
     }
+    
+    const targetMonth = historySeg.constructionYear + historySeg.constructionMonth;
+    const info = getPavementDisplayInfo(historySeg.pavementLayers || [], targetMonth);
+    const depth = getSegDepth(historySeg);
+    
     return (
-      <div className="w-full flex flex-col shadow-sm rounded-b-sm overflow-hidden border border-slate-200 border-t-0">
-        <div className="bg-slate-700 w-full flex flex-col items-center py-1.5 text-[8px] sm:text-[9px] text-white font-bold tracking-tight">
-          <span>{historySeg.property}</span>
-          <span className="opacity-80 scale-90 leading-tight mt-0.5">{formatMileage(historySeg.startMileage)}</span>
-          <span className="opacity-80 scale-90 leading-tight">~ {formatMileage(historySeg.endMileage)}</span>
-        </div>
+      <div 
+        className="w-full flex-1 flex flex-col items-center justify-center p-2 rounded-lg border shadow-sm transition-all"
+        style={{ 
+          backgroundColor: info.color || '#f8fafc',
+          borderColor: info.color ? 'rgba(0,0,0,0.1)' : '#e2e8f0',
+          minHeight: '120px'
+        }}
+      >
+        <span className="text-[10px] sm:text-xs font-black text-slate-800 leading-tight text-center">{historySeg.property}</span>
+        <span className="text-[9px] font-bold text-slate-700 leading-tight mt-1 text-center font-mono">
+          {formatMileage(historySeg.startMileage)}<br/>~ {formatMileage(historySeg.endMileage)}
+        </span>
         
-        {historySeg.pavementLayers?.map((layer, idx) => {
-          const typeName = layer.type.split('(')[0].trim().toUpperCase();
-          const color = getPavementColor(typeName, layer.thickness);
-          return (
-            <div 
-              key={layer.id || idx} 
-              className="w-full flex flex-col items-center justify-center text-center py-1.5 border-b border-black/10 last:border-b-0"
-              style={{ backgroundColor: color, minHeight: `${Math.max(28, layer.thickness * 2.5)}px` }}
-            >
-              <span className="text-[9px] sm:text-[10px] font-black leading-none text-black/80">{typeName}</span>
-              <span className="text-[8px] font-bold text-black/60 mt-0.5">{layer.thickness}cm</span>
-            </div>
-          );
-        })}
+        <div className="mt-2 flex flex-col items-center justify-center w-full bg-white/60 p-1.5 rounded-md text-center shadow-sm">
+           <span className="text-[10px] font-black text-slate-800">{historySeg.constructionYear}年{historySeg.constructionMonth}月</span>
+           <span className="text-[9px] font-bold text-slate-700 leading-none mt-1">{info.combinedType || '無資料'}</span>
+           <span className="text-[10px] font-black text-slate-900 leading-none mt-1">{depth > 0 ? `${depth}cm` : ''}</span>
+        </div>
       </div>
     );
   };
@@ -432,57 +434,49 @@ export default function SurfaceView({
                 </h3>
 
                 {/* Visual Cross-section Diagram */}
-                <div className="w-full flex items-start justify-center gap-1 px-1 sm:px-2 font-mono text-[9px] min-h-[140px]">
+                <div className="w-full flex items-end justify-center gap-1 px-1 sm:px-2 font-mono text-[9px] min-h-[140px]">
                   {!currentKmlPoint.isRamp &&
                     (currentKmlPoint as KmlMainlinePoint).innerShoulderWidth > 0 && (
-                      <div className="flex flex-col items-center justify-start flex-1 group">
-                        <div className="bg-slate-200 w-full h-12 border-x border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-600 text-[8px] leading-tight text-center font-bold rounded-t-sm shadow-inner">
-                          內肩
-                          <span className="mt-0.5 text-slate-500 font-bold">{(currentKmlPoint as KmlMainlinePoint).innerShoulderWidth.toFixed(2)}m</span>
+                      <div className="flex flex-col items-center justify-end h-full">
+                        <div className="bg-slate-200 w-7 h-28 border-l-2 border-slate-300 flex items-center justify-center text-slate-600 text-[8px] leading-tight text-center font-bold">
+                          內<br />肩
                         </div>
-                        {renderHistoryColumn(matchedMainlineSegs.find(s => s.lanes.includes('內側路肩')))}
+                        <span className="mt-2 text-slate-500 font-bold">
+                          {(currentKmlPoint as KmlMainlinePoint).innerShoulderWidth.toFixed(2)}m
+                        </span>
                       </div>
                     )}
 
-                  {currentKmlPoint.laneWidths.map((w, i) => {
-                    const laneNames = ['第一車道', '第二車道', '第三車道', '第四車道', '第五車道', '第六車道', '第七車道', '第八車道'];
-                    const laneStr = laneNames[i] || `第${i + 1}車道`;
-                    const historySeg = currentKmlPoint.isRamp 
-                      ? matchedRampSegs[0]
-                      : matchedMainlineSegs.find(s => s.lanes.includes(laneStr));
-                    return (
-                      <div key={i} className="flex flex-col items-center flex-1 justify-start group">
-                        <div className="bg-slate-100 border-x border-dashed border-slate-300 w-full flex flex-col items-center justify-center h-12 rounded-t-sm shadow-inner">
+                  {currentKmlPoint.laneWidths.map((w, i) => (
+                    <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group">
+                      <div className="bg-slate-100 border-l border-dashed border-slate-300 w-full flex flex-col items-center relative overflow-hidden transition-all duration-300 h-28 rounded-sm shadow-inner">
+                        <div className="w-full h-full flex flex-col items-center justify-center">
                           <span className="text-slate-500 font-black text-xs">車道{i + 1}</span>
-                          <span className="mt-0.5 text-slate-500 font-bold">{w.toFixed(2)}m</span>
                         </div>
-                        {renderHistoryColumn(historySeg)}
                       </div>
-                    );
-                  })}
+                      <span className="mt-2 text-slate-500 font-bold">{w.toFixed(2)}m</span>
+                    </div>
+                  ))}
 
                   {!currentKmlPoint.isRamp &&
-                    (currentKmlPoint as KmlMainlinePoint).auxiliaryLanes.map((aux, i) => {
-                      const historySeg = matchedMainlineSegs.find(s => s.lanes.includes(aux.name));
-                      return (
-                        <div key={`aux-${i}`} className="flex flex-col items-center flex-1 justify-start group">
-                          <div className="bg-blue-50 border-x border-dashed border-blue-200 w-full flex flex-col items-center justify-center h-12 text-blue-700 font-black text-[9px] rounded-t-sm shadow-inner">
-                            {aux.name}
-                            <span className="mt-0.5 text-blue-500 font-bold">{aux.width.toFixed(2)}m</span>
-                          </div>
-                          {renderHistoryColumn(historySeg)}
+                    (currentKmlPoint as KmlMainlinePoint).auxiliaryLanes.map((aux, i) => (
+                      <div key={`aux-${i}`} className="flex flex-col items-center flex-1 justify-end h-full">
+                        <div className="bg-blue-50 border-l border-dashed border-blue-200 w-full h-24 flex items-center justify-center text-blue-700 font-black text-[9px] rounded-sm">
+                          {aux.name}
                         </div>
-                      );
-                    })}
+                        <span className="mt-2 text-blue-500 font-bold">{aux.width.toFixed(2)}m</span>
+                      </div>
+                    ))}
 
                   {!currentKmlPoint.isRamp &&
                     (currentKmlPoint as KmlMainlinePoint).outerShoulderWidth > 0 && (
-                      <div className="flex flex-col items-center justify-start flex-1 group">
-                        <div className="bg-slate-200 w-full h-12 border-x border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-600 text-[10px] font-bold rounded-t-sm shadow-inner">
+                      <div className="flex flex-col items-center justify-end h-full">
+                        <div className="bg-slate-200 w-12 sm:w-16 h-28 border-r-2 border-slate-300 flex items-center justify-center text-slate-600 text-[10px] font-bold">
                           外肩
-                          <span className="mt-0.5 text-slate-500 font-bold">{(currentKmlPoint as KmlMainlinePoint).outerShoulderWidth.toFixed(2)}m</span>
                         </div>
-                        {renderHistoryColumn(matchedMainlineSegs.find(s => s.lanes.includes('外側路肩')))}
+                        <span className="mt-2 text-slate-500 font-bold">
+                          {(currentKmlPoint as KmlMainlinePoint).outerShoulderWidth.toFixed(2)}m
+                        </span>
                       </div>
                     )}
                 </div>
@@ -573,7 +567,58 @@ export default function SurfaceView({
                 )}
               </div>
 
+              {/* 施工履歷 Section (Aligned Horizontally per lane) */}
+              {(matchedMainlineSegs.length > 0 || matchedRampSegs.length > 0) && (
+                <div className="bg-white border border-slate-200 shadow-sm p-5 rounded-2xl flex flex-col gap-4 mt-2">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <Clock className="w-4 h-4 text-[#0284c7]" />
+                    <h3 className="text-xs font-black text-[#0284c7] uppercase tracking-widest">
+                      施工履歷 (PAVEMENT HISTORY)
+                    </h3>
+                  </div>
+                  
+                  <div className="w-full flex items-stretch justify-center gap-2 px-1 sm:px-2 mt-2">
+                    {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).innerShoulderWidth > 0 && (
+                      <div className="flex flex-col items-center justify-start flex-1 gap-2">
+                        <span className="text-slate-500 font-bold text-[10px] bg-slate-100 px-3 py-1 rounded-full">內肩</span>
+                        {renderHistoryCard(matchedMainlineSegs.find(s => s.lanes.includes('內側路肩')))}
+                      </div>
+                    )}
 
+                    {currentKmlPoint.laneWidths.map((w, i) => {
+                      const laneNames = ['第一車道', '第二車道', '第三車道', '第四車道', '第五車道', '第六車道', '第七車道', '第八車道'];
+                      const laneStr = laneNames[i] || `第${i + 1}車道`;
+                      const historySeg = currentKmlPoint.isRamp 
+                        ? matchedRampSegs[0]
+                        : matchedMainlineSegs.find(s => s.lanes.includes(laneStr));
+                      
+                      return (
+                        <div key={i} className="flex flex-col items-center justify-start flex-1 gap-2">
+                          <span className="text-slate-500 font-bold text-[10px] bg-slate-100 px-3 py-1 rounded-full">車道{i + 1}</span>
+                          {renderHistoryCard(historySeg)}
+                        </div>
+                      );
+                    })}
+
+                    {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).auxiliaryLanes.map((aux, i) => {
+                      const historySeg = matchedMainlineSegs.find(s => s.lanes.includes(aux.name));
+                      return (
+                        <div key={`aux-hist-${i}`} className="flex flex-col items-center justify-start flex-1 gap-2">
+                          <span className="text-blue-500 font-bold text-[10px] bg-blue-50 px-3 py-1 rounded-full">{aux.name}</span>
+                          {renderHistoryCard(historySeg)}
+                        </div>
+                      );
+                    })}
+
+                    {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).outerShoulderWidth > 0 && (
+                      <div className="flex flex-col items-center justify-start flex-1 gap-2">
+                        <span className="text-slate-500 font-bold text-[10px] bg-slate-100 px-3 py-1 rounded-full">外肩</span>
+                        {renderHistoryCard(matchedMainlineSegs.find(s => s.lanes.includes('外側路肩')))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </main>
