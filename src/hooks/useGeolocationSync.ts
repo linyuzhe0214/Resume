@@ -39,6 +39,7 @@ export function useGeolocationSync() {
 
   // 追蹤上次里程，用於計算里程增減方向（硬規則：增=南下/東向，減=北上/西向）
   const prevMileageRef = useRef<number | null>(null);
+  const prevHighwayRef = useRef<string | null>(null);
 
   // 追蹤上次匝道資訊，用於匝道連續性 hysteresis 和行進方向一致性
   const prevRampIdRef = useRef<string | null>(null);
@@ -119,6 +120,7 @@ export function useGeolocationSync() {
             prevMileageRef.current, // 傳入上次里程，用於推斷行車方向
             prevRampIdRef.current,  // 傳入上次匝道編號，用於匝道連續性
             prevDistFromRampStartRef.current, // 傳入上次匝道距離
+            prevHighwayRef.current, // 傳入上次國道別
           );
           if (result) {
             const { point, exactMileage } = result;
@@ -126,6 +128,7 @@ export function useGeolocationSync() {
             setCurrentKmlType(point.isRamp ? 'ramp' : 'mainline');
             const roundedMileage = Math.round(exactMileage);
             prevMileageRef.current = roundedMileage; // 更新上次里程
+            prevHighwayRef.current = point.highway; // 更新上次國道別
             // 更新匝道追蹤狀態
             if (point.isRamp) {
               const rp = point as KmlRampPoint;

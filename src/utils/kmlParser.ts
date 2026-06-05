@@ -538,6 +538,7 @@ export function findNearestPointByGps(
   prevMileage: number | null = null,
   prevRampId: string | null = null,
   prevDistFromRampStart: number | null = null,
+  prevHighway: string | null = null,
 ): { point: KmlPoint; distanceM: number; exactMileage: number } | null {
   let pointsToSearch: KmlPoint[] = [];
   
@@ -604,7 +605,7 @@ export function findNearestPointByGps(
       // ── A. 里程增減方向一致性（最強訊號，僅主線）──
       // 里程增加 → 必定南下/東向；里程減少 → 必定北上/西向
       let mileageDirPenalty = 0;
-      if (hasPrevMileage && !pt.isRamp) {
+      if (hasPrevMileage && !pt.isRamp && pt.highway === prevHighway) {
         const delta = pt.mileage - prevMileage!;
         // 只有移動距離 >50m 才算有意義，避免 GPS 飄移噪聲
         if (Math.abs(delta) > 50) {
@@ -651,7 +652,7 @@ export function findNearestPointByGps(
         }
       } else {
         // 主線方向穩定性
-        if (prevDirection && pt.direction === prevDirection) {
+        if (prevDirection && pt.direction === prevDirection && pt.highway === prevHighway) {
           stabilityBonus = -0.1;
         }
       }
