@@ -410,62 +410,16 @@ export default function SurfaceView({
                       </div>
                     )}
 
-                  {currentKmlPoint.laneWidths.map((w, i) => {
-                    const laneStr = (i + 1).toString();
-                    const historySeg = currentKmlPoint.isRamp 
-                      ? matchedRampSegs[0]
-                      : matchedMainlineSegs.find(s => s.lanes.includes(laneStr));
-                    
-                    const depth = historySeg ? getSegDepth(historySeg) : 0;
-                    const info = historySeg && historySeg.pavementLayers.length > 0
-                      ? getPavementDisplayInfo(historySeg.pavementLayers, historySeg.constructionYear + historySeg.constructionMonth)
-                      : null;
-
-                    return (
-                      <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group">
-                        <div className="bg-slate-100 border-l border-dashed border-slate-300 w-full flex flex-col items-center relative overflow-hidden transition-all duration-300 h-28 rounded-sm shadow-inner">
-                          {/* Top part: Lane Name */}
-                          <div className="w-full py-1.5 flex flex-col items-center justify-center bg-white/90 border-b border-slate-200 z-10 shrink-0">
-                            <span className="text-slate-700 font-black text-[10px]">車道{i + 1}</span>
-                          </div>
-                          
-                          {/* Bottom part: Pavement Layer overlay */}
-                          <div 
-                            className="w-full flex flex-col items-center justify-center relative flex-1"
-                            style={{ 
-                              backgroundColor: historySeg && info ? info.color : 'transparent',
-                            }}
-                          >
-                            {historySeg ? (
-                              <div className="flex flex-col items-center text-center p-1 z-10 w-full h-full justify-center shadow-inner">
-                                <span className="font-black text-[11px] sm:text-xs leading-none mb-1" style={{ color: info ? '#222' : '#555' }}>
-                                  {historySeg.constructionYear}年
-                                </span>
-                                {info && info.combinedType && (
-                                  <span className="font-black text-[9px] leading-none mb-1" style={{ color: '#333' }}>
-                                    {info.combinedType}
-                                  </span>
-                                )}
-                                <div className="flex items-center gap-1">
-                                  <span className="font-bold text-[9px] sm:text-[10px] leading-none" style={{ color: info ? '#222' : '#555' }}>
-                                    {depth > 0 ? `${depth}cm` : ''}
-                                  </span>
-                                </div>
-                                {historySeg.prevConstructionYear && (
-                                  <span className="font-bold text-[8px] mt-1 opacity-75 leading-none" style={{ color: info ? '#222' : '#555' }}>
-                                    前:{historySeg.prevConstructionYear}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 font-bold text-[9px] m-auto opacity-50">無履歷</span>
-                            )}
-                          </div>
+                  {currentKmlPoint.laneWidths.map((w, i) => (
+                    <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group">
+                      <div className="bg-slate-100 border-l border-dashed border-slate-300 w-full flex flex-col items-center relative overflow-hidden transition-all duration-300 h-28 rounded-sm shadow-inner">
+                        <div className="w-full h-full flex flex-col items-center justify-center">
+                          <span className="text-slate-500 font-black text-xs">車道{i + 1}</span>
                         </div>
-                        <span className="mt-2 text-slate-500 font-bold">{w.toFixed(2)}m</span>
                       </div>
-                    );
-                  })}
+                      <span className="mt-2 text-slate-500 font-bold">{w.toFixed(2)}m</span>
+                    </div>
+                  ))}
 
                   {!currentKmlPoint.isRamp &&
                     (currentKmlPoint as KmlMainlinePoint).auxiliaryLanes.map((aux, i) => (
@@ -575,6 +529,55 @@ export default function SurfaceView({
                   })()
                 )}
               </div>
+
+              {/* 施工履歷 Section */}
+              {(matchedMainlineSegs.length > 0 || matchedRampSegs.length > 0) && (
+                <div className="bg-white border border-slate-200 shadow-sm p-5 rounded-2xl flex flex-col gap-4 mt-2">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <Clock className="w-4 h-4 text-[#0284c7]" />
+                    <h3 className="text-xs font-black text-[#0284c7] uppercase tracking-widest">
+                      施工履歷 (PAVEMENT HISTORY)
+                    </h3>
+                  </div>
+                  
+                  <div className="flex flex-col gap-3">
+                    {(currentKmlPoint.isRamp ? matchedRampSegs : matchedMainlineSegs).map(seg => {
+                      const targetMonth = seg.constructionYear + seg.constructionMonth;
+                      const info = getPavementDisplayInfo(seg.pavementLayers || [], targetMonth);
+                      const depth = getSegDepth(seg);
+                      
+                      return (
+                        <div key={seg.id} className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100 transition-all hover:bg-slate-100">
+                          <div 
+                            className="w-12 h-12 rounded-lg shrink-0 flex flex-col items-center justify-center shadow-inner border border-black/10"
+                            style={{ backgroundColor: info.color || '#e2e8f0' }}
+                          >
+                            <span className="font-black text-[10px] text-slate-800">{depth > 0 ? `${depth}cm` : ''}</span>
+                          </div>
+                          <div className="flex flex-col flex-1 gap-0.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-black text-slate-800 text-sm">
+                                {seg.lanes.join(', ')}
+                              </span>
+                              <span className="font-bold text-xs text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">
+                                {seg.constructionYear}年{seg.constructionMonth}月
+                              </span>
+                            </div>
+                            <div className="text-xs font-bold text-slate-600">
+                              材料: {info.combinedType || '無資料'}
+                            </div>
+                            {seg.prevConstructionYear && (
+                              <div className="text-[10px] text-slate-400 font-bold mt-1">
+                                前次施工: {seg.prevConstructionYear}年 ({seg.prevConstructionDepth}cm)
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </main>
