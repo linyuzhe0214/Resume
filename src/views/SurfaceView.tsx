@@ -98,7 +98,6 @@ export default function SurfaceView({
     );
   }, [rampSegments, currentKmlPoint]);
 
-  // 計算 segment 深度
   const getSegDepth = (seg: Segment | RampSegment) => {
     if (!seg.pavementLayers || seg.pavementLayers.length === 0) return 0;
     const targetMonth = seg.constructionYear + seg.constructionMonth;
@@ -107,6 +106,31 @@ export default function SurfaceView({
     // fallback: 最新 month
     const latestMonth = [...seg.pavementLayers].sort((a, b) => b.month.localeCompare(a.month))[0].month;
     return getPavementDisplayInfo(seg.pavementLayers, latestMonth).thickness;
+  };
+
+  const matchAuxLane = (auxName: string, historySegs: Segment[]) => {
+    return historySegs.find(s => 
+      s.lanes.some(lane => {
+        // 直接包含 (如 KML "加速車道", history "加速車道1") 或相反
+        if (lane.includes(auxName) || auxName.includes(lane)) return true;
+        
+        // 模糊比對：若兩邊都含有「加/減/輔/爬坡」關鍵字
+        const isAuxKml = auxName.includes('加') || auxName.includes('減') || auxName.includes('輔') || auxName.includes('爬坡');
+        const isAuxLane = lane.includes('加') || lane.includes('減') || lane.includes('輔') || lane.includes('爬坡');
+        
+        if (isAuxKml && isAuxLane) {
+          // 嘗試對應數字，例如 KML:"加速車道1" vs history:"加/減速車道1"
+          const numKml = auxName.match(/\d+/);
+          const numLane = lane.match(/\d+/);
+          if (numKml && numLane) {
+            return numKml[0] === numLane[0];
+          }
+          // 若只有一方有數字或都沒有，視為匹配 (同屬輔助車道類別)
+          return true;
+        }
+        return false;
+      })
+    );
   };
 
   const renderHistoryCard = (historySeg: Segment | RampSegment | undefined) => {
@@ -215,7 +239,16 @@ export default function SurfaceView({
               <select
                 className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-bold appearance-none text-center transition-all hover:bg-white/20"
                 value={highwayName}
-                onChange={e => onHighwayChange(e.target.value)}
+                onChange={e => {
+                  const newHw = e.target.value;
+                  onHighwayChange(newHw);
+                  const isEastWest = ['國道2號', '國道4號', '國道6號', '國道8號', '國道10號'].includes(newHw);
+                  if (isEastWest && !['東向車道', '西向車道'].includes(direction)) {
+                    onDirectionChange('東向車道');
+                  } else if (!isEastWest && !['南下車道', '北上車道'].includes(direction)) {
+                    onDirectionChange('南下車道');
+                  }
+                }}
               >
                 {[1, 3, 4].map(h => (
                   <option key={h} className="text-slate-900" value={`國道${h}號`}>
@@ -234,7 +267,10 @@ export default function SurfaceView({
                 value={direction}
                 onChange={e => onDirectionChange(e.target.value)}
               >
-                {['南下車道', '北上車道', '東向車道', '西向車道', '雙向'].map(d => (
+                {(['國道2號', '國道4號', '國道6號', '國道8號', '國道10號'].includes(highwayName) 
+                  ? ['東向車道', '西向車道'] 
+                  : ['南下車道', '北上車道']
+                ).map(d => (
                   <option key={d} className="text-slate-900" value={d}>
                     {d}
                   </option>
@@ -601,7 +637,7 @@ export default function SurfaceView({
                     })}
 
                     {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).auxiliaryLanes.map((aux, i) => {
-                      const historySeg = matchedMainlineSegs.find(s => s.lanes.includes(aux.name));
+                      const historySeg = matchAuxLane(aux.name, matchedMainlineSegs as Segment[]);
                       return (
                         <div key={`aux-hist-${i}`} className="flex flex-col items-center justify-start flex-1 gap-2">
                           <span className="text-blue-500 font-bold text-[10px] bg-blue-50 px-3 py-1 rounded-full">{aux.name}</span>
