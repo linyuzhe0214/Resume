@@ -15,6 +15,8 @@ interface PlanningViewProps {
   onNavigateToEdit: (id?: string) => void;
   onCompleteRenovation: (seg: Segment) => void;
   currentTime: Date;
+  highlightSegmentId?: string | null;
+  onHighlightClear?: () => void;
 }
 
 export default function PlanningView({
@@ -29,6 +31,8 @@ export default function PlanningView({
   onNavigateToEdit,
   onCompleteRenovation,
   currentTime,
+  highlightSegmentId,
+  onHighlightClear,
 }: PlanningViewProps) {
   const mainlineHistoryHeader = (
     <header className="flex items-center justify-between px-4 sm:px-6 py-3 bg-[#00488d] shadow-lg z-[60] relative">
@@ -61,6 +65,8 @@ export default function PlanningView({
         onDeleteAll={() => setShowConfirmDeleteAll(true)}
         onNavigateToEdit={onNavigateToEdit}
         onCompleteRenovation={onCompleteRenovation}
+        highlightSegmentId={highlightSegmentId}
+        onHighlightClear={onHighlightClear}
       />
     </div>
   );

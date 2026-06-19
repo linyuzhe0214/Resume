@@ -282,6 +282,8 @@ export default function ViewRouter(props: ViewRouterProps) {
               if (PLANNING_URL) syncGas(PLANNING_URL, 'savePlanning', segment.highway + ' (規劃)', newSeg);
               savedId = newSeg.id;
             }
+            setActiveHistoryHighway(segment.highway);
+            setHighlightSegmentId(savedId);
           } else {
             if (editingSegmentId) {
               setSegments(segments.map(s => s.id === editingSegmentId ? segment : s));
@@ -455,6 +457,8 @@ export default function ViewRouter(props: ViewRouterProps) {
         handleUpdateLaneOrder={(lanes) => handleUpdateLaneOrder(activeHistoryHighway, lanes)}
         setShowConfirmDeleteAll={setShowConfirmDeleteAll}
         currentTime={currentTime}
+        highlightSegmentId={highlightSegmentId}
+        onHighlightClear={() => setHighlightSegmentId(null)}
         onNavigateToEdit={(id) => {
           setEditingSegmentId(id || null);
           if (id) {
