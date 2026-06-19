@@ -342,7 +342,7 @@ export default function RampHistory(props: RampHistoryProps) {
               isMapExpanded ? "flex-1 p-0" : "p-1.5 sm:p-3"
             )}>
               <div className={cn(
-                "w-full bg-slate-100/50 relative flex flex-col items-center justify-center shadow-inner transition-all duration-300 overflow-hidden aspect-[1.55]",
+                "w-full bg-slate-100/50 relative flex flex-col items-center justify-center shadow-inner transition-all duration-300 overflow-hidden aspect-[1.5]",
                 isMapExpanded ? "rounded-none border-0" : "rounded-xl border border-slate-200"
               )}>
                 <span className="text-slate-400 font-bold mb-2 flex flex-col items-center gap-2 text-center px-4 z-0 relative">
@@ -355,10 +355,10 @@ export default function RampHistory(props: RampHistoryProps) {
                   src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH`} 
                   className="absolute z-10 bg-white border-0"
                   style={{
-                    width: '120%',
-                    height: '135%',
-                    top: '-18%',
-                    left: '-10%'
+                    width: '104%',
+                    height: '115%',
+                    top: '-2%',
+                    left: '-2%'
                   }}
                   title={`${selectedHighway}-${selectedInterchange} 匝道路網圖`}
                 >
