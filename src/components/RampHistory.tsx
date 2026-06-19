@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Download, Plus, Layers, ChevronDown, MapPin, Search, ArrowUp, ArrowDown, Edit2, Trash2 } from 'lucide-react';
+import { Download, Plus, Layers, ChevronDown, MapPin, Search, ArrowUp, ArrowDown, Edit2, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
@@ -49,6 +49,7 @@ export default function RampHistory(props: RampHistoryProps) {
   const [selectedRampId, setSelectedRampId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
 
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -317,15 +318,34 @@ export default function RampHistory(props: RampHistoryProps) {
       <div className="flex flex-col xl:flex-row gap-6 lg:gap-8 items-start">
         
         {/* Left Column: Road Network Map (Sticky) */}
-        <div className="w-full xl:w-[360px] shrink-0 xl:sticky xl:top-6 z-20">
-          <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden shadow-xl">
+        <div className={cn(
+          "w-full shrink-0 xl:sticky xl:top-6 z-20 transition-all duration-300 ease-in-out",
+          isMapExpanded ? "xl:w-[45vw]" : "xl:w-[360px]"
+        )}>
+          <section 
+            className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden shadow-xl flex flex-col transition-all duration-300"
+            style={{ height: isMapExpanded ? '85vh' : 'auto' }}
+          >
             <div className="p-2.5 sm:p-4 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
               <h3 className="font-black text-sm sm:text-base tracking-tight text-slate-800 flex items-center gap-2">
                 <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#00488d]" /> 匝道路網圖
               </h3>
+              <button
+                onClick={() => setIsMapExpanded(!isMapExpanded)}
+                className="hidden xl:flex p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title={isMapExpanded ? "縮小地圖" : "放大地圖"}
+              >
+                {isMapExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+              </button>
             </div>
-            <div className="p-1.5 sm:p-3 bg-slate-50 flex justify-center items-center align-middle">
-              <div className="w-full h-[30vh] sm:h-[40vh] xl:h-[50vh] xl:max-h-[600px] bg-slate-100/50 rounded-xl border border-slate-200 overflow-hidden relative flex flex-col items-center justify-center shadow-inner">
+            <div className={cn(
+              "bg-slate-50 flex justify-center items-center align-middle transition-all duration-300",
+              isMapExpanded ? "flex-1 p-0" : "p-1.5 sm:p-3"
+            )}>
+              <div className={cn(
+                "w-full bg-slate-100/50 relative flex flex-col items-center justify-center shadow-inner transition-all duration-300 overflow-hidden",
+                isMapExpanded ? "h-full rounded-none border-0" : "h-[30vh] sm:h-[40vh] xl:h-[50vh] xl:max-h-[600px] rounded-xl border border-slate-200"
+              )}>
                 <span className="text-slate-400 font-bold mb-2 flex flex-col items-center gap-2 text-center px-4">
                   <MapPin className="w-8 h-8 opacity-50" />
                   無對應交流道之 PDF
