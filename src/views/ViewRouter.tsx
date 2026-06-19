@@ -119,6 +119,7 @@ export default function ViewRouter(props: ViewRouterProps) {
   };
 
   const backFromEdit = () => {
+    if (editingSegmentId) setHighlightSegmentId(editingSegmentId);
     setDraftSegment(null);
     setEditingSegmentId(null);
     setSubPage('none');
