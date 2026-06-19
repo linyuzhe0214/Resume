@@ -1,15 +1,222 @@
-import React, { useMemo } from 'react';
-import { MapPin, Route, Search, Split, Layers, HardHat, Clock, Ruler } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { MapPin, Route, Search, Split, Layers, Clock, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { KmlPoint, KmlMainlinePoint, KmlRampPoint } from '../utils/kmlParser';
 import type { SearchMode } from '../hooks/useGeolocationSync';
 import type { Segment, RampSegment } from '../types';
-import { getPavementDisplayInfo, getPavementColor } from '../utils/pavement';
+import { getPavementDisplayInfo, getPavementColor, formatMonth } from '../utils/pavement';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+// ── 鋪面斷面 Modal ──
+interface PavementSectionModalProps {
+  seg: Segment | RampSegment;
+  laneLabel: string;
+  onClose: () => void;
+}
+
+function PavementSectionModal({ seg, laneLabel, onClose }: PavementSectionModalProps) {
+  const targetMonth = seg.constructionYear + seg.constructionMonth;
+
+  // 取得所有月份（依新到舊）
+  const allMonths = useMemo(() => {
+    const months = Array.from(new Set((seg.pavementLayers || []).map(l => l.month)));
+    return months.sort((a, b) => b.localeCompare(a));
+  }, [seg.pavementLayers]);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(targetMonth);
+
+  const displayMonth = allMonths.includes(selectedMonth) ? selectedMonth : (allMonths[0] || '');
+
+  // 當月所有層（從上到下 = 先舊後新的 month 分組，同月份按輸入順序）
+  const layersForMonth = useMemo(() => {
+    return (seg.pavementLayers || []).filter(l => l.month === displayMonth);
+  }, [seg.pavementLayers, displayMonth]);
+
+  // 計算總厚度以決定每層高度比例
+  const totalThickness = layersForMonth.reduce((s, l) => s + l.thickness, 0);
+
+  // 所有月份斷面 (全部疊加，由下到上 = 最舊在底)
+  const allLayersGrouped = useMemo(() => {
+    return allMonths.map(m => ({
+      month: m,
+      layers: (seg.pavementLayers || []).filter(l => l.month === m),
+    }));
+  }, [seg.pavementLayers, allMonths]);
+
+  const totalAllThickness = allLayersGrouped.reduce(
+    (s, g) => s + g.layers.reduce((ss, l) => ss + l.thickness, 0), 0
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-[800] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
+          <div>
+            <h2 className="text-base font-black text-slate-900">鋪面斷面配置</h2>
+            <p className="text-xs text-slate-500 font-bold mt-0.5">{laneLabel} · {seg.property}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
+          >
+            <X size={16} className="text-slate-600" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-5 py-4 flex flex-col gap-5">
+          {(seg.pavementLayers || []).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-2 text-slate-400">
+              <Layers size={32} className="opacity-30" />
+              <span className="text-sm font-bold">尚無鋪面層資料</span>
+            </div>
+          ) : (
+            <>
+              {/* 月份 tabs */}
+              {allMonths.length > 1 && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {allMonths.map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setSelectedMonth(m)}
+                      className={cn(
+                        'px-3 py-1 rounded-full text-[11px] font-black transition-all',
+                        displayMonth === m
+                          ? 'bg-[#0284c7] text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      )}
+                    >
+                      {formatMonth(m)}
+                      {m === targetMonth && (
+                        <span className="ml-1 text-[9px] opacity-75">(本次)</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* 單月斷面圖 */}
+              {layersForMonth.length > 0 ? (
+                <div className="flex flex-col gap-0 rounded-xl overflow-hidden border border-slate-200 shadow-inner">
+                  {/* 路面頂部標示 */}
+                  <div className="bg-slate-700 text-white text-[10px] font-black text-center py-1.5 tracking-widest">
+                    ▲ 路面頂部
+                  </div>
+                  {layersForMonth.map((layer, i) => {
+                    const color = getPavementColor(
+                      layer.type.split('(')[0].trim().toUpperCase(),
+                      layer.thickness
+                    );
+                    const heightPx = totalThickness > 0
+                      ? Math.max(36, Math.round((layer.thickness / totalThickness) * 180))
+                      : 48;
+                    return (
+                      <div
+                        key={layer.id}
+                        className="relative flex items-center justify-between px-4 border-b border-black/10 last:border-b-0"
+                        style={{ backgroundColor: color, height: `${heightPx}px` }}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-[12px] font-black text-slate-900 drop-shadow-sm">
+                            {layer.type}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-700 opacity-80">
+                            第 {i + 1} 層
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white/70 px-2 py-0.5 rounded-full">
+                          <span className="text-[13px] font-black text-slate-900">
+                            {layer.thickness}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-700">cm</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {/* 路基 */}
+                  <div className="bg-amber-800/80 text-amber-100 text-[10px] font-black text-center py-2 tracking-widest">
+                    ▬ 路基
+                  </div>
+                  {/* 總厚度 */}
+                  <div className="bg-slate-50 border-t border-slate-200 flex items-center justify-between px-4 py-2">
+                    <span className="text-xs font-black text-slate-600">總鋪面厚度</span>
+                    <span className="text-base font-black text-[#0284c7]">{totalThickness} cm</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-8 text-slate-400 text-sm font-bold bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  此月份無資料
+                </div>
+              )}
+
+              {/* 全部施工歷程總覽 */}
+              {allMonths.length > 1 && (
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                    全部施工歷程
+                  </h3>
+                  <div className="flex flex-col rounded-xl overflow-hidden border border-slate-200 shadow-inner">
+                    <div className="bg-slate-700 text-white text-[10px] font-black text-center py-1.5 tracking-widest">
+                      ▲ 路面頂部（最新在上）
+                    </div>
+                    {allLayersGrouped.map((group, gi) =>
+                      group.layers.map((layer, i) => {
+                        const color = getPavementColor(
+                          layer.type.split('(')[0].trim().toUpperCase(),
+                          layer.thickness
+                        );
+                        const groupThick = group.layers.reduce((s, l) => s + l.thickness, 0);
+                        const heightPx = totalAllThickness > 0
+                          ? Math.max(28, Math.round((layer.thickness / totalAllThickness) * 240))
+                          : 36;
+                        return (
+                          <div
+                            key={layer.id}
+                            className="relative flex items-center justify-between px-4 border-b border-black/10 last:border-b-0"
+                            style={{ backgroundColor: color, height: `${heightPx}px` }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="text-[11px] font-black text-slate-900">{layer.type}</span>
+                              <span className="text-[9px] font-bold text-slate-700 opacity-70">
+                                {formatMonth(group.month)}
+                                {i === 0 && <span className="ml-1 text-[9px]">({groupThick}cm)</span>}
+                              </span>
+                            </div>
+                            <span className="text-[12px] font-black text-slate-900 bg-white/60 px-2 py-0.5 rounded-full">
+                              {layer.thickness}cm
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
+                    <div className="bg-amber-800/80 text-amber-100 text-[10px] font-black text-center py-2 tracking-widest">
+                      ▬ 路基
+                    </div>
+                    <div className="bg-slate-50 border-t border-slate-200 flex items-center justify-between px-4 py-2">
+                      <span className="text-xs font-black text-slate-600">累計總厚度</span>
+                      <span className="text-base font-black text-[#0284c7]">{totalAllThickness} cm</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // UI direction ↔ Segment direction 映射
@@ -74,6 +281,11 @@ export default function SurfaceView({
   segments,
   rampSegments,
 }: SurfaceViewProps) {
+  // ── 鋪面斷面 modal state ──
+  const [pavementModal, setPavementModal] = React.useState<{
+    seg: Segment | RampSegment;
+    laneLabel: string;
+  } | null>(null);
   // ── 匹配當前位置的主線履歷 ──
   const matchedMainlineSegs = useMemo(() => {
     const dataDir = DIR_UI_TO_DATA[direction];
@@ -133,7 +345,7 @@ export default function SurfaceView({
     );
   };
 
-  const renderHistoryCard = (historySeg: Segment | RampSegment | undefined) => {
+  const renderHistoryCard = (historySeg: Segment | RampSegment | undefined, laneLabel: string) => {
     if (!historySeg) {
       return (
         <div className="w-full flex-1 flex flex-col items-center justify-center bg-slate-50 border border-dashed border-slate-300 rounded-lg p-2 min-h-[120px]">
@@ -145,6 +357,7 @@ export default function SurfaceView({
     const targetMonth = historySeg.constructionYear + historySeg.constructionMonth;
     const info = getPavementDisplayInfo(historySeg.pavementLayers || [], targetMonth);
     const depth = getSegDepth(historySeg);
+    const hasLayers = (historySeg.pavementLayers || []).length > 0;
     
     return (
       <div 
@@ -165,6 +378,21 @@ export default function SurfaceView({
            <span className="text-[9px] font-bold text-slate-700 leading-none mt-1">{info.combinedType || '無資料'}</span>
            <span className="text-[10px] font-black text-slate-900 leading-none mt-1">{depth > 0 ? `${depth}cm` : ''}</span>
         </div>
+
+        {/* 查看斷面按鈕 */}
+        <button
+          onClick={() => setPavementModal({ seg: historySeg, laneLabel })}
+          className={cn(
+            'mt-2 w-full flex items-center justify-center gap-1 py-1 rounded-md text-[9px] font-black transition-all active:scale-95',
+            hasLayers
+              ? 'bg-[#0284c7]/20 hover:bg-[#0284c7]/40 text-[#0284c7] border border-[#0284c7]/30'
+              : 'bg-black/5 text-slate-400 border border-dashed border-slate-300 cursor-default'
+          )}
+          disabled={!hasLayers}
+        >
+          <Layers size={9} />
+          斷面
+        </button>
       </div>
     );
   };
@@ -617,7 +845,7 @@ export default function SurfaceView({
                     {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).innerShoulderWidth > 0 && (
                       <div className="flex flex-col items-center justify-start flex-1 gap-2">
                         <span className="text-slate-500 font-bold text-[10px] bg-slate-100 px-3 py-1 rounded-full">內肩</span>
-                        {renderHistoryCard(matchedMainlineSegs.find(s => s.lanes.includes('內側路肩')))}
+                        {renderHistoryCard(matchedMainlineSegs.find(s => s.lanes.includes('內側路肩')), '內側路肩')}
                       </div>
                     )}
 
@@ -631,7 +859,7 @@ export default function SurfaceView({
                       return (
                         <div key={i} className="flex flex-col items-center justify-start flex-1 gap-2">
                           <span className="text-slate-500 font-bold text-[10px] bg-slate-100 px-3 py-1 rounded-full">車道{i + 1}</span>
-                          {renderHistoryCard(historySeg)}
+                          {renderHistoryCard(historySeg, laneStr)}
                         </div>
                       );
                     })}
@@ -641,7 +869,7 @@ export default function SurfaceView({
                       return (
                         <div key={`aux-hist-${i}`} className="flex flex-col items-center justify-start flex-1 gap-2">
                           <span className="text-blue-500 font-bold text-[10px] bg-blue-50 px-3 py-1 rounded-full">{aux.name}</span>
-                          {renderHistoryCard(historySeg)}
+                          {renderHistoryCard(historySeg, aux.name)}
                         </div>
                       );
                     })}
@@ -649,7 +877,7 @@ export default function SurfaceView({
                     {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).outerShoulderWidth > 0 && (
                       <div className="flex flex-col items-center justify-start flex-1 gap-2">
                         <span className="text-slate-500 font-bold text-[10px] bg-slate-100 px-3 py-1 rounded-full">外肩</span>
-                        {renderHistoryCard(matchedMainlineSegs.find(s => s.lanes.includes('外側路肩')))}
+                        {renderHistoryCard(matchedMainlineSegs.find(s => s.lanes.includes('外側路肩')), '外側路肩')}
                       </div>
                     )}
                   </div>
@@ -659,6 +887,15 @@ export default function SurfaceView({
           )}
         </main>
       </div>
+
+      {/* 鋪面斷面 Modal */}
+      {pavementModal && (
+        <PavementSectionModal
+          seg={pavementModal.seg}
+          laneLabel={pavementModal.laneLabel}
+          onClose={() => setPavementModal(null)}
+        />
+      )}
     </div>
   );
 }
