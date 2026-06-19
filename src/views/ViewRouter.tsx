@@ -119,7 +119,11 @@ export default function ViewRouter(props: ViewRouterProps) {
   };
 
   const backFromEdit = () => {
-    if (editingSegmentId) setHighlightSegmentId(editingSegmentId);
+    if (editingSegmentId) {
+      setHighlightSegmentId(editingSegmentId);
+      // 確保 highway tab 對齊，planning 和 mainline 都需要
+      if (draftSegment?.highway) setActiveHistoryHighway(draftSegment.highway);
+    }
     setDraftSegment(null);
     setEditingSegmentId(null);
     setSubPage('none');
