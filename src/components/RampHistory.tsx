@@ -132,10 +132,8 @@ export default function RampHistory(props: RampHistoryProps) {
       const group = map.get(key)!;
       group.segments.push(ramp);
       if (ramp.length > group.length) group.length = ramp.length;
-      if (!group.rampName && ramp.rampName) group.rampName = ramp.rampName;
-    });
-    
-    return Array.from(map.values());
+    const groups = Array.from(map.values());
+    return groups;
   }, [filteredRamps]);
 
   const displayRamps = useMemo(() => {

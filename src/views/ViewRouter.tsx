@@ -146,10 +146,19 @@ export default function ViewRouter(props: ViewRouterProps) {
             const oldRamp = rampSegments.find(s => s.id === editingRampId);
             if (oldRamp) {
               let updated = rampSegments.map(s => s.id === editingRampId ? ramp : s);
-              updated = updated.map(s => s.rampId === oldRamp.rampId ? {
-                ...s, rampId: ramp.rampId, rampName: ramp.rampName, rampNo: ramp.rampNo,
-                highway: ramp.highway, interchange: ramp.interchange, length: ramp.length, notes: ramp.notes,
-              } : s);
+              updated = updated.map(s => {
+                const isSameRamp = oldRamp.rampId 
+                  ? s.rampId === oldRamp.rampId 
+                  : (s.id === oldRamp.id || s.rampId === oldRamp.id);
+                
+                if (isSameRamp) {
+                  return {
+                    ...s, rampId: ramp.rampId, rampName: ramp.rampName, rampNo: ramp.rampNo,
+                    highway: ramp.highway, interchange: ramp.interchange, length: ramp.length, notes: ramp.notes,
+                  };
+                }
+                return s;
+              });
               setRampSegments(updated);
             }
             syncGas(RAMP_URL, 'saveRamp', ramp.interchange, ramp);

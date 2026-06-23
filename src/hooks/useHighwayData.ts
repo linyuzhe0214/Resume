@@ -139,6 +139,12 @@ export function useHighwayData({
         }
 
         if (Array.isArray(rampData) && rampData.length > 0) {
+          // 初始載入時依照編碼或名稱進行排序，避免後端順序錯亂
+          rampData.sort((a, b) => {
+            const idA = a.rampId || a.rampName || a.id;
+            const idB = b.rampId || b.rampName || b.id;
+            return idA.localeCompare(idB, 'zh-TW', { numeric: true });
+          });
           setRampSegments(rampData);
         }
 
@@ -216,23 +222,21 @@ export function useHighwayData({
 
   const handleUpdateRampOrder = (newOrder: string[]) => {
     setRampSegments(prev => {
-      const sorted = [...prev].sort((a, b) => {
-        const idA = a.rampId || a.id;
-        const idB = b.rampId || b.id;
-        const idxA = newOrder.indexOf(idA);
-        const idxB = newOrder.indexOf(idB);
-        
-        // 如果都在新排序中，按新排序走
-        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-        // 如果 A 在新排序中而 B 不在，A 優先 (或保持相對位置)
-        // 這裡為了不影響其他公路的排序，我們只針對有出現在 newOrder 中的進行重新排序
-        return 0; 
+      const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
+      
+      const inOrderItems = prev.filter(s => newOrder.includes(getGroupId(s)));
+      const outOfOrderItems = prev.filter(s => !newOrder.includes(getGroupId(s)));
+      
+      inOrderItems.sort((a, b) => {
+        const idxA = newOrder.indexOf(getGroupId(a));
+        const idxB = newOrder.indexOf(getGroupId(b));
+        return idxA - idxB;
       });
       
       // 同步到雲端 (可選，根據需求)
-      // sorted.forEach(r => syncGas(RAMP_URL, 'saveRamp', r.interchange, r));
+      // inOrderItems.forEach(r => syncGas(RAMP_URL, 'saveRamp', r.interchange, r));
       
-      return sorted;
+      return [...outOfOrderItems, ...inOrderItems];
     });
     showToast('匝道排序已更新', 'success');
   };
