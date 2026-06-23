@@ -119,7 +119,7 @@ export default function RampHistory(props: RampHistoryProps) {
     const map = new Map<string, { groupId: string, rampId: string, rampName: string, length: number, segments: RampSegment[] }>();
     
     filteredRamps.forEach(ramp => {
-      const key = ramp.rampId || ramp.id;
+      const key = ramp.rampId || ramp.rampName || ramp.id;
       if (!map.has(key)) {
         map.set(key, {
           groupId: key,
