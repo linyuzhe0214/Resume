@@ -342,8 +342,8 @@ export default function RampHistory(props: RampHistoryProps) {
               isMapExpanded ? "flex-1 p-0" : "p-1.5 sm:p-3"
             )}>
               <div className={cn(
-                "w-full bg-slate-100/50 relative flex flex-col items-center justify-center shadow-inner transition-all duration-300 overflow-hidden aspect-[1.85]",
-                isMapExpanded ? "rounded-none border-0" : "rounded-xl border border-slate-200"
+                "w-full bg-slate-100/50 relative flex flex-col items-center justify-center shadow-inner transition-all duration-300 overflow-hidden",
+                isMapExpanded ? "rounded-none border-0 aspect-[1.414]" : "rounded-xl border border-slate-200 aspect-[1.85]"
               )}>
                 <span className="text-slate-400 font-bold mb-2 flex flex-col items-center gap-2 text-center px-4 z-0 relative">
                   <MapPin className="w-8 h-8 opacity-50" />
@@ -353,8 +353,13 @@ export default function RampHistory(props: RampHistoryProps) {
                 <iframe 
                   key={`${selectedHighway}-${selectedInterchange}`}
                   src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${selectedHighway}-${selectedInterchange}.pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH`} 
-                  className="absolute z-10 bg-white border-0"
-                  style={{
+                  className="absolute z-10 bg-white border-0 transition-all duration-300"
+                  style={isMapExpanded ? {
+                    width: '100%',
+                    height: '100%',
+                    top: '0',
+                    left: '0'
+                  } : {
                     width: '110%',
                     height: '150%',
                     top: '-13%',
