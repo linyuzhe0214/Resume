@@ -128,14 +128,15 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
               <div className="relative">
                 <select
                   className="w-full bg-slate-50 border-none h-12 px-4 pr-10 rounded-xl focus:ring-2 focus:ring-[#005fb8]/20 font-black text-slate-800 appearance-none"
-                  value={formData.rampId}
+                  value={formData.rampId || formData.rampName || formData.id || ""}
                   onChange={(e) => {
                     const selectedId = e.target.value;
-                    const rampTemplate = availableRamps?.find(r => r.rampId === selectedId);
+                    const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
+                    const rampTemplate = availableRamps?.find(r => getGroupId(r) === selectedId);
                     if (rampTemplate) {
                       handleChange({
                         ...formData, 
-                        rampId: selectedId,
+                        rampId: rampTemplate.rampId,
                         rampName: rampTemplate.rampName,
                         rampNo: rampTemplate.rampNo,
                         laneCount: rampTemplate.laneCount,
@@ -150,9 +151,9 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                 >
                   <option value="" disabled>請選擇匝道編碼</option>
                   {(() => {
-                    const detailedIds = availableRamps?.map(r => r.rampId) || [];
-                    // Merge with any IDs already in history that might not be in detailed data
-                    const historyIds = segment && segment.rampId ? [segment.rampId] : []; 
+                    const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
+                    const detailedIds = availableRamps?.map(getGroupId) || [];
+                    const historyIds = segment ? [getGroupId(segment)] : []; 
                     const allIds = Array.from(new Set([...detailedIds, ...historyIds])).filter(Boolean);
                     return allIds.map(id => (
                       <option key={id} value={id}>{id}</option>

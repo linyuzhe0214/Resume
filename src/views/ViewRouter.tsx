@@ -148,9 +148,8 @@ export default function ViewRouter(props: ViewRouterProps) {
               let updated = rampSegments.map(s => s.id === editingRampId ? ramp : s);
               const relatedIds: string[] = [];
               updated = updated.map(s => {
-                const isSameRamp = oldRamp.rampId 
-                  ? s.rampId === oldRamp.rampId 
-                  : (s.id === oldRamp.id || s.rampId === oldRamp.id);
+                const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
+                const isSameRamp = getGroupId(s) === getGroupId(oldRamp);
                 
                 if (isSameRamp) {
                   relatedIds.push(s.id);
@@ -184,9 +183,11 @@ export default function ViewRouter(props: ViewRouterProps) {
           const seg = rampSegments.find(s => s.id === id);
           if (seg) {
             // 刪除整個 rampId 群組的所有 segments（詳細資料代表整個匝道）
-            const toDelete = rampSegments.filter(s => s.rampId === seg.rampId);
+            const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
+            const groupId = getGroupId(seg);
+            const toDelete = rampSegments.filter(s => getGroupId(s) === groupId);
             toDelete.forEach(s => syncGas(RAMP_URL, 'deleteRamp', s.interchange, s.id, true));
-            setRampSegments(rampSegments.filter(s => s.rampId !== seg.rampId));
+            setRampSegments(rampSegments.filter(s => getGroupId(s) !== groupId));
           } else {
             setRampSegments(rampSegments.filter(s => s.id !== id));
           }
@@ -459,9 +460,10 @@ export default function ViewRouter(props: ViewRouterProps) {
           setSubPage('editRampHistory');
         }}
         onDeleteRamp={(identifier) => {
-          const toDelete = rampSegments.filter(s => s.rampId === identifier || (!s.rampId && s.id === identifier));
+          const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
+          const toDelete = rampSegments.filter(s => getGroupId(s) === identifier);
           toDelete.forEach(seg => syncGas(RAMP_URL, 'deleteRamp', seg.interchange, seg.id, true));
-          setRampSegments(rampSegments.filter(s => !(s.rampId === identifier || (!s.rampId && s.id === identifier))));
+          setRampSegments(rampSegments.filter(s => getGroupId(s) !== identifier));
         }}
       />
     );

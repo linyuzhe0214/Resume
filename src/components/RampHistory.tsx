@@ -489,8 +489,9 @@ export default function RampHistory(props: RampHistoryProps) {
                               <Edit2 size={16} />
                             </button>
                             <button 
-                              onClick={() => {
-                                setDeletingRampId(ramp.rampId || ramp.id);
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingRampId(group.groupId);
                                 setShowDeleteConfirm(true);
                               }}
                               className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-90"
@@ -527,7 +528,7 @@ export default function RampHistory(props: RampHistoryProps) {
                         </button>
                         <button 
                           onClick={() => {
-                            setDeletingRampId(ramp.rampId || ramp.id);
+                            setDeletingRampId(group.groupId);
                             setShowDeleteConfirm(true);
                           }}
                           className="p-3 bg-red-50 text-red-500 rounded-2xl active:scale-90 transition-all"
