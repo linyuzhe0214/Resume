@@ -116,7 +116,7 @@ export default function RampHistory(props: RampHistoryProps) {
   };
 
   const groupedRamps = useMemo(() => {
-    const map = new Map<string, { groupId: string, rampId: string, rampName: string, length: number, segments: RampSegment[] }>();
+    const map = new Map<string, { groupId: string, rampId: string, rampName: string, length: number, detailLength: number, segments: RampSegment[] }>();
     
     filteredRamps.forEach(ramp => {
       const key = ramp.rampId || ramp.rampName || ramp.id;
@@ -125,16 +125,27 @@ export default function RampHistory(props: RampHistoryProps) {
           groupId: key,
           rampId: ramp.rampId || '',
           rampName: ramp.rampName || '',
-          length: ramp.length || 0,
+          length: 0,          // 從 segments endMileage 推算，避免被詳細資料長度影響
+          detailLength: ramp.length || 0, // 詳細資料表顯示用
           segments: []
         });
       }
       const group = map.get(key)!;
       group.segments.push(ramp);
       if (!group.rampName && ramp.rampName) group.rampName = ramp.rampName;
+      // 更新 detailLength（取最後加入 segment 的值，通常同一 group 值相同）
+      if (ramp.length) group.detailLength = ramp.length;
     });
     
-    const groups = Array.from(map.values());
+    // 計算繪圖用 length：取各 segment 的 endMileage 最大值，若無則 fallback 到 detailLength
+    const groups = Array.from(map.values()).map(group => {
+      const maxEnd = Math.max(
+        0,
+        ...group.segments.map(s => s.endMileage || 0),
+        ...group.segments.flatMap(s => s.maintenanceHistory?.map(m => m.endMileage) ?? [])
+      );
+      return { ...group, length: maxEnd > 0 ? maxEnd : group.detailLength };
+    });
     return groups;
   }, [filteredRamps]);
 
@@ -688,7 +699,7 @@ export default function RampHistory(props: RampHistoryProps) {
                     </span>
                   </div>
                   <div className="flex items-center justify-center bg-yellow-50/50 font-bold text-xs sm:text-sm text-slate-800 border-l border-slate-100 border-b border-white">
-                    {group.length}
+                    {group.detailLength || group.length}
                   </div>
                   <div className="relative bg-yellow-50/50 flex items-center px-2 sm:px-4 border-b border-white rounded-r-md">
                     {scaleMarkers.map(val => (
