@@ -240,23 +240,6 @@ export default function ViewRouter(props: ViewRouterProps) {
             showToast('已複製資料為新草稿，請修改後儲存');
           }
         }}
-        onCopyPavement={(targetIds, layers) => {
-          const updated = rampSegments.map(s =>
-            targetIds.includes(s.id) ? {
-              ...s,
-              pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })),
-              constructionYear: s.direction === draftRamp?.direction ? (draftRamp?.constructionYear || s.constructionYear) : s.constructionYear,
-              constructionMonth: s.direction === draftRamp?.direction ? (draftRamp?.constructionMonth || s.constructionMonth) : s.constructionMonth,
-              completionTime: s.direction === draftRamp?.direction ? (draftRamp?.completionTime || s.completionTime) : s.completionTime,
-            } : s
-          );
-          setRampSegments(updated);
-          targetIds.forEach(id => {
-            const u = updated.find(r => r.id === id);
-            if (u) syncGas(RAMP_URL, 'saveRamp', u.interchange, u);
-          });
-          showToast(`已成功複製鋪面斷面至 ${targetIds.length} 個施工歷史`);
-        }}
         onDelete={(id) => {
           const seg = rampSegments.find(s => s.id === id);
           if (seg) syncGas(RAMP_URL, 'deleteRamp', seg.interchange, id, true);

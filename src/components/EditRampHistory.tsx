@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Edit2, Calendar, ChevronDown, Trash2, Copy } from 'lucide-react';
+import { ArrowLeft, Edit2, Calendar, ChevronDown, Trash2 } from 'lucide-react';
 import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
-import { formatMonth, getPavementDisplayInfo, getColorFromLabel } from '../utils/pavement';
+import { formatMonth } from '../utils/pavement';
 
 interface EditRampHistoryProps {
   segment?: RampSegment;
@@ -12,16 +12,13 @@ interface EditRampHistoryProps {
   onSave: (segment: RampSegment) => void;
   onDelete?: (id: string) => void;
   onCopy?: () => void;
-  onCopyPavement?: (targetIds: string[], layers: RampSegment['pavementLayers']) => void;
   allRampSegs?: RampSegment[]; // 用於複製鋪面，同匹道所有歷史
   onBack: () => void;
   onNavigateToPavement: () => void;
 }
 
-export default function EditRampHistory({ segment, availableRamps, allRampSegs = [], onChange, onSave, onDelete, onCopy, onCopyPavement, onBack, onNavigateToPavement }: EditRampHistoryProps) {
+export default function EditRampHistory({ segment, availableRamps, allRampSegs = [], onChange, onSave, onDelete, onCopy, onBack, onNavigateToPavement }: EditRampHistoryProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showCopyPavementModal, setShowCopyPavementModal] = useState(false);
-  const [copyTargetIds, setCopyTargetIds] = useState<string[]>([]);
   const [formData, setFormData] = useState<RampSegment>(segment || {
     id: '',
     highway: '',
@@ -50,24 +47,6 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
 
     return errors.length > 0 ? errors.join('；') : null;
   }, [formData]);
-
-  const getSegmentColor = (ramp: RampSegment) => {
-    if (!ramp.pavementLayers || ramp.pavementLayers.length === 0) {
-      if (ramp.maintenanceHistory && ramp.maintenanceHistory.length > 0) {
-         const latest = ramp.maintenanceHistory[ramp.maintenanceHistory.length - 1];
-         return getColorFromLabel(latest.label);
-      }
-      return '#e7e6e6';
-    }
-    const targetMonth = ramp.constructionYear + (ramp.constructionMonth || '').padStart(2, '0');
-    const info = getPavementDisplayInfo(ramp.pavementLayers, targetMonth);
-    
-    if (info.thickness === 0 && ramp.pavementLayers.length > 0) {
-      const sortedMonths = Array.from(new Set(ramp.pavementLayers.map(l => l.month))).sort((a, b) => b.localeCompare(a));
-      return getPavementDisplayInfo(ramp.pavementLayers, sortedMonths[0]).color;
-    }
-    return info.color;
-  };
 
   useEffect(() => {
     if (segment) {
@@ -342,15 +321,6 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                   <h2 className="font-bold text-lg text-slate-800">Pavement Cross-section (鋪面斷面圖說)</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  {onCopyPavement && formData.pavementLayers.length > 0 && (
-                    <button
-                      onClick={() => { setCopyTargetIds([]); setShowCopyPavementModal(true); }}
-                      className="text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full text-xs font-bold active:scale-95 duration-150 hover:bg-emerald-100 flex items-center gap-1"
-                    >
-                      <Copy className="w-3 h-3" />
-                      複製斷面
-                    </button>
-                  )}
                   <button 
                     onClick={onNavigateToPavement}
                     className="text-[#005fb8] font-bold text-sm flex items-center gap-1 hover:underline"
@@ -433,57 +403,6 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
           </div>
         </section>
       </main>
-
-      {/* Copy Pavement Modal */}
-      {showCopyPavementModal && (
-        <div className="fixed inset-0 z-[300] flex items-end justify-center" onClick={() => setShowCopyPavementModal(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-full max-w-md bg-white rounded-t-3xl p-6 pb-10 shadow-2xl animate-in slide-in-from-bottom-4 duration-300" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-black text-lg text-slate-900">複製鋪面斷面至</h3>
-              <button onClick={() => setShowCopyPavementModal(false)} className="text-slate-400 hover:text-slate-600 text-xs font-bold px-2 py-1 rounded-lg hover:bg-slate-100">✕ 關閉</button>
-            </div>
-            <p className="text-xs text-slate-500 mb-4">選擇要套用相同鋪面斷面的其他色塊區域（同匝道，排除當前色塊）</p>
-            <div className="max-h-64 overflow-y-auto space-y-0.5">
-              {allRampSegs
-                .filter(s => s.id !== formData.id && s.rampId === formData.rampId)
-                .map(s => (
-                  <label key={s.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-slate-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 accent-[#005fb8]"
-                      checked={copyTargetIds.includes(s.id)}
-                      onChange={e => setCopyTargetIds(prev => e.target.checked ? [...prev, s.id] : prev.filter(id => id !== s.id))}
-                    />
-                    <div className="w-3 h-3 rounded-sm border border-black/10 shrink-0" style={{ backgroundColor: getSegmentColor(s) }}></div>
-                    <div>
-                      <span className="font-bold text-sm text-slate-800 mr-2">{s.completionTime || s.constructionYear + '/' + s.constructionMonth}</span>
-                      <span className="text-xs text-slate-500">{s.direction === 'Northbound' || s.direction === 'Eastbound' ? '北上/東向' : '南下/西向'}</span>
-                      <span className="text-[10px] text-slate-400 ml-2">{s.startMileage}m ~ {s.endMileage}m</span>
-                    </div>
-                  </label>
-                ))}
-              {allRampSegs.filter(s => s.id !== formData.id && s.rampId === formData.rampId).length === 0 && (
-                <p className="text-sm text-slate-400 text-center py-4">無其他同匝道色塊區域</p>
-              )}
-            </div>
-            <div className="mt-5 flex gap-3">
-              <button onClick={() => setShowCopyPavementModal(false)} className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold text-sm">取消</button>
-              <button
-                disabled={copyTargetIds.length === 0}
-                onClick={() => {
-                  if (onCopyPavement) onCopyPavement(copyTargetIds, formData.pavementLayers);
-                  setShowCopyPavementModal(false);
-                  setCopyTargetIds([]);
-                }}
-                className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-all"
-              >
-                套用至 {copyTargetIds.length} 個色塊
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <ConfirmDialog 
         isOpen={showDeleteConfirm}
