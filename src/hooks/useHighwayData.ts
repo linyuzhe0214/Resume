@@ -139,13 +139,24 @@ export function useHighwayData({
         }
 
         if (Array.isArray(rampData) && rampData.length > 0) {
-          // 初始載入時依照編碼或名稱進行排序，避免後端順序錯亂
-          rampData.sort((a, b) => {
-            const idA = a.rampId || a.rampName || a.id;
-            const idB = b.rampId || b.rampName || b.id;
-            return idA.localeCompare(idB, 'zh-TW', { numeric: true });
+          setRampSegments(prev => {
+            const getGroupId = (r: any) => r.rampId || r.rampName || r.id;
+            const existingOrder = Array.from(new Set(prev.map(getGroupId)));
+            
+            rampData.sort((a, b) => {
+              const idA = getGroupId(a);
+              const idB = getGroupId(b);
+              const idxA = existingOrder.indexOf(idA);
+              const idxB = existingOrder.indexOf(idB);
+              
+              if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+              if (idxA !== -1) return -1;
+              if (idxB !== -1) return 1;
+              
+              return idA.localeCompare(idB, 'zh-TW', { numeric: true });
+            });
+            return rampData;
           });
-          setRampSegments(rampData);
         }
 
         showToast('雲端資料載入成功', 'success');
