@@ -131,7 +131,6 @@ export default function RampHistory(props: RampHistoryProps) {
       }
       const group = map.get(key)!;
       group.segments.push(ramp);
-      if (ramp.length > group.length) group.length = ramp.length;
       if (!group.rampName && ramp.rampName) group.rampName = ramp.rampName;
     });
     
@@ -618,7 +617,7 @@ export default function RampHistory(props: RampHistoryProps) {
                 const allItems: any[] = [];
                 group.segments.forEach(ramp => {
                   const start = ramp.startMileage || 0;
-                  const end = ramp.endMileage || group.length;
+                  const end = Math.min(ramp.endMileage || group.length, group.length);
                   if (end > start) {
                     const data = getSegmentData(ramp);
                     allItems.push({
@@ -636,7 +635,7 @@ export default function RampHistory(props: RampHistoryProps) {
                   }
                   ramp.maintenanceHistory?.forEach(event => {
                     const start = event.startMileage;
-                    const end = event.endMileage;
+                    const end = Math.min(event.endMileage, group.length);
                     if (end > start) {
                       allItems.push({
                         id: event.id,
@@ -712,10 +711,12 @@ export default function RampHistory(props: RampHistoryProps) {
                             let occupied: { start: number, end: number }[] = [];
                             group.segments.forEach(r => {
                               const s = r.startMileage || 0;
-                              const e = r.endMileage || group.length;
+                              const e = Math.min(r.endMileage || group.length, group.length);
                               if (e > s) occupied.push({ start: s, end: e });
                               r.maintenanceHistory?.forEach(m => {
-                                if (m.endMileage > m.startMileage) occupied.push({ start: m.startMileage, end: m.endMileage });
+                                const ms = m.startMileage;
+                                const me = Math.min(m.endMileage, group.length);
+                                if (me > ms) occupied.push({ start: ms, end: me });
                               });
                             });
                             
@@ -740,7 +741,7 @@ export default function RampHistory(props: RampHistoryProps) {
                         {group.segments.map(ramp => {
                           const segmentData = getSegmentData(ramp);
                           const start = ramp.startMileage || 0;
-                          const end = ramp.endMileage || group.length;
+                          const end = Math.min(ramp.endMileage || group.length, group.length);
                           if (end <= start) return null;
                           const segmentColor = segmentData.color;
                           
@@ -783,8 +784,10 @@ export default function RampHistory(props: RampHistoryProps) {
 
                         {group.segments.map(ramp => 
                           ramp.maintenanceHistory?.map((event) => {
-                            const left = (event.startMileage / group.length) * 100;
-                            const width = ((event.endMileage - event.startMileage) / group.length) * 100;
+                            const eventStart = event.startMileage;
+                            const eventEnd = Math.min(event.endMileage, group.length);
+                            const left = (eventStart / group.length) * 100;
+                            const width = ((eventEnd - eventStart) / group.length) * 100;
                             if (width <= 0) return null;
                             const eventColor = getColorFromLabel(event.label);
                             

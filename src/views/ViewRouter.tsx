@@ -146,12 +146,14 @@ export default function ViewRouter(props: ViewRouterProps) {
             const oldRamp = rampSegments.find(s => s.id === editingRampId);
             if (oldRamp) {
               let updated = rampSegments.map(s => s.id === editingRampId ? ramp : s);
+              const relatedIds: string[] = [];
               updated = updated.map(s => {
                 const isSameRamp = oldRamp.rampId 
                   ? s.rampId === oldRamp.rampId 
                   : (s.id === oldRamp.id || s.rampId === oldRamp.id);
                 
                 if (isSameRamp) {
+                  relatedIds.push(s.id);
                   return {
                     ...s, rampId: ramp.rampId, rampName: ramp.rampName, rampNo: ramp.rampNo,
                     highway: ramp.highway, interchange: ramp.interchange, length: ramp.length, notes: ramp.notes,
@@ -160,6 +162,13 @@ export default function ViewRouter(props: ViewRouterProps) {
                 return s;
               });
               setRampSegments(updated);
+              
+              relatedIds.forEach(id => {
+                const u = updated.find(seg => seg.id === id);
+                if (u && u.id !== ramp.id) {
+                  syncGas(RAMP_URL, 'saveRamp', u.interchange, u);
+                }
+              });
             }
             syncGas(RAMP_URL, 'saveRamp', ramp.interchange, ramp);
           } else {
