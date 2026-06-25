@@ -3,7 +3,7 @@ import { ArrowLeft, Edit2, Calendar, ChevronDown, Trash2, Copy } from 'lucide-re
 import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
-import { formatMonth } from '../utils/pavement';
+import { formatMonth, getPavementDisplayInfo, getColorFromLabel } from '../utils/pavement';
 
 interface EditRampHistoryProps {
   segment?: RampSegment;
@@ -50,6 +50,24 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
 
     return errors.length > 0 ? errors.join('；') : null;
   }, [formData]);
+
+  const getSegmentColor = (ramp: RampSegment) => {
+    if (!ramp.pavementLayers || ramp.pavementLayers.length === 0) {
+      if (ramp.maintenanceHistory && ramp.maintenanceHistory.length > 0) {
+         const latest = ramp.maintenanceHistory[ramp.maintenanceHistory.length - 1];
+         return getColorFromLabel(latest.label);
+      }
+      return '#e7e6e6';
+    }
+    const targetMonth = ramp.constructionYear + (ramp.constructionMonth || '').padStart(2, '0');
+    const info = getPavementDisplayInfo(ramp.pavementLayers, targetMonth);
+    
+    if (info.thickness === 0 && ramp.pavementLayers.length > 0) {
+      const sortedMonths = Array.from(new Set(ramp.pavementLayers.map(l => l.month))).sort((a, b) => b.localeCompare(a));
+      return getPavementDisplayInfo(ramp.pavementLayers, sortedMonths[0]).color;
+    }
+    return info.color;
+  };
 
   useEffect(() => {
     if (segment) {
@@ -425,7 +443,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
               <h3 className="font-black text-lg text-slate-900">複製鋪面斷面至</h3>
               <button onClick={() => setShowCopyPavementModal(false)} className="text-slate-400 hover:text-slate-600 text-xs font-bold px-2 py-1 rounded-lg hover:bg-slate-100">✕ 關閉</button>
             </div>
-            <p className="text-xs text-slate-500 mb-4">選擇要套用相同鋪面斷面的其他施工歷史（同匝道，排除當前歷史）</p>
+            <p className="text-xs text-slate-500 mb-4">選擇要套用相同鋪面斷面的其他色塊區域（同匝道，排除當前色塊）</p>
             <div className="max-h-64 overflow-y-auto space-y-0.5">
               {allRampSegs
                 .filter(s => s.id !== formData.id && s.rampId === formData.rampId)
@@ -437,6 +455,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                       checked={copyTargetIds.includes(s.id)}
                       onChange={e => setCopyTargetIds(prev => e.target.checked ? [...prev, s.id] : prev.filter(id => id !== s.id))}
                     />
+                    <div className="w-3 h-3 rounded-sm border border-black/10 shrink-0" style={{ backgroundColor: getSegmentColor(s) }}></div>
                     <div>
                       <span className="font-bold text-sm text-slate-800 mr-2">{s.completionTime || s.constructionYear + '/' + s.constructionMonth}</span>
                       <span className="text-xs text-slate-500">{s.direction === 'Northbound' || s.direction === 'Eastbound' ? '北上/東向' : '南下/西向'}</span>
@@ -445,7 +464,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                   </label>
                 ))}
               {allRampSegs.filter(s => s.id !== formData.id && s.rampId === formData.rampId).length === 0 && (
-                <p className="text-sm text-slate-400 text-center py-4">無其他同匝道施工歷史</p>
+                <p className="text-sm text-slate-400 text-center py-4">無其他同匝道色塊區域</p>
               )}
             </div>
             <div className="mt-5 flex gap-3">
@@ -459,7 +478,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                 }}
                 className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-40 active:scale-95 transition-all"
               >
-                套用至 {copyTargetIds.length} 個歷史
+                套用至 {copyTargetIds.length} 個色塊
               </button>
             </div>
           </div>
