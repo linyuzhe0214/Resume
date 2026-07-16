@@ -137,14 +137,14 @@ export default function RampHistory(props: RampHistoryProps) {
       if (ramp.length) group.detailLength = ramp.length;
     });
     
-    // 計算繪圖用 length：取各 segment 的 endMileage 最大值，若無則 fallback 到 detailLength
+    // 計算繪圖用 length：優先用詳細資料設定的 length，避免施工履歷的 endMileage 影響圖形寬度
     const groups = Array.from(map.values()).map(group => {
       const maxEnd = Math.max(
         0,
         ...group.segments.map(s => s.endMileage || 0),
         ...group.segments.flatMap(s => s.maintenanceHistory?.map(m => m.endMileage) ?? [])
       );
-      return { ...group, length: maxEnd > 0 ? maxEnd : group.detailLength };
+      return { ...group, length: group.detailLength > 0 ? group.detailLength : maxEnd };
     });
     return groups;
   }, [filteredRamps]);
