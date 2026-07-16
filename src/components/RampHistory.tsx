@@ -690,20 +690,12 @@ export default function RampHistory(props: RampHistoryProps) {
                 const maxCalloutLevel = callouts.length > 0 ? Math.max(...callouts.map(c => c.level)) : -1;
                 const exportPaddingBottom = isExporting && maxCalloutLevel >= 0 ? `${maxCalloutLevel * 40 + 44}px` : '0px';
 
-                // ── Lane assignment（interval scheduling）──
-                // 不重疊的色塊同一 lane，只有真正重疊才需要多 lane
+                // ── 單一圖層 (Single Lane) ──
+                // 取消往下新增一層，所有色塊維持同一層。
+                // 為了避免短色塊被長色塊完全蓋住，將資料依據長度由大到小排序，較短的會疊在上方。
                 const LANE_H = 36;
-                const sortedItems = [...allItems].sort((a, b) => a.start - b.start);
-                const laneEnds: number[] = []; // 每個 lane 目前的最右端
-                const itemLanes: number[] = [];
-                sortedItems.forEach((item) => {
-                  let lane = laneEnds.findIndex(end => end <= item.start);
-                  if (lane === -1) lane = laneEnds.length;
-                  laneEnds[lane] = item.end;
-                  itemLanes.push(lane);
-                });
-                const numLanes = Math.max(1, laneEnds.length);
-                const totalBarH = numLanes * LANE_H;
+                const sortedItems = [...allItems].sort((a, b) => (b.end - b.start) - (a.end - a.start));
+                const totalBarH = LANE_H;
 
                 return (
                 <div 
@@ -778,7 +770,6 @@ export default function RampHistory(props: RampHistoryProps) {
                       title="點擊空白處新增履歷"
                     >
                       {sortedItems.map((item, itemIdx) => {
-                        const lane = itemLanes[itemIdx];
                         const w = ((item.end - item.start) / group.length) * 100;
                         if (w <= 0) return null;
                         const isSmall = (item.end - item.start) < INLINE_MIN_M;
@@ -800,7 +791,7 @@ export default function RampHistory(props: RampHistoryProps) {
                             style={{
                               left: `${(item.start / group.length) * 100}%`,
                               width: `${w}%`,
-                              top: `${lane * LANE_H}px`,
+                              top: `0px`,
                               height: `${LANE_H}px`,
                               backgroundColor: item.color,
                             }}
