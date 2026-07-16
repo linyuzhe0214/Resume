@@ -172,7 +172,7 @@ export default function EditRamp({ segment, onChange, onSave, onDelete, onBack, 
                   value={formData.length}
                   onChange={(e) => {
                     const newLength = Number(e.target.value);
-                    handleChange({...formData, length: newLength, endMileage: formData.startMileage + newLength});
+                    handleChange({...formData, length: newLength});
                   }}
                   placeholder="例如: 670"
                 />

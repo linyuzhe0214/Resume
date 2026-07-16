@@ -214,10 +214,21 @@ export default function ViewRouter(props: ViewRouterProps) {
   }
 
   if (subPage === 'editRampHistory') {
+    // 只顯示當前交流道的匝道，每個 rampId 取一個代表（詳細資料）
+    const currentInterchange = draftRamp?.interchange || activeRampInterchange;
+    const currentHighway = draftRamp?.highway || activeRampHighway;
+    const seenGroupIds = new Set<string>();
+    const filteredAvailableRamps = rampSegments.filter(r => {
+      if (r.highway !== currentHighway || r.interchange !== currentInterchange) return false;
+      const groupId = r.rampId || r.rampName || r.id;
+      if (seenGroupIds.has(groupId)) return false;
+      seenGroupIds.add(groupId);
+      return true;
+    });
     return (
       <EditRampHistory
         segment={draftRamp || undefined}
-        availableRamps={rampSegments}
+        availableRamps={filteredAvailableRamps}
         allRampSegs={rampSegments}
         onChange={setDraftRamp}
         onSave={(ramp) => {

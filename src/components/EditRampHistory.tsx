@@ -160,11 +160,23 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                   <option value="" disabled>請選擇匝道編碼</option>
                   {(() => {
                     const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
-                    const detailedIds = availableRamps?.map(getGroupId) || [];
-                    const historyIds = segment ? [getGroupId(segment)] : []; 
-                    const allIds = Array.from(new Set([...detailedIds, ...historyIds])).filter(Boolean);
-                    return allIds.map(id => (
-                      <option key={id} value={id}>{id}</option>
+                    // 建立 id -> label 的 map（含 rampName）
+                    const rampLabelMap = new Map<string, string>();
+                    availableRamps?.forEach(r => {
+                      const id = getGroupId(r);
+                      if (!rampLabelMap.has(id)) {
+                        rampLabelMap.set(id, r.rampName ? `${id}（${r.rampName}）` : id);
+                      }
+                    });
+                    // 確保當前 segment 的 id 也在列表中
+                    if (segment) {
+                      const id = getGroupId(segment);
+                      if (!rampLabelMap.has(id)) {
+                        rampLabelMap.set(id, segment.rampName ? `${id}（${segment.rampName}）` : id);
+                      }
+                    }
+                    return Array.from(rampLabelMap.entries()).map(([id, label]) => (
+                      <option key={id} value={id}>{label}</option>
                     ));
                   })()}
                 </select>
