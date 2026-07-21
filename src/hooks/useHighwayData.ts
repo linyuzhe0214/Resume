@@ -58,6 +58,15 @@ export function useHighwayData({
     return initialPlanningSegments;
   });
 
+  // 獨立儲存匝道排序（groupId 陣列），不依賴 rampSegments 的陣列順序
+  const getSavedRampOrder = (): string[] => {
+    try {
+      const saved = localStorage.getItem('rampOrder');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  };
+
   const [rampSegments, setRampSegments] = useState<RampSegment[]>(() => {
     try {
       const saved = localStorage.getItem('rampSegments');
@@ -139,20 +148,21 @@ export function useHighwayData({
         }
 
         if (Array.isArray(rampData) && rampData.length > 0) {
-          setRampSegments(prev => {
+          setRampSegments(() => {
             const getGroupId = (r: any) => r.rampId || r.rampName || r.id;
-            const existingOrder = Array.from(new Set(prev.map(getGroupId)));
-            
+            // 用獨立儲存的 rampOrder 來還原排序，不依賴 React state 的 prev
+            const savedOrder = getSavedRampOrder();
+
             rampData.sort((a, b) => {
               const idA = getGroupId(a);
               const idB = getGroupId(b);
-              const idxA = existingOrder.indexOf(idA);
-              const idxB = existingOrder.indexOf(idB);
-              
+              const idxA = savedOrder.indexOf(idA);
+              const idxB = savedOrder.indexOf(idB);
+
               if (idxA !== -1 && idxB !== -1) return idxA - idxB;
               if (idxA !== -1) return -1;
               if (idxB !== -1) return 1;
-              
+
               return idA.localeCompare(idB, 'zh-TW', { numeric: true });
             });
             return rampData;
@@ -176,6 +186,12 @@ export function useHighwayData({
   useEffect(() => { localStorage.setItem('planningSegments', JSON.stringify(planningSegments)); }, [planningSegments]);
   useEffect(() => { localStorage.setItem('rampSegments', JSON.stringify(rampSegments)); }, [rampSegments]);
   useEffect(() => { localStorage.setItem('laneOptions_v2', JSON.stringify(laneOptions)); }, [laneOptions]);
+  // 同步 rampOrder：每次 rampSegments 改變時，把當前的 groupId 順序存起來
+  useEffect(() => {
+    const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
+    const order = Array.from(new Set(rampSegments.map(getGroupId)));
+    localStorage.setItem('rampOrder', JSON.stringify(order));
+  }, [rampSegments]);
 
   // ── Lane handlers ──
   const handleAddLane = (newLane: string, targetHighway: string = highwayName) => {
@@ -234,19 +250,25 @@ export function useHighwayData({
   const handleUpdateRampOrder = (newOrder: string[]) => {
     setRampSegments(prev => {
       const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
-      
+
+      // 先取得已儲存的完整排序，再把當前交流道的新順序合併進去
+      const savedOrder = getSavedRampOrder();
+      const merged = [
+        ...savedOrder.filter(id => !newOrder.includes(id)),
+        ...newOrder,
+      ];
+      // 同時更新 localStorage（不等 effect，確保 GAS fetch 回來前就有正確順序）
+      localStorage.setItem('rampOrder', JSON.stringify(merged));
+
       const inOrderItems = prev.filter(s => newOrder.includes(getGroupId(s)));
       const outOfOrderItems = prev.filter(s => !newOrder.includes(getGroupId(s)));
-      
+
       inOrderItems.sort((a, b) => {
         const idxA = newOrder.indexOf(getGroupId(a));
         const idxB = newOrder.indexOf(getGroupId(b));
         return idxA - idxB;
       });
-      
-      // 同步到雲端 (可選，根據需求)
-      // inOrderItems.forEach(r => syncGas(RAMP_URL, 'saveRamp', r.interchange, r));
-      
+
       return [...outOfOrderItems, ...inOrderItems];
     });
     showToast('匝道排序已更新', 'success');
