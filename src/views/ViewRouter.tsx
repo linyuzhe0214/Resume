@@ -3,6 +3,7 @@ import { MAINLINE_URL, RAMP_URL, PLANNING_URL } from '../config';
 import { syncGas } from '../hooks/useHighwayData';
 import type { ActiveTab, SubPage } from '../hooks/useUIState';
 import type { Segment, RampSegment } from '../types';
+import { getRampGroupId, generateId } from '../utils/ramp';
 
 import EditSegment from '../components/EditSegment';
 import EditRamp from '../components/EditRamp';
@@ -148,8 +149,7 @@ export default function ViewRouter(props: ViewRouterProps) {
               let updated = rampSegments.map(s => s.id === editingRampId ? ramp : s);
               const relatedIds: string[] = [];
               updated = updated.map(s => {
-                const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
-                const isSameRamp = getGroupId(s) === getGroupId(oldRamp);
+                const isSameRamp = getRampGroupId(s) === getRampGroupId(oldRamp);
                 
                 if (isSameRamp) {
                   relatedIds.push(s.id);
@@ -171,7 +171,7 @@ export default function ViewRouter(props: ViewRouterProps) {
             }
             syncGas(RAMP_URL, 'saveRamp', ramp.interchange, ramp);
           } else {
-            const newRamp = { ...ramp, id: Math.random().toString(36).substr(2, 9) };
+            const newRamp = { ...ramp, id: generateId() };
             setRampSegments(prev => [...prev, newRamp]);
             syncGas(RAMP_URL, 'saveRamp', newRamp.interchange, newRamp);
           }
@@ -183,11 +183,10 @@ export default function ViewRouter(props: ViewRouterProps) {
           const seg = rampSegments.find(s => s.id === id);
           if (seg) {
             // 刪除整個 rampId 群組的所有 segments（詳細資料代表整個匝道）
-            const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
-            const groupId = getGroupId(seg);
-            const toDelete = rampSegments.filter(s => getGroupId(s) === groupId);
+            const groupId = getRampGroupId(seg);
+            const toDelete = rampSegments.filter(s => getRampGroupId(s) === groupId);
             toDelete.forEach(s => syncGas(RAMP_URL, 'deleteRamp', s.interchange, s.id, true));
-            setRampSegments(rampSegments.filter(s => getGroupId(s) !== groupId));
+            setRampSegments(rampSegments.filter(s => getRampGroupId(s) !== groupId));
           } else {
             setRampSegments(rampSegments.filter(s => s.id !== id));
           }
@@ -235,7 +234,7 @@ export default function ViewRouter(props: ViewRouterProps) {
           if (editingRampId) {
             setRampSegments(rampSegments.map(s => s.id === editingRampId ? ramp : s));
           } else {
-            const newRamp = { ...ramp, id: Math.random().toString(36).substr(2, 9) };
+            const newRamp = { ...ramp, id: generateId() };
             ramp = newRamp;
             setRampSegments(prev => [...prev, newRamp]);
           }
@@ -294,7 +293,7 @@ export default function ViewRouter(props: ViewRouterProps) {
               if (PLANNING_URL) syncGas(PLANNING_URL, 'savePlanning', segment.highway + ' (規劃)', { ...segment, type: 'planning' });
               savedId = editingSegmentId;
             } else {
-              const newSeg = { ...segment, id: Math.random().toString(36).substr(2, 9), type: 'planning' };
+              const newSeg = { ...segment, id: generateId(), type: 'planning' };
               setPlanningSegments(prev => [...prev, newSeg]);
               if (PLANNING_URL) syncGas(PLANNING_URL, 'savePlanning', segment.highway + ' (規劃)', newSeg);
               savedId = newSeg.id;
@@ -307,7 +306,7 @@ export default function ViewRouter(props: ViewRouterProps) {
               syncGas(MAINLINE_URL, 'saveMainline', segment.highway, segment);
               savedId = editingSegmentId;
             } else {
-              const newSeg = { ...segment, id: Math.random().toString(36).substr(2, 9) };
+              const newSeg = { ...segment, id: generateId() };
               setSegments(prev => [...prev, newSeg]);
               syncGas(MAINLINE_URL, 'saveMainline', segment.highway, newSeg);
               savedId = newSeg.id;
@@ -331,7 +330,7 @@ export default function ViewRouter(props: ViewRouterProps) {
             const updated = planningSegments.map(s =>
               targetIds.includes(s.id) ? {
                 ...s,
-                pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })),
+                pavementLayers: layers.map(l => ({ ...l, id: generateId() })),
                 constructionYear: s.direction === copyFrom?.direction ? (copyFrom?.constructionYear || s.constructionYear) : s.constructionYear,
                 constructionMonth: s.direction === copyFrom?.direction ? (copyFrom?.constructionMonth || s.constructionMonth) : s.constructionMonth,
               } : s
@@ -345,7 +344,7 @@ export default function ViewRouter(props: ViewRouterProps) {
             const updated = segments.map(s =>
               targetIds.includes(s.id) ? {
                 ...s,
-                pavementLayers: layers.map(l => ({ ...l, id: Math.random().toString(36).substr(2, 9) })),
+                pavementLayers: layers.map(l => ({ ...l, id: generateId() })),
                 constructionYear: s.direction === copyFrom?.direction ? (copyFrom?.constructionYear || s.constructionYear) : s.constructionYear,
                 constructionMonth: s.direction === copyFrom?.direction ? (copyFrom?.constructionMonth || s.constructionMonth) : s.constructionMonth,
               } : s
@@ -371,7 +370,7 @@ export default function ViewRouter(props: ViewRouterProps) {
           backFromEdit();
         }}
         onMoveToPlanning={(segment) => {
-          const newSeg = { ...segment, id: Math.random().toString(36).substr(2, 9), type: 'planning' as const, notes: segment.notes ? `${segment.notes} (從履歷複製)` : '從履歷複製' };
+          const newSeg = { ...segment, id: generateId(), type: 'planning' as const, notes: segment.notes ? `${segment.notes} (從履歷複製)` : '從履歷複製' };
           setPlanningSegments(prev => [...prev, newSeg]);
           if (PLANNING_URL) syncGas(PLANNING_URL, 'savePlanning', segment.highway + ' (規劃)', newSeg);
           showToast('已成功複製到整修規劃頁面並存檔');
@@ -454,10 +453,9 @@ export default function ViewRouter(props: ViewRouterProps) {
           setSubPage('editRampHistory');
         }}
         onDeleteRamp={(identifier) => {
-          const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
-          const toDelete = rampSegments.filter(s => getGroupId(s) === identifier);
+          const toDelete = rampSegments.filter(s => getRampGroupId(s) === identifier);
           toDelete.forEach(seg => syncGas(RAMP_URL, 'deleteRamp', seg.interchange, seg.id, true));
-          setRampSegments(rampSegments.filter(s => getGroupId(s) !== identifier));
+          setRampSegments(rampSegments.filter(s => getRampGroupId(s) !== identifier));
         }}
       />
     );
@@ -520,12 +518,12 @@ export default function ViewRouter(props: ViewRouterProps) {
             newSegments = newSegments.filter(s => s.id !== orig.id);
 
             if (oStart < pStart) {
-              const leftId = Math.random().toString(36).substr(2, 9);
+              const leftId = generateId();
               allNewIds.push(leftId);
               newSegments.push({ ...orig, id: leftId, endMileage: pStart });
             }
 
-            const midId = Math.random().toString(36).substr(2, 9);
+            const midId = generateId();
             updatedIds.push(midId);
             allNewIds.push(midId);
             newSegments.push({
@@ -537,14 +535,14 @@ export default function ViewRouter(props: ViewRouterProps) {
               constructionMonth: planningSeg.constructionMonth,
               pavementLayers: planningSeg.pavementLayers.map(l => ({
                 ...l,
-                id: Math.random().toString(36).substr(2, 9),
+                id: generateId(),
               })),
               prevConstructionYear: orig.constructionYear,
               prevConstructionDepth: prevDepth,
             });
 
             if (oEnd > pEnd) {
-              const rightId = Math.random().toString(36).substr(2, 9);
+              const rightId = generateId();
               allNewIds.push(rightId);
               newSegments.push({ ...orig, id: rightId, startMileage: pEnd });
             }

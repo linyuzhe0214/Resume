@@ -3,27 +3,42 @@ import { MAINLINE_URL, RAMP_URL, PLANNING_URL } from '../config';
 import { INITIAL_HIGHWAY_LANES } from '../constants';
 import { initialSegments, initialRampSegments, initialPlanningSegments } from '../mockData';
 import type { Segment, RampSegment } from '../types';
+import { getRampGroupId } from '../utils/ramp';
 
-// ── GAS Sync 工具函式 ──
+// ── GAS Sync 工具函式（含 retry，最多重試 2 次）──
 export async function syncGas(
   url: string,
   action: string,
   sheetName: string,
   recordOrId: any,
   isDelete = false,
+  onError?: (msg: string) => void,
 ) {
-  try {
-    const payload = isDelete
-      ? { action, sheetName, id: recordOrId }
-      : { action, sheetName, record: recordOrId };
-    await fetch(url, {
+  const payload = isDelete
+    ? { action, sheetName, id: recordOrId }
+    : { action, sheetName, record: recordOrId };
+
+  const attempt = async () =>
+    fetch(url, {
       method: 'POST',
       body: JSON.stringify(payload),
       mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     });
-  } catch (e) {
-    console.error(`GAS Sync Error [${action}]:`, e);
+
+  for (let i = 0; i < 3; i++) {
+    try {
+      await attempt();
+      return; // 成功即返回
+    } catch (e) {
+      if (i === 2) {
+        // 最後一次仍失敗
+        console.error(`GAS Sync Error [${action}] 已重試 2 次:`, e);
+        onError?.(`⚠️ 雲端同步失敗（${action}），請確認網路後重新整理`);
+      }
+      // 等待後重試
+      await new Promise(r => setTimeout(r, 800 * (i + 1)));
+    }
   }
 }
 
@@ -149,13 +164,12 @@ export function useHighwayData({
 
         if (Array.isArray(rampData) && rampData.length > 0) {
           setRampSegments(() => {
-            const getGroupId = (r: any) => r.rampId || r.rampName || r.id;
             // 用獨立儲存的 rampOrder 來還原排序，不依賴 React state 的 prev
             const savedOrder = getSavedRampOrder();
 
             rampData.sort((a, b) => {
-              const idA = getGroupId(a);
-              const idB = getGroupId(b);
+              const idA = getRampGroupId(a);
+              const idB = getRampGroupId(b);
               const idxA = savedOrder.indexOf(idA);
               const idxB = savedOrder.indexOf(idB);
 
@@ -188,8 +202,7 @@ export function useHighwayData({
   useEffect(() => { localStorage.setItem('laneOptions_v2', JSON.stringify(laneOptions)); }, [laneOptions]);
   // 同步 rampOrder：每次 rampSegments 改變時，把當前的 groupId 順序存起來
   useEffect(() => {
-    const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
-    const order = Array.from(new Set(rampSegments.map(getGroupId)));
+    const order = Array.from(new Set(rampSegments.map(getRampGroupId)));
     localStorage.setItem('rampOrder', JSON.stringify(order));
   }, [rampSegments]);
 
@@ -249,8 +262,6 @@ export function useHighwayData({
 
   const handleUpdateRampOrder = (newOrder: string[]) => {
     setRampSegments(prev => {
-      const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
-
       // 先取得已儲存的完整排序，再把當前交流道的新順序合併進去
       const savedOrder = getSavedRampOrder();
       const merged = [
@@ -260,12 +271,12 @@ export function useHighwayData({
       // 同時更新 localStorage（不等 effect，確保 GAS fetch 回來前就有正確順序）
       localStorage.setItem('rampOrder', JSON.stringify(merged));
 
-      const inOrderItems = prev.filter(s => newOrder.includes(getGroupId(s)));
-      const outOfOrderItems = prev.filter(s => !newOrder.includes(getGroupId(s)));
+      const inOrderItems = prev.filter(s => newOrder.includes(getRampGroupId(s)));
+      const outOfOrderItems = prev.filter(s => !newOrder.includes(getRampGroupId(s)));
 
       inOrderItems.sort((a, b) => {
-        const idxA = newOrder.indexOf(getGroupId(a));
-        const idxB = newOrder.indexOf(getGroupId(b));
+        const idxA = newOrder.indexOf(getRampGroupId(a));
+        const idxB = newOrder.indexOf(getRampGroupId(b));
         return idxA - idxB;
       });
 

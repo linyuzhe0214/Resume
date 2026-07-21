@@ -4,6 +4,7 @@ import { RampSegment } from '../types';
 import { cn } from '../App';
 import ConfirmDialog from './ConfirmDialog';
 import { formatMonth } from '../utils/pavement';
+import { getRampGroupId } from '../utils/ramp';
 
 interface EditRampHistoryProps {
   segment?: RampSegment;
@@ -139,8 +140,7 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                   value={formData.rampId || formData.rampName || formData.id || ""}
                   onChange={(e) => {
                     const selectedId = e.target.value;
-                    const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
-                    const rampTemplate = availableRamps?.find(r => getGroupId(r) === selectedId);
+                    const rampTemplate = availableRamps?.find(r => getRampGroupId(r) === selectedId);
                     if (rampTemplate) {
                       handleChange({
                         ...formData, 
@@ -159,18 +159,17 @@ export default function EditRampHistory({ segment, availableRamps, allRampSegs =
                 >
                   <option value="" disabled>請選擇匝道編碼</option>
                   {(() => {
-                    const getGroupId = (r: RampSegment) => r.rampId || r.rampName || r.id;
                     // 建立 id -> label 的 map（含 rampName）
                     const rampLabelMap = new Map<string, string>();
                     availableRamps?.forEach(r => {
-                      const id = getGroupId(r);
+                      const id = getRampGroupId(r);
                       if (!rampLabelMap.has(id)) {
                         rampLabelMap.set(id, r.rampName ? `${id}（${r.rampName}）` : id);
                       }
                     });
                     // 確保當前 segment 的 id 也在列表中
                     if (segment) {
-                      const id = getGroupId(segment);
+                      const id = getRampGroupId(segment);
                       if (!rampLabelMap.has(id)) {
                         rampLabelMap.set(id, segment.rampName ? `${id}（${segment.rampName}）` : id);
                       }

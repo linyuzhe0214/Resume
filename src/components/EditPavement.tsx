@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Trash2, ChevronDown, Plus, Layers, ArrowUp, ArrowDown } from 'lucide-react';
 import { PavementLayer } from '../types';
 import { cn } from '../App';
+import { generateId } from '../utils/ramp';
 
 interface EditPavementProps {
   layers: PavementLayer[];
@@ -30,7 +31,7 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
 
   const handleAddLayer = () => {
     const newLayer: PavementLayer = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: generateId(),
       type: 'DGAC (密級配瀝青混凝土)',
       thickness: 5.0,
       month: defaultMonth || '11305'
