@@ -163,11 +163,23 @@ export function useHighwayData({
         }
 
         if (Array.isArray(rampData) && rampData.length > 0) {
-          setRampSegments(() => {
-            // 用獨立儲存的 rampOrder 來還原排序，不依賴 React state 的 prev
-            const savedOrder = getSavedRampOrder();
+          // 讀取並過濾雲端匝道排序配置
+          const orderRecords = rampData.filter((s: any) => s.id === 'RAMP_ORDER_CONFIG');
+          const cleanRampData = rampData.filter((s: any) => s.id !== 'RAMP_ORDER_CONFIG');
 
-            rampData.sort((a, b) => {
+          const latestOrderRecord = orderRecords.reduce((latest: any, current: any) => {
+            if (!latest) return current;
+            return (current.timestamp || 0) > (latest.timestamp || 0) ? current : latest;
+          }, null);
+
+          let savedOrder = getSavedRampOrder();
+          if (latestOrderRecord?.data && Array.isArray(latestOrderRecord.data)) {
+            savedOrder = latestOrderRecord.data;
+            localStorage.setItem('rampOrder', JSON.stringify(savedOrder));
+          }
+
+          if (cleanRampData.length > 0) {
+            cleanRampData.sort((a, b) => {
               const idA = getRampGroupId(a);
               const idB = getRampGroupId(b);
               const idxA = savedOrder.indexOf(idA);
@@ -179,8 +191,8 @@ export function useHighwayData({
 
               return idA.localeCompare(idB, 'zh-TW', { numeric: true });
             });
-            return rampData;
-          });
+            setRampSegments(cleanRampData);
+          }
         }
 
         showToast('雲端資料載入成功', 'success');
@@ -261,6 +273,7 @@ export function useHighwayData({
   };
 
   const handleUpdateRampOrder = (newOrder: string[]) => {
+    const now = Date.now();
     setRampSegments(prev => {
       // 先取得已儲存的完整排序，再把當前交流道的新順序合併進去
       const savedOrder = getSavedRampOrder();
@@ -270,6 +283,13 @@ export function useHighwayData({
       ];
       // 同時更新 localStorage（不等 effect，確保 GAS fetch 回來前就有正確順序）
       localStorage.setItem('rampOrder', JSON.stringify(merged));
+
+      // 同步上傳匝道排序設定檔至雲端 (GAS)
+      syncGas(RAMP_URL, 'saveRamp', 'Ramp', {
+        id: 'RAMP_ORDER_CONFIG',
+        data: merged,
+        timestamp: now,
+      });
 
       const inOrderItems = prev.filter(s => newOrder.includes(getRampGroupId(s)));
       const outOfOrderItems = prev.filter(s => !newOrder.includes(getRampGroupId(s)));
@@ -282,7 +302,7 @@ export function useHighwayData({
 
       return [...outOfOrderItems, ...inOrderItems];
     });
-    showToast('匝道排序已更新', 'success');
+    showToast('匝道排序已更新並同步至雲端', 'success');
   };
 
   return {
