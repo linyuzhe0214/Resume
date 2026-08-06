@@ -130,7 +130,7 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
                       <option value="GUSS (澆注式瀝青混凝土)">GUSS (澆注式瀝青混凝土)</option>
                       <option value="BTB (瀝青處理底層)">BTB (瀝青處理底層)</option>
                       <option value="AB (碎石級配底層)">AB (碎石級配底層)</option>
-                      <option value="Sub-base (路基/底層)">Sub-base (路基/底層)</option>
+                      <option value="Sub-base (基層)">Sub-base (基層)</option>
                       <option value="其他/舊有">其他/舊有</option>
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
