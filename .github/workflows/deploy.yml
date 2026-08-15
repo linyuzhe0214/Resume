@@ -36,6 +36,10 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_MAINLINE_URL: ${{ vars.VITE_MAINLINE_URL || secrets.VITE_MAINLINE_URL }}
+          VITE_RAMP_URL: ${{ vars.VITE_RAMP_URL || secrets.VITE_RAMP_URL }}
+          VITE_PLANNING_URL: ${{ vars.VITE_PLANNING_URL || secrets.VITE_PLANNING_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
