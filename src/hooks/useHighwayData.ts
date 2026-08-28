@@ -5,6 +5,9 @@ import { initialSegments, initialRampSegments, initialPlanningSegments } from '.
 import type { Segment, RampSegment } from '../types';
 import { getRampGroupId } from '../utils/ramp';
 
+// SECURITY FINDING-01: 從環境變數讀取 API Token，每次寫入請求都帶入 payload
+const GAS_API_TOKEN = import.meta.env.VITE_GAS_API_TOKEN || '';
+
 // ── GAS Sync 工具函式（含 retry，最多重試 2 次）──
 export async function syncGas(
   url: string,
@@ -15,8 +18,8 @@ export async function syncGas(
   onError?: (msg: string) => void,
 ) {
   const payload = isDelete
-    ? { action, sheetName, id: recordOrId }
-    : { action, sheetName, record: recordOrId };
+    ? { action, sheetName, id: recordOrId, token: GAS_API_TOKEN }
+    : { action, sheetName, record: recordOrId, token: GAS_API_TOKEN };
 
   const attempt = async () =>
     fetch(url, {
