@@ -26,7 +26,7 @@ export class ErrorBoundary extends React.Component<
             <summary>Click for error details</summary>
             {this.state.error?.toString()}
             <br />
-            {this.state.error?.stack}
+            {import.meta.env.DEV && this.state.error?.stack}
           </details>
         </div>
       );
