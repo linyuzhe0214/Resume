@@ -1,6 +1,20 @@
 // ===== 主線 GAS 腳本 (多工作表版本) =====
 // 貼到 MAINLINE_URL 對應的 Apps Script 專案
 
+// SECURITY: 合法工作表名稱白名單（防止任意 insertSheet DoS）
+// 請在 Script Properties 設定 API_TOKEN
+const MAINLINE_ALLOWED_SHEETS = new Set([
+  'Mainline', '國道1號', '國道2號', '國道3號', '國道3甲',
+  '國道4號', '國道5號', '國道6號', '國道8號', '國道10號',
+]);
+
+function isAuthorized_(payload) {
+  const token = PropertiesService.getScriptProperties().getProperty('API_TOKEN');
+  // 若未設定 API_TOKEN，預設拒絕所有寫入請求
+  if (!token) return false;
+  return payload && payload.token === token;
+}
+
 function doGet(e) {
   const action = e.parameter.action;
   try {
@@ -16,6 +30,12 @@ function doGet(e) {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+
+    // SECURITY FINDING-01: 鑑權驗證，拒絕未攜帶有效 token 的請求
+    if (!isAuthorized_(payload)) {
+      return jsonResponse({ error: 'Unauthorized' });
+    }
+
     const action = payload.action;
     const sheetName = payload.sheetName; // 從前端傳遞過來 (如 "國道1號")
 
@@ -32,7 +52,8 @@ function doPost(e) {
 
 function getSheet(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const targetName = name || 'Mainline';
+  // SECURITY FINDING-02: 僅允許白名單內的工作表名稱，防止任意建表 DoS
+  const targetName = (name && MAINLINE_ALLOWED_SHEETS.has(name)) ? name : 'Mainline';
   let sheet = ss.getSheetByName(targetName);
   if (!sheet) {
     sheet = ss.insertSheet(targetName);
