@@ -1,6 +1,22 @@
 // ===== 匝道 GAS 腳本 (多工作表版本 - 依交流道分工作表) =====
 // 貼到 RAMP_URL 對應的 Apps Script 專案
 
+// SECURITY: 合法工作表名稱白名單（防止任意 insertSheet DoS）
+// 請在 Script Properties 設定 API_TOKEN
+const RAMP_ALLOWED_SHEETS = new Set([
+  'Ramp', '中興系統', '五股系統', '楊梅系統', '新竹系統',
+  '竹北系統', '苗栗系統', '三義系統', '豐原系統', '霧峰系統',
+  '中投系統', '南投系統', '烏溪系統', '斗南系統', '嘉義系統',
+  '新市系統', '台南系統', '仁德系統', '路竹系統', '岡山系統',
+  '楠梓系統', '左營系統',
+]);
+
+function isAuthorized_(payload) {
+  const token = PropertiesService.getScriptProperties().getProperty('API_TOKEN');
+  if (!token) return false;
+  return payload && payload.token === token;
+}
+
 function doGet(e) {
   const action = e.parameter.action;
   try {
@@ -16,8 +32,14 @@ function doGet(e) {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
-    const action = payload.action;
     const sheetName = payload.sheetName; // 交流道名稱 (如 "中興系統")
+
+    // SECURITY FINDING-01: 鑑權驗證
+    if (!isAuthorized_(payload)) {
+      return jsonResponse({ error: 'Unauthorized' });
+    }
+
+    const action = payload.action;
 
     if (action === 'saveRamp') {
       return save(payload.record, sheetName);
@@ -32,7 +54,8 @@ function doPost(e) {
 
 function getSheet(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const targetName = name || 'Ramp';
+  // SECURITY FINDING-02: 白名單限制，防止任意建表 DoS
+  const targetName = (name && RAMP_ALLOWED_SHEETS.has(name)) ? name : 'Ramp';
   let sheet = ss.getSheetByName(targetName);
   if (!sheet) {
     sheet = ss.insertSheet(targetName);

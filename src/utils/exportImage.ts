@@ -84,40 +84,41 @@ function printElement(element: HTMLElement, title: string) {
   const clone = prepareClone(element);
   const css = collectAllCss();
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8" />
-  <title>${title}</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body {
-      margin: 0; padding: 0;
-      background: #fff;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-      color-adjust: exact;
-    }
-    @media print {
-      @page { margin: 0; size: auto; }
-    }
-  </style>
-  <style>${css}</style>
-</head>
-<body style="background:#fff;overflow:visible;">
-${clone.outerHTML}
-</body>
-</html>`;
-
   const win = window.open('', '_blank', 'width=1400,height=900');
   if (!win) {
     alert('請允許本頁彈出視窗（Pop-up），再重試一次。');
     return;
   }
 
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  // SECURITY FINDING-03: 使用 DOM API 取代 document.write，避免 HTML 注入
+  // 直接操作 DOM 節點，絕不將任何字串拼接為 HTML
+  win.document.documentElement.lang = 'zh-TW';
+  win.document.title = title;
+
+  const metaEl = win.document.createElement('meta');
+  metaEl.setAttribute('charset', 'UTF-8');
+  win.document.head.appendChild(metaEl);
+
+  const baseStyle = win.document.createElement('style');
+  baseStyle.textContent = [
+    '*, *::before, *::after { box-sizing: border-box; }',
+    'html, body {',
+    '  margin: 0; padding: 0;',
+    '  background: #fff;',
+    '  -webkit-print-color-adjust: exact;',
+    '  print-color-adjust: exact;',
+    '  color-adjust: exact;',
+    '}',
+    '@media print { @page { margin: 0; size: auto; } }',
+  ].join('\n');
+  win.document.head.appendChild(baseStyle);
+
+  const cssStyle = win.document.createElement('style');
+  cssStyle.textContent = css;
+  win.document.head.appendChild(cssStyle);
+
+  win.document.body.style.cssText = 'background:#fff;overflow:visible;';
+  win.document.body.appendChild(clone);
 
   win.addEventListener('load', () => {
     setTimeout(() => {
@@ -152,31 +153,35 @@ export function exportMultipleAsImage(elementIds: string[], filename: string) {
   wrapper.style.cssText = 'display:flex;flex-direction:column;background:#fff;';
   elements.forEach((el) => wrapper.appendChild(prepareClone(el)));
 
-  // wrapper 沒有 original 可走，直接用 printElement 的 clone 參數版
+  // SECURITY FINDING-03: 使用 DOM API 取代 document.write，避免 HTML 注入
   const css = collectAllCss();
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8" />
-  <title>${filename}</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body { margin:0; padding:0; background:#fff;
-      -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    @media print { @page { margin:0; size:auto; } }
-  </style>
-  <style>${css}</style>
-</head>
-<body style="background:#fff;overflow:visible;">
-${wrapper.outerHTML}
-</body>
-</html>`;
 
   const win = window.open('', '_blank', 'width=1400,height=900');
   if (!win) { alert('請允許本頁彈出視窗（Pop-up），再重試一次。'); return; }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+
+  win.document.documentElement.lang = 'zh-TW';
+  win.document.title = filename;
+
+  const metaEl = win.document.createElement('meta');
+  metaEl.setAttribute('charset', 'UTF-8');
+  win.document.head.appendChild(metaEl);
+
+  const baseStyle = win.document.createElement('style');
+  baseStyle.textContent = [
+    '*, *::before, *::after { box-sizing: border-box; }',
+    'html, body { margin:0; padding:0; background:#fff;',
+    '  -webkit-print-color-adjust:exact; print-color-adjust:exact; }',
+    '@media print { @page { margin:0; size:auto; } }',
+  ].join('\n');
+  win.document.head.appendChild(baseStyle);
+
+  const cssStyle = win.document.createElement('style');
+  cssStyle.textContent = css;
+  win.document.head.appendChild(cssStyle);
+
+  win.document.body.style.cssText = 'background:#fff;overflow:visible;';
+  win.document.body.appendChild(wrapper);
+
   win.addEventListener('load', () => {
     setTimeout(() => { win.focus(); win.print(); }, 600);
   });
