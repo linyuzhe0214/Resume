@@ -31,6 +31,9 @@ function doGet(e) {
 
 function doPost(e) {
   try {
+    if (!e || !e.postData || !e.postData.contents || e.postData.contents.length > 500000) {
+      return jsonResponse({ error: 'Invalid or oversized payload' });
+    }
     const payload = JSON.parse(e.postData.contents);
     const sheetName = payload.sheetName; // 交流道名稱 (如 "中興系統")
 

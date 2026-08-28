@@ -4,7 +4,10 @@
 // SECURITY: 合法工作表名稱白名單（防止任意 insertSheet DoS）
 // 請在 Script Properties 設定 API_TOKEN
 const PLANNING_ALLOWED_SHEETS = new Set([
-  'Planning', '國道1號', '國道2號', '國道3號', '國道3甲',
+  'Planning',
+  '國道1號 (規劃)', '國道2號 (規劃)', '國道3號 (規劃)', '國道3甲 (規劃)',
+  '國道4號 (規劃)', '國道5號 (規劃)', '國道6號 (規劃)', '國道8號 (規劃)', '國道10號 (規劃)',
+  '國道1號', '國道2號', '國道3號', '國道3甲',
   '國道4號', '國道5號', '國道6號', '國道8號', '國道10號',
 ]);
 
@@ -28,6 +31,9 @@ function doGet(e) {
 
 function doPost(e) {
   try {
+    if (!e || !e.postData || !e.postData.contents || e.postData.contents.length > 500000) {
+      return jsonResponse({ error: 'Invalid or oversized payload' });
+    }
     const payload = JSON.parse(e.postData.contents);
 
     // SECURITY FINDING-01: 鑑權驗證
