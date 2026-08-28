@@ -536,13 +536,13 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
 
             {/* 對向同里程快捷 */}
             {(() => {
-              const oppositeDir = ['Northbound', 'Eastbound'].includes(formData.direction)
-                ? (['Southbound', 'Westbound'] as const)
-                : (['Northbound', 'Eastbound'] as const);
+              const oppositeDir: string[] = ['Northbound', 'Eastbound'].includes(formData.direction)
+                ? ['Southbound', 'Westbound']
+                : ['Northbound', 'Eastbound'];
               const opposites = allSegments.filter(s =>
                 s.id !== formData.id &&
                 s.highway === formData.highway &&
-                oppositeDir.includes(s.direction as any) &&
+                oppositeDir.includes(s.direction) &&
                 s.startMileage < formData.endMileage &&
                 s.endMileage > formData.startMileage
               );

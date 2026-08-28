@@ -93,7 +93,7 @@ export function useHighwayData({
     return initialRampSegments;
   });
 
-  const [laneOptions, setLaneOptions] = useState<Record<string, string[]>>(() => {
+  const [laneOptions, setLaneOptions] = useState<Record<string, any>>(() => {
     try {
       const saved = localStorage.getItem('laneOptions_v2');
       if (saved) return JSON.parse(saved);
