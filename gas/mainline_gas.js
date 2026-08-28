@@ -29,6 +29,9 @@ function doGet(e) {
 
 function doPost(e) {
   try {
+    if (!e || !e.postData || !e.postData.contents || e.postData.contents.length > 500000) {
+      return jsonResponse({ error: 'Invalid or oversized payload' });
+    }
     const payload = JSON.parse(e.postData.contents);
 
     // SECURITY FINDING-01: 鑑權驗證，拒絕未攜帶有效 token 的請求

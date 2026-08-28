@@ -40,6 +40,7 @@ jobs:
           VITE_MAINLINE_URL: ${{ vars.VITE_MAINLINE_URL || secrets.VITE_MAINLINE_URL }}
           VITE_RAMP_URL: ${{ vars.VITE_RAMP_URL || secrets.VITE_RAMP_URL }}
           VITE_PLANNING_URL: ${{ vars.VITE_PLANNING_URL || secrets.VITE_PLANNING_URL }}
+          VITE_GAS_API_TOKEN: ${{ secrets.VITE_GAS_API_TOKEN || vars.VITE_GAS_API_TOKEN }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
