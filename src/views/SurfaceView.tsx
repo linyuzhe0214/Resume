@@ -511,19 +511,19 @@ export default function SurfaceView({
                   </span>
                 </div>
 
-                {/* Visual Cross-section Diagram (Modern CAD Road Surface Deck) */}
-                <div className="w-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-4 sm:p-5 shadow-2xl border border-slate-700/60 overflow-hidden relative">
-                  {/* Subtle asphalt texture overlay */}
-                  <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none" />
+                {/* Visual Cross-section Diagram (Modern CAD Road Surface Deck - Light Theme) */}
+                <div className="w-full bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 rounded-2xl p-4 sm:p-5 shadow-inner border border-slate-200 overflow-hidden relative">
+                  {/* Subtle engineering grid overlay */}
+                  <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#94a3b8_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none" />
 
                   <div className="relative z-10 w-full flex items-end justify-center gap-1.5 px-1 font-mono text-[9px] min-h-[145px]">
                     {!currentKmlPoint.isRamp &&
                       (currentKmlPoint as KmlMainlinePoint).innerShoulderWidth > 0 && (
                         <div className="flex flex-col items-center justify-end h-full">
-                          <div className="bg-gradient-to-b from-slate-700 to-slate-800 w-8 sm:w-10 h-28 border-l-2 border-yellow-500/80 flex items-center justify-center text-slate-300 text-[9px] leading-tight text-center font-black rounded-l-md shadow-inner">
+                          <div className="bg-gradient-to-b from-slate-200/90 to-slate-100 w-8 sm:w-10 h-28 border-l-4 border-amber-500 border-y border-r border-slate-300 flex items-center justify-center text-slate-600 text-[10px] leading-tight text-center font-black rounded-l-lg shadow-sm">
                             內<br />肩
                           </div>
-                          <span className="mt-2 text-slate-400 font-mono font-bold">
+                          <span className="mt-2 text-slate-600 font-mono font-bold text-[10px] bg-white px-1.5 py-0.5 rounded border border-slate-200">
                             {(currentKmlPoint as KmlMainlinePoint).innerShoulderWidth.toFixed(2)}m
                           </span>
                         </div>
@@ -531,14 +531,14 @@ export default function SurfaceView({
 
                     {currentKmlPoint.laneWidths.map((w, i) => (
                       <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group">
-                        <div className="bg-slate-800/90 hover:bg-slate-750 border-r border-dashed border-white/30 w-full flex flex-col items-center relative overflow-hidden transition-all duration-200 h-28 rounded-sm shadow-inner group-hover:brightness-110">
+                        <div className="bg-white hover:bg-blue-50/40 border border-slate-200 hover:border-blue-300 w-full flex flex-col items-center relative overflow-hidden transition-all duration-200 h-28 rounded-md shadow-sm group-hover:shadow group-hover:-translate-y-0.5">
                           <div className="w-full h-full flex flex-col items-center justify-center">
-                            <span className="text-white font-black text-xs sm:text-sm drop-shadow-md">
+                            <span className="text-slate-800 font-black text-xs sm:text-sm tracking-wide">
                               車道{i + 1}
                             </span>
                           </div>
                         </div>
-                        <span className="mt-2 text-amber-400 font-mono font-black text-[10px]">
+                        <span className="mt-2 text-slate-700 font-mono font-black text-[10.5px] bg-white px-2 py-0.5 rounded-full border border-slate-200 shadow-2xs">
                           {w.toFixed(2)}m
                         </span>
                       </div>
@@ -547,10 +547,10 @@ export default function SurfaceView({
                     {!currentKmlPoint.isRamp &&
                       (currentKmlPoint as KmlMainlinePoint).auxiliaryLanes.map((aux, i) => (
                         <div key={`aux-${i}`} className="flex flex-col items-center flex-1 justify-end h-full">
-                          <div className="bg-blue-900/40 border-r border-dashed border-blue-400/40 w-full h-24 flex items-center justify-center text-blue-300 font-black text-[10px] rounded-sm shadow-inner">
+                          <div className="bg-blue-50/80 hover:bg-blue-100/60 border border-blue-200 text-blue-700 font-black text-[10px] rounded-md shadow-sm w-full h-28 flex items-center justify-center">
                             {aux.name}
                           </div>
-                          <span className="mt-2 text-blue-400 font-mono font-black text-[10px]">
+                          <span className="mt-2 text-blue-700 font-mono font-black text-[10.5px] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
                             {aux.width.toFixed(2)}m
                           </span>
                         </div>
@@ -559,10 +559,10 @@ export default function SurfaceView({
                     {!currentKmlPoint.isRamp &&
                       (currentKmlPoint as KmlMainlinePoint).outerShoulderWidth > 0 && (
                         <div className="flex flex-col items-center justify-end h-full">
-                          <div className="bg-gradient-to-b from-slate-700 to-slate-800 w-12 sm:w-16 h-28 border-r-2 border-white/80 flex items-center justify-center text-slate-300 text-[10px] font-black rounded-r-md shadow-inner">
+                          <div className="bg-gradient-to-b from-slate-200/90 to-slate-100 w-12 sm:w-16 h-28 border-r-4 border-slate-400 border-y border-l border-slate-300 flex items-center justify-center text-slate-600 text-[10px] font-black rounded-r-lg shadow-sm">
                             外肩
                           </div>
-                          <span className="mt-2 text-slate-400 font-mono font-bold">
+                          <span className="mt-2 text-slate-600 font-mono font-bold text-[10px] bg-white px-1.5 py-0.5 rounded border border-slate-200">
                             {(currentKmlPoint as KmlMainlinePoint).outerShoulderWidth.toFixed(2)}m
                           </span>
                         </div>
