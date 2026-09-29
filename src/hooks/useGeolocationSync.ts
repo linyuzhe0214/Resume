@@ -10,6 +10,7 @@ import {
   type KmlPoint,
   type KmlRampPoint,
 } from '../utils/kmlParser';
+import { getIdbItem, setIdbItem } from '../utils/idbCache';
 
 export type SearchMode = 'auto' | 'mainline' | 'ramp';
 
@@ -45,33 +46,79 @@ export function useGeolocationSync() {
   const prevRampIdRef = useRef<string | null>(null);
   const prevDistFromRampStartRef = useRef<number | null>(null);
 
-  // ── 1. 載入 KML 資料庫 ──
+  // ── 1. 載入 KML / JSON 資料庫（支援 IndexedDB 本地快取秒開）──
   useEffect(() => {
-    setKmlLoading(true);
-    const basePath = (import.meta as any).env?.BASE_URL || '/';
-    const fetchPath = basePath.endsWith('/') ? `${basePath}route.kml` : `${basePath}/route.kml`;
-    fetch(fetchPath)
-      .then(res => res.text())
-      .then(kmlText => {
-        const points = parseKmlToPoints(kmlText);
-        const index = buildKmlIndex(points);
-        setKmlIndex(index);
+    let isMounted = true;
 
-        // 建立第一條國道的 LineString 備用（地圖繪圖）
-        for (const hw of Object.keys(index.mainline)) {
-          const dirs = Object.values(index.mainline[hw]);
-          if (dirs.length > 0 && dirs[0].length >= 2) {
-            const coords = dirs[0].map(p => [p.lon, p.lat]);
-            setHighwayLine(turf.lineString(coords));
-            break;
-          }
+    const initIndex = (points: KmlPoint[]) => {
+      if (!isMounted) return;
+      const index = buildKmlIndex(points);
+      setKmlIndex(index);
+
+      // 建立第一條國道的 LineString 備用（地圖繪圖）
+      for (const hw of Object.keys(index.mainline)) {
+        const dirs = Object.values(index.mainline[hw]);
+        if (dirs.length > 0 && dirs[0].length >= 2) {
+          const coords = dirs[0].map(p => [p.lon, p.lat]);
+          setHighwayLine(turf.lineString(coords));
+          break;
         }
-        console.log(`KML 資料庫載入完成: ${points.length} 個測量點`);
-        console.log('主線國道:', Object.keys(index.mainline));
-        console.log('匝道國道:', Object.keys(index.ramp));
-      })
-      .catch(err => console.error('Failed to load local KML routing database:', err))
-      .finally(() => setKmlLoading(false));
+      }
+      console.log(`路網資料庫載入完成: ${points.length} 個測量點`);
+    };
+
+    const loadRouteData = async () => {
+      setKmlLoading(true);
+      try {
+        const CACHE_KEY = 'highway_route_points_v1';
+        // 1. 優先從 IndexedDB 毫秒級讀取
+        const cached = await getIdbItem<KmlPoint[]>(CACHE_KEY);
+        if (cached && Array.isArray(cached) && cached.length > 0) {
+          initIndex(cached);
+          setKmlLoading(false);
+          return;
+        }
+
+        const basePath = (import.meta as any).env?.BASE_URL || '/';
+        const jsonPath = basePath.endsWith('/') ? `${basePath}route.json` : `${basePath}/route.json`;
+        const kmlPath = basePath.endsWith('/') ? `${basePath}route.kml` : `${basePath}/route.kml`;
+
+        let points: KmlPoint[] = [];
+
+        // 2. 優先下載預編譯 route.json（極速解析，避免 DOMParser 阻塞）
+        try {
+          const res = await fetch(jsonPath);
+          if (res.ok) {
+            points = await res.json();
+          }
+        } catch {
+          // 若 JSON 不存在或解析失敗則 fallback
+        }
+
+        // 3. Fallback 回 KML 解析
+        if (!points || points.length === 0) {
+          const res = await fetch(kmlPath);
+          const kmlText = await res.text();
+          points = parseKmlToPoints(kmlText);
+        }
+
+        if (points && points.length > 0) {
+          initIndex(points);
+          // 寫入 IndexedDB 供後續存取
+          setIdbItem(CACHE_KEY, points);
+        }
+      } catch (err) {
+        console.error('Failed to load local routing database:', err);
+      } finally {
+        if (isMounted) setKmlLoading(false);
+      }
+    };
+
+    loadRouteData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // ── 2. 手動定位時（非 GPS 自動跟隨）查 KML 最近點 ──

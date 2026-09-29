@@ -102,111 +102,137 @@ export function useHighwayData({
   });
 
   // ── Fetch from GAS on mount ──
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [mainlineRes, rampRes, planningRes] = await Promise.all([
-          fetch(`${MAINLINE_URL}?action=getMainline`),
-          fetch(`${RAMP_URL}?action=getRamp`),
-          PLANNING_URL ? fetch(`${PLANNING_URL}?action=getPlanning`) : Promise.resolve(null),
-        ]);
+  const parseGasResponse = async (res: Response, name: string) => {
+    const text = await res.text();
+    const lowerText = text.trim().toLowerCase();
+    if (lowerText.startsWith('<!doctype html>') || lowerText.startsWith('<html')) {
+      throw new Error(
+        `連線被攔截 (${name})：您的裝置似乎阻擋了第三方 Cookie、處於無痕模式，或是連上了需要登入的公用 Wi-Fi。`,
+      );
+    }
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error(`解析資料失敗 (${name})：伺服器回傳格式不符。`);
+    }
+  };
 
-        const parseGasResponse = async (res: Response | null, name: string) => {
-          if (!res) return [];
-          const text = await res.text();
-          const lowerText = text.trim().toLowerCase();
-          if (lowerText.startsWith('<!doctype html>') || lowerText.startsWith('<html')) {
-            throw new Error(
-              `連線被攔截 (${name})：您的裝置似乎阻擋了第三方 Cookie、處於無痕模式，或是連上了需要登入的公用 Wi-Fi。`,
-            );
-          }
-          try {
-            return JSON.parse(text);
-          } catch (e) {
-            throw new Error(`解析資料失敗 (${name})：伺服器回傳格式不符。`);
-          }
-        };
+  const fetchData = async (nocache = false) => {
+    setLoadingData(true);
+    const nocacheParam = nocache ? '&nocache=1' : '';
 
-        const [mainlineData, rampData, planningData] = await Promise.all([
-          parseGasResponse(mainlineRes, '主線'),
-          parseGasResponse(rampRes, '匝道'),
-          parseGasResponse(planningRes, '規劃'),
-        ]);
-
-        if (Array.isArray(mainlineData) && mainlineData.length > 0) {
-          const main = mainlineData.filter(
-            (s: any) => s.type !== 'planning' && s.id !== 'LANE_OPTIONS_CONFIG',
-          );
-          if (main.length > 0) setSegments(main);
-
-          // 讀取車道配置（最新時間戳的那筆）
-          const settingsRecords = mainlineData.filter((s: any) => s.id === 'LANE_OPTIONS_CONFIG');
-          const settingsRecord = settingsRecords.reduce((latest: any, current: any) => {
-            if (!latest) return current;
-            return (current.timestamp || 0) > (latest.timestamp || 0) ? current : latest;
-          }, null);
-
-          if (settingsRecord?.data) {
-            setLaneOptions(prev => {
-              const cloudTimestamp = settingsRecord.timestamp || 0;
-              const localTimestamp = (prev as any)._timestamp || 0;
-              if (cloudTimestamp > localTimestamp + 2000) {
-                return { ...INITIAL_HIGHWAY_LANES, ...settingsRecord.data, _timestamp: cloudTimestamp } as any;
-              }
-              return prev;
-            });
-          }
-        }
-
-        if (PLANNING_URL && Array.isArray(planningData) && planningData.length > 0) {
-          setPlanningSegments(planningData);
-        } else if (Array.isArray(mainlineData)) {
-          const plan = mainlineData.filter((s: any) => s.type === 'planning');
-          if (plan.length > 0) setPlanningSegments(plan);
-        }
-
-        if (Array.isArray(rampData) && rampData.length > 0) {
-          // 讀取並過濾雲端匝道排序配置
-          const orderRecords = rampData.filter((s: any) => s.id === 'RAMP_ORDER_CONFIG');
-          const cleanRampData = rampData.filter((s: any) => s.id !== 'RAMP_ORDER_CONFIG');
-
-          const latestOrderRecord = orderRecords.reduce((latest: any, current: any) => {
-            if (!latest) return current;
-            return (current.timestamp || 0) > (latest.timestamp || 0) ? current : latest;
-          }, null);
-
-          let savedOrder = getSavedRampOrder();
-          if (latestOrderRecord?.data && Array.isArray(latestOrderRecord.data)) {
-            savedOrder = latestOrderRecord.data;
-            localStorage.setItem('rampOrder', JSON.stringify(savedOrder));
-          }
-
-          if (cleanRampData.length > 0) {
-            cleanRampData.sort((a, b) => {
-              const idA = getRampGroupId(a);
-              const idB = getRampGroupId(b);
-              const idxA = savedOrder.indexOf(idA);
-              const idxB = savedOrder.indexOf(idB);
-
-              if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-              if (idxA !== -1) return -1;
-              if (idxB !== -1) return 1;
-
-              return idA.localeCompare(idB, 'zh-TW', { numeric: true });
-            });
-            setRampSegments(cleanRampData);
-          }
-        }
-
-        showToast('雲端資料載入成功', 'success');
-      } catch (error: any) {
-        console.error('Failed to fetch from GAS:', error);
-        showToast(error.message || '連線至資料庫失敗，請檢查網路或重新整理。', 'error');
-      } finally {
-        setLoadingData(false);
-      }
+    const fetchEndpoint = async (url: string, action: string, name: string) => {
+      if (!url) return null;
+      const res = await fetch(`${url}?action=${action}${nocacheParam}`);
+      if (!res.ok) throw new Error(`${name} 伺服器回應錯誤 (${res.status})`);
+      return parseGasResponse(res, name);
     };
-    fetchData();
+
+    try {
+      const results = await Promise.allSettled([
+        fetchEndpoint(MAINLINE_URL, 'getMainline', '主線'),
+        fetchEndpoint(RAMP_URL, 'getRamp', '匝道'),
+        PLANNING_URL ? fetchEndpoint(PLANNING_URL, 'getPlanning', '規劃') : Promise.resolve(null),
+      ]);
+
+      const [mainlineRes, rampRes, planningRes] = results;
+      let hasAnySuccess = false;
+
+      // 1. 主線資料處理
+      if (mainlineRes.status === 'fulfilled' && Array.isArray(mainlineRes.value) && mainlineRes.value.length > 0) {
+        hasAnySuccess = true;
+        const mainlineData = mainlineRes.value;
+        const main = mainlineData.filter(
+          (s: any) => s.type !== 'planning' && s.id !== 'LANE_OPTIONS_CONFIG',
+        );
+        if (main.length > 0) setSegments(main);
+
+        const settingsRecords = mainlineData.filter((s: any) => s.id === 'LANE_OPTIONS_CONFIG');
+        const settingsRecord = settingsRecords.reduce((latest: any, current: any) => {
+          if (!latest) return current;
+          return (current.timestamp || 0) > (latest.timestamp || 0) ? current : latest;
+        }, null);
+
+        if (settingsRecord?.data) {
+          setLaneOptions(prev => {
+            const cloudTimestamp = settingsRecord.timestamp || 0;
+            const localTimestamp = (prev as any)._timestamp || 0;
+            if (cloudTimestamp > localTimestamp + 2000) {
+              return { ...INITIAL_HIGHWAY_LANES, ...settingsRecord.data, _timestamp: cloudTimestamp } as any;
+            }
+            return prev;
+          });
+        }
+      }
+
+      // 2. 匝道資料處理
+      if (rampRes.status === 'fulfilled' && Array.isArray(rampRes.value) && rampRes.value.length > 0) {
+        hasAnySuccess = true;
+        const rampData = rampRes.value;
+        const orderRecords = rampData.filter((s: any) => s.id === 'RAMP_ORDER_CONFIG');
+        const cleanRampData = rampData.filter((s: any) => s.id !== 'RAMP_ORDER_CONFIG');
+
+        const latestOrderRecord = orderRecords.reduce((latest: any, current: any) => {
+          if (!latest) return current;
+          return (current.timestamp || 0) > (latest.timestamp || 0) ? current : latest;
+        }, null);
+
+        let savedOrder = getSavedRampOrder();
+        if (latestOrderRecord?.data && Array.isArray(latestOrderRecord.data)) {
+          savedOrder = latestOrderRecord.data;
+          localStorage.setItem('rampOrder', JSON.stringify(savedOrder));
+        }
+
+        if (cleanRampData.length > 0) {
+          cleanRampData.sort((a, b) => {
+            const idA = getRampGroupId(a);
+            const idB = getRampGroupId(b);
+            const idxA = savedOrder.indexOf(idA);
+            const idxB = savedOrder.indexOf(idB);
+
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+
+            return idA.localeCompare(idB, 'zh-TW', { numeric: true });
+          });
+          setRampSegments(cleanRampData);
+        }
+      }
+
+      // 3. 規劃資料處理
+      if (planningRes.status === 'fulfilled' && Array.isArray(planningRes.value) && planningRes.value.length > 0) {
+        hasAnySuccess = true;
+        setPlanningSegments(planningRes.value);
+      } else if (mainlineRes.status === 'fulfilled' && Array.isArray(mainlineRes.value)) {
+        const plan = mainlineRes.value.filter((s: any) => s.type === 'planning');
+        if (plan.length > 0) {
+          hasAnySuccess = true;
+          setPlanningSegments(plan);
+        }
+      }
+
+      if (hasAnySuccess) {
+        // 如果是手動觸發才通知
+        if (nocache) {
+          showToast('雲端資料重新同步成功', 'success');
+        }
+      } else {
+        const firstError = results.find(r => r.status === 'rejected') as PromiseRejectedResult | undefined;
+        if (firstError) {
+          showToast(firstError.reason?.message || '雲端連線失敗，目前顯示本地快取資料', 'info');
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch from GAS:', error);
+      showToast(error.message || '連線至資料庫失敗，已載入本地快取。', 'info');
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -310,6 +336,7 @@ export function useHighwayData({
 
   return {
     loadingData,
+    refreshData: fetchData,
     segments,
     setSegments,
     planningSegments,

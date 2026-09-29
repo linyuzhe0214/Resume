@@ -1,4 +1,4 @@
-// ===== 主線 GAS 腳本 (多工作表版本) =====
+// ===== 主線 GAS 腳本 (多工作表版本 + 支援高速分塊快取) =====
 // 貼到 MAINLINE_URL 對應的 Apps Script 專案
 
 // SECURITY: 合法工作表名稱白名單（防止任意 insertSheet DoS）
@@ -7,6 +7,9 @@ const MAINLINE_ALLOWED_SHEETS = new Set([
   'Mainline', '國道1號', '國道2號', '國道3號', '國道3甲',
   '國道4號', '國道5號', '國道6號', '國道8號', '國道10號',
 ]);
+
+const CACHE_KEY_MAINLINE = 'cache_getMainline';
+const CACHE_TTL_SECONDS = 21600; // 6 小時
 
 function isAuthorized_(payload) {
   const token = PropertiesService.getScriptProperties().getProperty('API_TOKEN');
@@ -17,9 +20,20 @@ function isAuthorized_(payload) {
 
 function doGet(e) {
   const action = e.parameter.action;
+  const nocache = e.parameter.nocache === '1' || e.parameter.nocache === 'true';
   try {
     if (action === 'getMainline') {
-      return getAll();
+      // 1. 若未指定 nocache，優先從 Apps Script CacheService 秒讀
+      if (!nocache) {
+        const cached = getLargeCache(CACHE_KEY_MAINLINE);
+        if (cached !== null) {
+          return jsonResponse(cached);
+        }
+      }
+      // 2. Cache miss 或 nocache=1：從試算表讀取並更新快取
+      const records = getAllRecords();
+      setLargeCache(CACHE_KEY_MAINLINE, records, CACHE_TTL_SECONDS);
+      return jsonResponse(records);
     }
     return jsonResponse({ error: 'Unknown action: ' + action });
   } catch (err) {
@@ -42,10 +56,15 @@ function doPost(e) {
     const action = payload.action;
     const sheetName = payload.sheetName; // 從前端傳遞過來 (如 "國道1號")
 
+    let result;
     if (action === 'saveMainline') {
-      return save(payload.record, sheetName);
+      result = save(payload.record, sheetName);
+      clearLargeCache(CACHE_KEY_MAINLINE);
+      return result;
     } else if (action === 'deleteMainline') {
-      return remove(payload.id, sheetName);
+      result = remove(payload.id, sheetName);
+      clearLargeCache(CACHE_KEY_MAINLINE);
+      return result;
     }
     return jsonResponse({ error: 'Unknown action: ' + action });
   } catch (err) {
@@ -67,7 +86,7 @@ function getSheet(name) {
 /**
  * 讀取試算表中所有的工作表並彙整資料
  */
-function getAll() {
+function getAllRecords() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
   const allRecords = [];
@@ -89,7 +108,7 @@ function getAll() {
     }
   });
 
-  return jsonResponse(allRecords);
+  return allRecords;
 }
 
 /**
@@ -139,6 +158,63 @@ function remove(id, sheetName) {
     } catch (e) { /* skip */ }
   }
   return jsonResponse({ success: true, action: 'not_found', id, sheet: sheet.getName() });
+}
+
+// ─── 高效能分塊快取（Chunked Cache）機制 ───────────────────
+function setLargeCache(key, dataObj, ttl) {
+  var cache = CacheService.getScriptCache();
+  var json = JSON.stringify(dataObj);
+  var chunkSize = 90000;
+  var count = Math.ceil(json.length / chunkSize);
+  var cacheObj = {};
+  cacheObj[key + '_count'] = String(count);
+  for (var i = 0; i < count; i++) {
+    cacheObj[key + '_' + i] = json.slice(i * chunkSize, (i + 1) * chunkSize);
+  }
+  try {
+    cache.putAll(cacheObj, ttl || 21600);
+  } catch (e) {
+    console.warn('Cache put failed', e);
+  }
+}
+
+function getLargeCache(key) {
+  var cache = CacheService.getScriptCache();
+  var countStr = cache.get(key + '_count');
+  if (!countStr) return null;
+  var count = parseInt(countStr, 10);
+  var keys = [];
+  for (var i = 0; i < count; i++) {
+    keys.push(key + '_' + i);
+  }
+  var chunks = cache.getAll(keys);
+  var json = '';
+  for (var i = 0; i < count; i++) {
+    var chunk = chunks[key + '_' + i];
+    if (!chunk) return null;
+    json += chunk;
+  }
+  try {
+    return JSON.parse(json);
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearLargeCache(key) {
+  var cache = CacheService.getScriptCache();
+  try {
+    var countStr = cache.get(key + '_count');
+    if (countStr) {
+      var count = parseInt(countStr, 10);
+      var keys = [key + '_count'];
+      for (var i = 0; i < count; i++) {
+        keys.push(key + '_' + i);
+      }
+      cache.removeAll(keys);
+    }
+    cache.remove(key);
+  } catch (_) {}
 }
 
 function jsonResponse(data) {

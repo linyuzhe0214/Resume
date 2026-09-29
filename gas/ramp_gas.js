@@ -1,4 +1,4 @@
-// ===== 匝道 GAS 腳本 (多工作表版本 - 依交流道分工作表) =====
+// ===== 匝道 GAS 腳本 (多工作表版本 - 依交流道分工作表 + 支援高速分塊快取) =====
 // 貼到 RAMP_URL 對應的 Apps Script 專案
 
 // SECURITY: 合法工作表名稱白名單（防止任意 insertSheet DoS）
@@ -11,6 +11,9 @@ const RAMP_ALLOWED_SHEETS = new Set([
   '楠梓系統', '左營系統',
 ]);
 
+const CACHE_KEY_RAMP = 'cache_getRamp';
+const CACHE_TTL_SECONDS = 21600; // 6 小時
+
 function isAuthorized_(payload) {
   const token = PropertiesService.getScriptProperties().getProperty('API_TOKEN');
   if (!token) return false;
@@ -19,9 +22,18 @@ function isAuthorized_(payload) {
 
 function doGet(e) {
   const action = e.parameter.action;
+  const nocache = e.parameter.nocache === '1' || e.parameter.nocache === 'true';
   try {
     if (action === 'getRamp') {
-      return getAll();
+      if (!nocache) {
+        const cached = getLargeCache(CACHE_KEY_RAMP);
+        if (cached !== null) {
+          return jsonResponse(cached);
+        }
+      }
+      const records = getAllRecords();
+      setLargeCache(CACHE_KEY_RAMP, records, CACHE_TTL_SECONDS);
+      return jsonResponse(records);
     }
     return jsonResponse({ error: 'Unknown action: ' + action });
   } catch (err) {
@@ -44,10 +56,15 @@ function doPost(e) {
 
     const action = payload.action;
 
+    let result;
     if (action === 'saveRamp') {
-      return save(payload.record, sheetName);
+      result = save(payload.record, sheetName);
+      clearLargeCache(CACHE_KEY_RAMP);
+      return result;
     } else if (action === 'deleteRamp') {
-      return remove(payload.id, sheetName);
+      result = remove(payload.id, sheetName);
+      clearLargeCache(CACHE_KEY_RAMP);
+      return result;
     }
     return jsonResponse({ error: 'Unknown action: ' + action });
   } catch (err) {
@@ -69,7 +86,7 @@ function getSheet(name) {
 /**
  * 讀取試算表中所有的工作表並彙整資料
  */
-function getAll() {
+function getAllRecords() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
   const allRecords = [];
@@ -91,7 +108,7 @@ function getAll() {
     }
   });
 
-  return jsonResponse(allRecords);
+  return allRecords;
 }
 
 /**
@@ -128,12 +145,10 @@ function remove(id, sheetName) {
   if (!id) return jsonResponse({ error: 'Missing id' });
   
   if (sheetName) {
-    // 指定了工作表，只在該工作表中搜尋
     const sheet = getSheet(sheetName);
     return removeFromSheet(sheet, id);
   }
 
-  // 未指定工作表，搜尋所有工作表
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
   for (let s = 0; s < sheets.length; s++) {
@@ -159,6 +174,63 @@ function removeFromSheet(sheet, id) {
     } catch (e) { /* skip */ }
   }
   return jsonResponse({ success: true, action: 'not_found', id, sheet: sheet.getName() });
+}
+
+// ─── 高效能分塊快取（Chunked Cache）機制 ───────────────────
+function setLargeCache(key, dataObj, ttl) {
+  var cache = CacheService.getScriptCache();
+  var json = JSON.stringify(dataObj);
+  var chunkSize = 90000;
+  var count = Math.ceil(json.length / chunkSize);
+  var cacheObj = {};
+  cacheObj[key + '_count'] = String(count);
+  for (var i = 0; i < count; i++) {
+    cacheObj[key + '_' + i] = json.slice(i * chunkSize, (i + 1) * chunkSize);
+  }
+  try {
+    cache.putAll(cacheObj, ttl || 21600);
+  } catch (e) {
+    console.warn('Cache put failed', e);
+  }
+}
+
+function getLargeCache(key) {
+  var cache = CacheService.getScriptCache();
+  var countStr = cache.get(key + '_count');
+  if (!countStr) return null;
+  var count = parseInt(countStr, 10);
+  var keys = [];
+  for (var i = 0; i < count; i++) {
+    keys.push(key + '_' + i);
+  }
+  var chunks = cache.getAll(keys);
+  var json = '';
+  for (var i = 0; i < count; i++) {
+    var chunk = chunks[key + '_' + i];
+    if (!chunk) return null;
+    json += chunk;
+  }
+  try {
+    return JSON.parse(json);
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearLargeCache(key) {
+  var cache = CacheService.getScriptCache();
+  try {
+    var countStr = cache.get(key + '_count');
+    if (countStr) {
+      var count = parseInt(countStr, 10);
+      var keys = [key + '_count'];
+      for (var i = 0; i < count; i++) {
+        keys.push(key + '_' + i);
+      }
+      cache.removeAll(keys);
+    }
+    cache.remove(key);
+  } catch (_) {}
 }
 
 function jsonResponse(data) {
