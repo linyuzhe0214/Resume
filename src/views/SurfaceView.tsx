@@ -139,8 +139,8 @@ export default function SurfaceView({
   const renderHistoryCard = (historySeg: Segment | RampSegment | undefined) => {
     if (!historySeg) {
       return (
-        <div className="w-full flex-1 flex flex-col items-center justify-center bg-slate-50 border border-dashed border-slate-300 rounded-lg p-2 min-h-[120px]">
-          <span className="text-slate-400 font-bold text-[9px] opacity-50">無履歷</span>
+        <div className="w-full flex-1 flex flex-col items-center justify-center bg-slate-50/80 border-2 border-dashed border-slate-200 rounded-2xl p-3 min-h-[130px] transition-all">
+          <span className="text-slate-400 font-bold text-[10px] tracking-wide">無履歷</span>
         </div>
       );
     }
@@ -152,22 +152,35 @@ export default function SurfaceView({
     return (
       <div 
         onClick={() => setSelectedHistorySeg(historySeg)}
-        className="w-full flex-1 flex flex-col items-center justify-center p-2 rounded-lg border shadow-sm transition-all cursor-pointer hover:scale-[1.02] hover:shadow-md"
+        className="w-full flex-1 flex flex-col items-center justify-between p-3 rounded-2xl border shadow-sm transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg active:scale-95 group relative overflow-hidden"
         style={{ 
           backgroundColor: info.color || '#f8fafc',
-          borderColor: info.color ? 'rgba(0,0,0,0.1)' : '#e2e8f0',
-          minHeight: '120px'
+          borderColor: info.color ? 'rgba(0,0,0,0.12)' : '#e2e8f0',
+          minHeight: '130px'
         }}
+        title="點擊檢視鋪面斷面圖說"
       >
-        <span className="text-[10px] sm:text-xs font-black text-slate-800 leading-tight text-center">{historySeg.property}</span>
-        <span className="text-[9px] font-bold text-slate-700 leading-tight mt-1 text-center font-mono">
-          {formatMileage(historySeg.startMileage)}<br/>~ {formatMileage(historySeg.endMileage)}
-        </span>
+        <div className="w-full flex flex-col items-center">
+          <span className="text-[10px] sm:text-xs font-black text-slate-900 leading-tight text-center drop-shadow-xs">
+            {historySeg.property}
+          </span>
+          <span className="text-[9px] font-bold text-slate-800 leading-tight mt-1 text-center font-mono bg-black/5 px-2 py-0.5 rounded-full">
+            {formatMileage(historySeg.startMileage)} ~ {formatMileage(historySeg.endMileage)}
+          </span>
+        </div>
         
-        <div className="mt-2 flex flex-col items-center justify-center w-full bg-white/60 p-1.5 rounded-md text-center shadow-sm">
-           <span className="text-[10px] font-black text-slate-800">{historySeg.constructionYear}年{historySeg.constructionMonth}月</span>
-           <span className="text-[9px] font-bold text-slate-700 leading-none mt-1">{info.combinedType || '無資料'}</span>
-           <span className="text-[10px] font-black text-slate-900 leading-none mt-1">{depth > 0 ? `${depth}cm` : ''}</span>
+        <div className="mt-2.5 flex flex-col items-center justify-center w-full bg-white/80 backdrop-blur-md p-2 rounded-xl text-center shadow-xs border border-white/60 group-hover:bg-white transition-all">
+           <span className="text-[10px] font-black text-slate-900 leading-none font-mono">
+             {historySeg.constructionYear}年{historySeg.constructionMonth}月
+           </span>
+           <span className="text-[9px] font-bold text-slate-700 leading-tight mt-1 truncate max-w-full px-1">
+             {info.combinedType || '無資料'}
+           </span>
+           {depth > 0 && (
+             <span className="text-[11px] font-mono font-black text-blue-700 leading-none mt-1 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+               {depth}cm
+             </span>
+           )}
         </div>
       </div>
     );
@@ -175,19 +188,25 @@ export default function SurfaceView({
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-40 flex flex-col items-center">
-      <div className="responsive-container flex flex-col gap-4 py-4">
+      <div className="responsive-container flex flex-col gap-5 py-4">
         {/* Header */}
-        <header className="flex flex-col gap-4 p-5 sm:p-6 rounded-3xl bg-[#00488d] shadow-xl shadow-[#00488d]/20 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+        <header className="flex flex-col gap-4 p-5 sm:p-7 rounded-[2rem] bg-gradient-to-br from-slate-900 via-[#003d7a] to-[#00488d] shadow-2xl shadow-blue-950/20 border border-white/10 relative overflow-hidden">
+          {/* Ambient light glow */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/10 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full -ml-20 -mb-20 blur-3xl pointer-events-none" />
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
             <div className="flex flex-col">
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-md">
-                高速公路路巡系統
-              </h1>
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse shadow-sm shadow-blue-400/50" />
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-sm">
+                  高速公路路巡系統
+                </h1>
+              </div>
               <div
-                className="flex items-center gap-2.5 mt-2 cursor-pointer hover:bg-white/10 px-3 py-1.5 rounded-full w-max -ml-1 transition-all border border-transparent hover:border-white/10 group"
+                className="flex items-center gap-2.5 mt-2.5 cursor-pointer bg-white/10 hover:bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-full w-max transition-all border border-white/15 group shadow-sm"
                 onClick={onToggleAutoTracking}
+                title="點擊切換 GPS 自動追蹤"
               >
                 <div className="relative flex h-2.5 w-2.5">
                   <span
@@ -196,10 +215,10 @@ export default function SurfaceView({
                       !autoTracking
                         ? 'bg-slate-400'
                         : gpsStatus === 'active'
-                        ? 'bg-green-400'
+                        ? 'bg-emerald-400'
                         : gpsStatus === 'locating'
-                        ? 'bg-yellow-400'
-                        : 'bg-red-400',
+                        ? 'bg-amber-400'
+                        : 'bg-rose-400',
                     )}
                   />
                   <span
@@ -208,10 +227,10 @@ export default function SurfaceView({
                       !autoTracking
                         ? 'bg-slate-400'
                         : gpsStatus === 'active'
-                        ? 'bg-green-500'
+                        ? 'bg-emerald-500'
                         : gpsStatus === 'locating'
-                        ? 'bg-yellow-500'
-                        : 'bg-red-500',
+                        ? 'bg-amber-500'
+                        : 'bg-rose-500',
                     )}
                   />
                 </div>
@@ -228,20 +247,20 @@ export default function SurfaceView({
             </div>
 
             <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-white/10 pt-3 sm:pt-0">
-              <div className="text-2xl sm:text-3xl font-mono font-black text-white tracking-tighter">
+              <div className="text-2xl sm:text-3xl font-mono font-black text-white tracking-tight drop-shadow-sm">
                 {format(currentTime, 'HH:mm:ss')}
               </div>
-              <div className="text-xs text-blue-200 font-bold tracking-widest opacity-80">
+              <div className="text-xs font-mono text-blue-200/80 font-bold tracking-wider mt-0.5">
                 {format(currentTime, 'yyyy-MM-dd')}
               </div>
             </div>
           </div>
 
-          {/* Search bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Search & Selector Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative z-10">
             <div className="relative group">
               <select
-                className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-bold appearance-none text-center transition-all hover:bg-white/20"
+                className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-black appearance-none text-center transition-all shadow-sm cursor-pointer"
                 value={highwayName}
                 onChange={e => {
                   const newHw = e.target.value;
@@ -255,19 +274,19 @@ export default function SurfaceView({
                 }}
               >
                 {[1, 3, 4].map(h => (
-                  <option key={h} className="text-slate-900" value={`國道${h}號`}>
+                  <option key={h} className="text-slate-900 font-bold" value={`國道${h}號`}>
                     國道{h}號
                   </option>
                 ))}
               </select>
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-white/50">
+              <div className="absolute inset-y-0 right-3.5 flex items-center pointer-events-none text-white/60">
                 <Layers size={14} />
               </div>
             </div>
 
             <div className="relative group">
               <select
-                className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-bold appearance-none text-center transition-all hover:bg-white/20"
+                className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-black appearance-none text-center transition-all shadow-sm cursor-pointer"
                 value={direction}
                 onChange={e => onDirectionChange(e.target.value)}
               >
@@ -275,12 +294,12 @@ export default function SurfaceView({
                   ? ['東向車道', '西向車道'] 
                   : ['南下車道', '北上車道']
                 ).map(d => (
-                  <option key={d} className="text-slate-900" value={d}>
+                  <option key={d} className="text-slate-900 font-bold" value={d}>
                     {d}
                   </option>
                 ))}
               </select>
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-white/50">
+              <div className="absolute inset-y-0 right-3.5 flex items-center pointer-events-none text-white/60">
                 <Route size={14} />
               </div>
             </div>
@@ -291,7 +310,7 @@ export default function SurfaceView({
               </div>
               <input
                 type="text"
-                className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 pl-11 pr-4 py-3 placeholder-blue-200/50 outline-none transition-all font-bold hover:bg-white/20"
+                className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 pl-11 pr-4 py-3 placeholder-blue-200/60 outline-none transition-all font-bold shadow-sm"
                 placeholder="搜尋里程 (例: 166k+500)"
                 value={searchQuery}
                 onChange={e => onSearchQueryChange(e.target.value)}
@@ -302,17 +321,17 @@ export default function SurfaceView({
         </header>
 
         {/* Location Section */}
-        <section className="bg-white border border-slate-200 shadow-sm p-6 sm:p-8 rounded-[2rem] transition-all hover:shadow-md">
+        <section className="bg-white border border-slate-200/80 shadow-md shadow-slate-200/40 p-6 sm:p-8 rounded-[2rem] transition-all hover:shadow-lg">
           <div className="flex items-start justify-between mb-4">
-            <span className="text-xs font-black text-indigo-600 flex items-center gap-2 uppercase tracking-widest bg-indigo-50 px-3 py-1.5 rounded-full">
-              <MapPin className="w-3.5 h-3.5" />
+            <span className="text-xs font-black text-blue-700 flex items-center gap-2 uppercase tracking-widest bg-blue-50/90 border border-blue-100 px-3.5 py-1.5 rounded-full shadow-xs">
+              <MapPin className="w-3.5 h-3.5 text-blue-600" />
               當前位置
             </span>
             <div className="flex flex-col items-end">
-              <span className="text-[10px] text-slate-400 font-mono tracking-tight leading-none mb-1">
+              <span className="text-[10px] text-slate-400 font-mono tracking-wider leading-none mb-1">
                 COORDINATES
               </span>
-              <span className="text-xs text-slate-600 font-mono font-bold">
+              <span className="text-xs text-slate-600 font-mono font-bold bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
                 {location
                   ? `${location.coords.latitude.toFixed(5)}, ${location.coords.longitude.toFixed(5)}`
                   : '未定位'}
@@ -320,26 +339,29 @@ export default function SurfaceView({
             </div>
           </div>
 
-          <div className="text-center py-2">
+          <div className="text-center py-3">
             <div className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-              {highwayName} <span className="text-indigo-600">{formatMileage(mileage)}</span>
+              {highwayName}{' '}
+              <span className="font-mono bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">
+                {formatMileage(mileage)}
+              </span>
             </div>
-            <div className="inline-flex items-center gap-2 mt-4 px-4 py-1.5 rounded-full bg-slate-100 text-sm font-bold text-slate-700 border border-slate-200">
+            <div className="inline-flex items-center gap-2 mt-4 px-4 py-1.5 rounded-full bg-slate-100/90 text-sm font-black text-slate-700 border border-slate-200/80 shadow-xs">
               <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
               {direction}
             </div>
           </div>
 
           {/* Search Mode Toggle */}
-          <div className="mt-8 flex bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/50">
+          <div className="mt-7 flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60 shadow-inner">
             {(['auto', 'mainline', 'ramp'] as const).map(mode => (
               <button
                 key={mode}
                 className={cn(
                   'flex-1 py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all active:scale-95',
                   searchMode === mode
-                    ? 'bg-white text-indigo-700 shadow-lg shadow-indigo-100 ring-1 ring-black/5'
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50',
+                    ? 'bg-white text-blue-700 shadow-md shadow-slate-200/60 ring-1 ring-slate-900/5'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/40',
                 )}
                 onClick={() => onSearchModeChange(mode)}
               >
@@ -407,60 +429,70 @@ export default function SurfaceView({
               )}
 
               {/* General & Geometry Info */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl flex flex-col gap-2">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                    路基/路面
-                  </span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                      路基 / 路面
+                    </span>
+                    <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <Layers size={15} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap my-2">
                     {!currentKmlPoint.isRamp && (currentKmlPoint as KmlMainlinePoint).roadType && (
-                      <span className="px-2 py-0.5 bg-blue-50 text-[10px] font-bold rounded border border-blue-200 text-blue-700">
+                      <span className="px-2.5 py-1 bg-blue-50 text-[10px] font-black rounded-lg border border-blue-200/60 text-blue-700">
                         {(currentKmlPoint as KmlMainlinePoint).roadType}
                       </span>
                     )}
-                    <span className="px-2 py-0.5 bg-slate-50 text-[10px] font-bold rounded border border-slate-200 text-slate-600">
+                    <span className="px-2.5 py-1 bg-slate-100 text-[10px] font-black rounded-lg border border-slate-200 text-slate-700">
                       {currentKmlPoint.pavementType || '柔性'}路面
                     </span>
                   </div>
-                  <div className="mt-1 text-xl font-black text-slate-800">
+                  <div className="text-2xl font-mono font-black text-slate-900 tracking-tight">
                     {currentKmlPoint.roadWidth.toFixed(3)}
-                    <span className="text-xs ml-1 text-slate-500">m</span>
+                    <span className="text-xs font-bold ml-1 text-slate-400">m 全寬</span>
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 shadow-sm p-4 rounded-xl flex flex-col gap-2">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                    線型資訊
-                  </span>
-                  <div className="text-sm font-black text-slate-800">
-                    曲率:{' '}
-                    {currentKmlPoint.curvatureRadius > 0
-                      ? `${currentKmlPoint.curvatureRadius.toFixed(2)}m`
-                      : 'N/A'}
+                <div className="bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                      線型資訊
+                    </span>
+                    <div className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <Route size={15} />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between mt-1">
+                  <div className="text-sm font-black text-slate-800 my-2">
+                    曲率半徑:{' '}
+                    <span className="font-mono text-indigo-700">
+                      {currentKmlPoint.curvatureRadius > 0
+                        ? `${currentKmlPoint.curvatureRadius.toFixed(2)}m`
+                        : '直線 (N/A)'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                     {[
                       { label: '縱坡', val: currentKmlPoint.longitudinalSlope },
                       { label: '橫坡', val: currentKmlPoint.lateralSlope },
                     ].map(({ label, val }) => (
-                      <div key={label} className="flex flex-col items-center">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-bold text-slate-500">
-                            {label} {val.toFixed(3)}
-                          </span>
-                          <span
-                            className={cn(
-                              'text-[11px] font-black px-1 rounded',
-                              val > 0
-                                ? 'text-green-700 bg-green-50'
-                                : val < 0
-                                ? 'text-red-700 bg-red-50'
-                                : 'text-slate-500 bg-slate-50',
-                            )}
-                          >
-                            {val > 0 ? '上坡' : val < 0 ? '下坡' : '平'}
-                          </span>
-                        </div>
+                      <div key={label} className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-400 font-mono">
+                          {label} {val.toFixed(2)}
+                        </span>
+                        <span
+                          className={cn(
+                            'text-[10px] font-black px-1.5 py-0.5 rounded-md border',
+                            val > 0
+                              ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                              : val < 0
+                              ? 'text-rose-700 bg-rose-50 border-rose-200'
+                              : 'text-slate-600 bg-slate-50 border-slate-200',
+                          )}
+                        >
+                          {val > 0 ? '上坡' : val < 0 ? '下坡' : '平'}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -468,57 +500,74 @@ export default function SurfaceView({
               </div>
 
               {/* Lane Details & Diagram */}
-              <div className="bg-white border border-slate-200 shadow-sm p-5 rounded-2xl flex flex-col gap-5">
-                <h3 className="text-xs font-black text-[#0284c7] uppercase tracking-widest border-b border-slate-100 pb-3">
-                  斷面配置圖 (CROSS-SECTION) · {currentKmlPoint.stakeNo}
-                </h3>
+              <div className="bg-white border border-slate-200/80 shadow-md shadow-slate-200/30 p-6 rounded-3xl flex flex-col gap-5">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-xs font-black text-blue-700 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-600" />
+                    斷面配置圖 (CROSS-SECTION)
+                  </h3>
+                  <span className="font-mono text-xs font-black text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                    {currentKmlPoint.stakeNo}
+                  </span>
+                </div>
 
-                {/* Visual Cross-section Diagram */}
-                <div className="w-full flex items-end justify-center gap-1 px-1 sm:px-2 font-mono text-[9px] min-h-[140px]">
-                  {!currentKmlPoint.isRamp &&
-                    (currentKmlPoint as KmlMainlinePoint).innerShoulderWidth > 0 && (
-                      <div className="flex flex-col items-center justify-end h-full">
-                        <div className="bg-slate-200 w-7 h-28 border-l-2 border-slate-300 flex items-center justify-center text-slate-600 text-[8px] leading-tight text-center font-bold">
-                          內<br />肩
+                {/* Visual Cross-section Diagram (Modern CAD Road Surface Deck) */}
+                <div className="w-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-4 sm:p-5 shadow-2xl border border-slate-700/60 overflow-hidden relative">
+                  {/* Subtle asphalt texture overlay */}
+                  <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none" />
+
+                  <div className="relative z-10 w-full flex items-end justify-center gap-1.5 px-1 font-mono text-[9px] min-h-[145px]">
+                    {!currentKmlPoint.isRamp &&
+                      (currentKmlPoint as KmlMainlinePoint).innerShoulderWidth > 0 && (
+                        <div className="flex flex-col items-center justify-end h-full">
+                          <div className="bg-gradient-to-b from-slate-700 to-slate-800 w-8 sm:w-10 h-28 border-l-2 border-yellow-500/80 flex items-center justify-center text-slate-300 text-[9px] leading-tight text-center font-black rounded-l-md shadow-inner">
+                            內<br />肩
+                          </div>
+                          <span className="mt-2 text-slate-400 font-mono font-bold">
+                            {(currentKmlPoint as KmlMainlinePoint).innerShoulderWidth.toFixed(2)}m
+                          </span>
                         </div>
-                        <span className="mt-2 text-slate-500 font-bold">
-                          {(currentKmlPoint as KmlMainlinePoint).innerShoulderWidth.toFixed(2)}m
+                      )}
+
+                    {currentKmlPoint.laneWidths.map((w, i) => (
+                      <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group">
+                        <div className="bg-slate-800/90 hover:bg-slate-750 border-r border-dashed border-white/30 w-full flex flex-col items-center relative overflow-hidden transition-all duration-200 h-28 rounded-sm shadow-inner group-hover:brightness-110">
+                          <div className="w-full h-full flex flex-col items-center justify-center">
+                            <span className="text-white font-black text-xs sm:text-sm drop-shadow-md">
+                              車道{i + 1}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="mt-2 text-amber-400 font-mono font-black text-[10px]">
+                          {w.toFixed(2)}m
                         </span>
-                      </div>
-                    )}
-
-                  {currentKmlPoint.laneWidths.map((w, i) => (
-                    <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group">
-                      <div className="bg-slate-100 border-l border-dashed border-slate-300 w-full flex flex-col items-center relative overflow-hidden transition-all duration-300 h-28 rounded-sm shadow-inner">
-                        <div className="w-full h-full flex flex-col items-center justify-center">
-                          <span className="text-slate-500 font-black text-xs">車道{i + 1}</span>
-                        </div>
-                      </div>
-                      <span className="mt-2 text-slate-500 font-bold">{w.toFixed(2)}m</span>
-                    </div>
-                  ))}
-
-                  {!currentKmlPoint.isRamp &&
-                    (currentKmlPoint as KmlMainlinePoint).auxiliaryLanes.map((aux, i) => (
-                      <div key={`aux-${i}`} className="flex flex-col items-center flex-1 justify-end h-full">
-                        <div className="bg-blue-50 border-l border-dashed border-blue-200 w-full h-24 flex items-center justify-center text-blue-700 font-black text-[9px] rounded-sm">
-                          {aux.name}
-                        </div>
-                        <span className="mt-2 text-blue-500 font-bold">{aux.width.toFixed(2)}m</span>
                       </div>
                     ))}
 
-                  {!currentKmlPoint.isRamp &&
-                    (currentKmlPoint as KmlMainlinePoint).outerShoulderWidth > 0 && (
-                      <div className="flex flex-col items-center justify-end h-full">
-                        <div className="bg-slate-200 w-12 sm:w-16 h-28 border-r-2 border-slate-300 flex items-center justify-center text-slate-600 text-[10px] font-bold">
-                          外肩
+                    {!currentKmlPoint.isRamp &&
+                      (currentKmlPoint as KmlMainlinePoint).auxiliaryLanes.map((aux, i) => (
+                        <div key={`aux-${i}`} className="flex flex-col items-center flex-1 justify-end h-full">
+                          <div className="bg-blue-900/40 border-r border-dashed border-blue-400/40 w-full h-24 flex items-center justify-center text-blue-300 font-black text-[10px] rounded-sm shadow-inner">
+                            {aux.name}
+                          </div>
+                          <span className="mt-2 text-blue-400 font-mono font-black text-[10px]">
+                            {aux.width.toFixed(2)}m
+                          </span>
                         </div>
-                        <span className="mt-2 text-slate-500 font-bold">
-                          {(currentKmlPoint as KmlMainlinePoint).outerShoulderWidth.toFixed(2)}m
-                        </span>
-                      </div>
-                    )}
+                      ))}
+
+                    {!currentKmlPoint.isRamp &&
+                      (currentKmlPoint as KmlMainlinePoint).outerShoulderWidth > 0 && (
+                        <div className="flex flex-col items-center justify-end h-full">
+                          <div className="bg-gradient-to-b from-slate-700 to-slate-800 w-12 sm:w-16 h-28 border-r-2 border-white/80 flex items-center justify-center text-slate-300 text-[10px] font-black rounded-r-md shadow-inner">
+                            外肩
+                          </div>
+                          <span className="mt-2 text-slate-400 font-mono font-bold">
+                            {(currentKmlPoint as KmlMainlinePoint).outerShoulderWidth.toFixed(2)}m
+                          </span>
+                        </div>
+                      )}
+                  </div>
                 </div>
 
                 {/* Detail Grid */}

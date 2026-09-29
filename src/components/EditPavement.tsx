@@ -42,56 +42,76 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
   const totalThickness = layers.reduce((sum, layer) => sum + layer.thickness, 0);
 
   return (
-    <div className="min-h-screen bg-[#f7f9fc] text-[#191c1e] pb-32">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-36 font-sans">
       {/* TopAppBar */}
-      <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 h-16 shadow-sm border-b border-slate-200">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="text-[#005fb8] hover:bg-black/5 p-2 rounded-full active:scale-95 duration-200 transition-colors">
-            <ArrowLeft className="w-6 h-6" />
+      <header className="fixed top-0 w-full z-50 bg-white/85 backdrop-blur-xl flex items-center justify-between px-4 sm:px-6 h-16 shadow-xs border-b border-slate-200/80">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={onBack} 
+            className="w-10 h-10 flex items-center justify-center rounded-2xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 active:scale-90 duration-150 transition-all border border-slate-200/60 shadow-2xs"
+            title="返回"
+          >
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="font-black text-lg tracking-tight">匝道鋪面編輯</h1>
+          <div className="flex flex-col">
+            <h1 className="font-black text-base sm:text-lg tracking-tight text-slate-900 leading-tight">鋪面結構編輯</h1>
+            <span className="text-[10px] font-bold text-slate-400 tracking-wider">PAVEMENT LAYER STRUCTURE</span>
+          </div>
         </div>
         <button 
           onClick={() => onSave(layers)}
-          className="text-[#005fb8] font-black text-lg tracking-tight haptic-feedback px-4 py-1"
+          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm tracking-wide px-5 py-2.5 rounded-2xl shadow-md shadow-blue-600/25 active:scale-95 transition-all"
         >
-          儲存
+          儲存結構
         </button>
       </header>
 
-      <main className="pt-24 px-6 max-w-md md:max-w-2xl mx-auto space-y-6 md:space-y-8">
+      <main className="pt-24 px-4 sm:px-6 max-w-md md:max-w-2xl mx-auto space-y-6 md:space-y-7">
         {/* Stats Bento Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col items-start border-l-4 border-[#005fb8]">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">總厚度 (CM)</span>
-            <span className="font-black text-3xl text-slate-900 tracking-tighter">{totalThickness.toFixed(1)}</span>
+        <div className="grid grid-cols-2 gap-3.5">
+          <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col items-start relative overflow-hidden group">
+            <div className="w-1.5 h-full bg-blue-600 absolute left-0 top-0 rounded-l-2xl" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 ml-1">總厚度 (CM)</span>
+            <span className="font-mono font-black text-3xl text-slate-900 tracking-tight ml-1">{totalThickness.toFixed(1)}</span>
+            <span className="text-[10px] font-bold text-blue-600 ml-1 mt-0.5">設計總深</span>
           </div>
-          <div className="bg-white p-5 rounded-2xl shadow-sm flex flex-col items-start border-l-4 border-[#005412]">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">圖層總數</span>
-            <span className="font-black text-3xl text-slate-900 tracking-tighter">{String(layers.length).padStart(2, '0')}</span>
+          <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-200/80 flex flex-col items-start relative overflow-hidden group">
+            <div className="w-1.5 h-full bg-emerald-600 absolute left-0 top-0 rounded-l-2xl" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 ml-1">圖層總數</span>
+            <span className="font-mono font-black text-3xl text-slate-900 tracking-tight ml-1">{String(layers.length).padStart(2, '0')}</span>
+            <span className="text-[10px] font-bold text-emerald-600 ml-1 mt-0.5">結構層數</span>
           </div>
         </div>
 
         {/* Layer List Header */}
-        <div className="flex items-center justify-between pt-2">
-          <h2 className="font-black text-xl text-slate-900">斷面結構配置</h2>
-          <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-1 rounded font-black tracking-widest uppercase">SENTINEL VIEW</span>
+        <div className="flex items-center justify-between pt-1">
+          <h2 className="font-black text-lg sm:text-xl text-slate-900 tracking-tight flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600" />
+            斷面結構配置
+          </h2>
+          <span className="bg-blue-50 text-blue-700 text-[10px] px-2.5 py-1 rounded-full font-black tracking-wider uppercase border border-blue-100">
+            STRUCTURE
+          </span>
         </div>
 
         {/* Layer Cards */}
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {layers.map((layer, index) => (
-            <div key={layer.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100">
-              <div className="flex items-center justify-between px-6 py-3 bg-slate-50/50">
+            <div key={layer.id} className="bg-white rounded-2xl shadow-xs overflow-hidden border border-slate-200/80 transition-all hover:shadow-md">
+              <div className="flex items-center justify-between px-5 py-3 bg-slate-50/80 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-[#005fb8]" />
-                  <span className="font-black text-sm tracking-tight">Layer {String(index + 1).padStart(2, '0')}</span>
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Layers className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-black text-xs sm:text-sm tracking-tight text-slate-800">
+                    Layer {String(index + 1).padStart(2, '0')}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => moveLayer(index, 'up')}
                     disabled={index === 0}
-                    className="text-slate-400 hover:text-[#005fb8] active:scale-90 transition-all p-1 disabled:opacity-20 disabled:cursor-not-allowed"
+                    className="text-slate-400 hover:text-blue-600 active:scale-90 transition-all p-1.5 rounded-lg hover:bg-white disabled:opacity-20 disabled:cursor-not-allowed"
                     title="上移"
                   >
                     <ArrowUp className="w-4 h-4" />
@@ -99,18 +119,17 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
                   <button
                     onClick={() => moveLayer(index, 'down')}
                     disabled={index === layers.length - 1}
-                    className="text-slate-400 hover:text-[#005fb8] active:scale-90 transition-all p-1 disabled:opacity-20 disabled:cursor-not-allowed"
+                    className="text-slate-400 hover:text-blue-600 active:scale-90 transition-all p-1.5 rounded-lg hover:bg-white disabled:opacity-20 disabled:cursor-not-allowed"
                     title="下移"
                   >
                     <ArrowDown className="w-4 h-4" />
                   </button>
-                  <div className="w-px h-4 bg-slate-200 mx-1" />
                   <button 
                     onClick={() => handleDeleteLayer(layer.id)}
-                    className="text-rose-400 hover:text-rose-600 active:scale-90 transition-all p-1"
-                    title="刪除"
+                    className="text-slate-400 hover:text-rose-600 active:scale-90 transition-all p-1.5 rounded-lg hover:bg-rose-50 ml-1"
+                    title="刪除圖層"
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>

@@ -279,43 +279,43 @@ export default function RampHistory(props: RampHistoryProps) {
         </div>
       )}
       {/* Section 1: Filters & Header */}
-      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-6 sm:p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
-        <div className="flex flex-col gap-2">
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-6 sm:p-8 rounded-[2rem] shadow-xl shadow-slate-200/40 border border-slate-200/80">
+        <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2.5 rounded-2xl shadow-lg shadow-blue-600/20">
-              <Layers size={24} className="text-white" />
+            <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2.5 rounded-2xl shadow-md shadow-blue-500/20 text-white">
+              <Layers size={22} />
             </div>
             <h1 className="font-black text-2xl sm:text-3xl tracking-tight text-slate-900 leading-none">匝道履歷資料</h1>
           </div>
-          <p className="text-slate-500 font-bold text-sm sm:text-base opacity-80">交流道匝道結構與維護歷程管理系統</p>
+          <p className="text-slate-400 font-bold text-xs sm:text-sm pl-0.5">交流道匝道結構與維護歷程管理系統</p>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 lg:flex lg:items-center">
-          <div className="flex flex-col gap-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">國道 Highway</label>
+        <div className="grid grid-cols-2 gap-3.5 lg:flex lg:items-center">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 ml-1">國道 HIGHWAY</label>
             <div className="relative group">
               <select 
                 value={selectedHighway}
                 onChange={(e) => setSelectedHighway(e.target.value)}
-                className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 pr-12 text-sm font-black text-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none"
+                className="w-full appearance-none bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-2xl px-5 py-3 pr-11 text-sm font-black text-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none cursor-pointer shadow-2xs"
               >
                 {highways.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">交流道 Interchange</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 ml-1">交流道 INTERCHANGE</label>
             <div className="relative group">
               <select 
                 value={selectedInterchange}
                 onChange={(e) => setSelectedInterchange(e.target.value)}
-                className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 pr-12 text-sm font-black text-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none"
+                className="w-full appearance-none bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-2xl px-5 py-3 pr-11 text-sm font-black text-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all outline-none cursor-pointer shadow-2xs"
               >
                 {interchanges.map(i => <option key={i} value={i}>{i}</option>)}
               </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
           </div>
 
@@ -331,10 +331,10 @@ export default function RampHistory(props: RampHistoryProps) {
                 setTimeout(() => setIsExporting(false), 500);
               }, 100);
             }}
-            className="hidden xl:flex items-center justify-center gap-2 px-5 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-2xl text-sm font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95 col-span-2 lg:col-span-1"
+            className="hidden xl:flex items-center justify-center gap-2 px-5 py-3 mt-auto bg-white border border-slate-200/90 text-slate-700 rounded-2xl text-xs sm:text-sm font-black hover:bg-slate-50 transition-all shadow-xs active:scale-95 col-span-2 lg:col-span-1"
             title="匯出（含施工履歷與詳細資料）"
           >
-            <Download size={18} /> 匯出資料
+            <Download size={16} /> 匯出資料
           </button>
         </div>
       </header>

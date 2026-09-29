@@ -563,16 +563,16 @@ export default function MainlineHistory({
           </div>
         </div>
         {/* Highway Selection Tabs */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3.5 -mx-4 px-4 sm:mx-0 sm:px-0">
           {highways.map(h => (
             <button 
               key={h.name}
               onClick={() => onActiveHighwayChange(h.name)}
               className={cn(
-                "whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-black transition-all duration-200",
+                "whitespace-nowrap px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all duration-200 active:scale-95",
                 activeHighway === h.name 
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/25 ring-1 ring-white/20" 
+                  : "bg-slate-100/90 text-slate-600 hover:bg-slate-200/80 hover:text-slate-800"
               )}
             >
               {h.label}
@@ -581,15 +581,15 @@ export default function MainlineHistory({
         </div>
 
         {/* Global Settings / Add Lane Section */}
-        <div className="hidden sm:flex items-center gap-3 py-3 border-t border-slate-100 mt-1">
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+        <div className="hidden sm:flex items-center gap-3 py-2.5 border-t border-slate-100 mt-0.5">
+          <div className="flex items-center gap-2 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200/80 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 focus-within:bg-white transition-all shadow-xs">
             <Plus size={16} className="text-slate-400" />
             <input 
               type="text" 
               placeholder="新增車道名稱..." 
               value={newLaneName}
               onChange={(e) => setNewLaneName(e.target.value)}
-              className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 w-32 lg:w-48"
+              className="bg-transparent border-none outline-none text-xs font-bold text-slate-700 w-32 lg:w-48 placeholder:text-slate-400"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && newLaneName.trim() && onAddLane) {
                   onAddLane(newLaneName.trim());
@@ -601,7 +601,7 @@ export default function MainlineHistory({
           <div className="flex-1 overflow-hidden">
             <div className="flex gap-2 overflow-x-auto no-scrollbar">
               {laneOptions && laneOptions.filter(l => !isDefaultLane(l)).map(l => (
-                <span key={l} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-black border border-blue-100 flex-shrink-0">
+                <span key={l} className="px-3 py-1 bg-blue-50/90 text-blue-700 rounded-full text-[10px] font-black border border-blue-100/80 flex-shrink-0 shadow-2xs">
                   {l}
                 </span>
               ))}
@@ -611,12 +611,12 @@ export default function MainlineHistory({
       </header>
 
 
-      <div id="mainline-export-container" className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden pt-4">
+      <div id="mainline-export-container" className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden pt-3">
         {/* Legend Section */}
-      <section className="mx-4 sm:mx-6 mb-4 bg-white rounded-3xl p-5 shadow-sm border border-slate-200 shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-black text-xs tracking-[0.2em] text-slate-400 uppercase flex items-center gap-2">
-            <div className="w-1.5 h-4 bg-blue-600 rounded-full"></div>
+      <section className="mx-4 sm:mx-6 mb-3 bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200/80 shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-black text-xs tracking-wider text-slate-500 uppercase flex items-center gap-2">
+            <div className="w-1.5 h-3.5 bg-gradient-to-b from-blue-600 to-indigo-600 rounded-full"></div>
             整修工法圖例 LEGEND
           </h2>
         </div>
@@ -624,10 +624,10 @@ export default function MainlineHistory({
           {legendItems.map((item, i) => (
             <div key={i} className="flex items-center gap-2.5 group cursor-default">
               <div 
-                className="w-5 h-5 rounded-lg border border-black/5 shadow-sm group-hover:scale-110 transition-transform"
+                className="w-5 h-5 rounded-lg border border-black/10 shadow-xs group-hover:scale-110 transition-transform shrink-0"
                 style={{ backgroundColor: item.color }}
               ></div>
-              <span className="text-[10px] font-bold text-slate-600 leading-tight truncate">{item.label}</span>
+              <span className="text-[10px] font-bold text-slate-700 leading-tight truncate">{item.label}</span>
             </div>
           ))}
           {legendItems.length === 0 && (
@@ -803,11 +803,11 @@ export default function MainlineHistory({
       </div>
 
       {/* Float Action Button */}
-      <div className="fixed bottom-28 right-6 flex flex-col gap-4 z-50">
+      <div className="fixed bottom-24 md:bottom-28 right-5 md:right-8 flex flex-col gap-3 z-50">
         {onDeleteAll && segments.length > 0 && (
           <button 
             onClick={onDeleteAll}
-            className="flex items-center gap-2 px-5 py-3.5 bg-red-500 text-white rounded-2xl shadow-xl shadow-red-500/20 active:scale-95 transition-all hover:bg-red-600 font-black text-sm group"
+            className="flex items-center gap-2 px-5 py-3.5 bg-gradient-to-r from-rose-500 to-red-600 text-white rounded-2xl shadow-xl shadow-red-500/30 active:scale-95 transition-all hover:brightness-110 font-black text-sm group border border-red-400/30"
           >
             <Trash2 className="w-5 h-5 group-hover:rotate-12 transition-transform" />
             <span className="hidden sm:inline">一鍵刪除</span>
@@ -815,9 +815,10 @@ export default function MainlineHistory({
         )}
         <button 
           onClick={() => onNavigateToEdit()}
-          className="w-16 h-16 bg-blue-600 text-white rounded-2xl shadow-xl shadow-blue-600/30 flex items-center justify-center self-end active:scale-95 transition-all hover:bg-blue-700 hover:rotate-90"
+          className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 text-white rounded-2xl shadow-2xl shadow-blue-600/40 flex items-center justify-center self-end active:scale-90 transition-all hover:scale-105 hover:shadow-blue-600/50 group border border-white/20"
+          title="新增施工路段"
         >
-          <Plus className="w-8 h-8" />
+          <Plus className="w-7 h-7 sm:w-8 sm:h-8 group-hover:rotate-90 transition-transform duration-300" />
         </button>
       </div>
       </div>

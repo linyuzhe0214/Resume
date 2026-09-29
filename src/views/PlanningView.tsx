@@ -34,25 +34,8 @@ export default function PlanningView({
   highlightSegmentId,
   onHighlightClear,
 }: PlanningViewProps) {
-  const mainlineHistoryHeader = (
-    <header className="flex items-center justify-between px-4 sm:px-6 py-3 bg-[#00488d] shadow-lg z-[60] relative">
-      <h1 className="text-base sm:text-lg font-black tracking-tight text-white leading-none">
-        高速公路路巡系統
-      </h1>
-      <div className="text-right">
-        <div className="text-xl font-mono font-black text-white tracking-tighter leading-none">
-          {format(currentTime, 'HH:mm:ss')}
-        </div>
-        <div className="text-[10px] text-blue-200 font-bold tracking-widest opacity-80">
-          {format(currentTime, 'yyyy-MM-dd')}
-        </div>
-      </div>
-    </header>
-  );
-
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col">
-      {mainlineHistoryHeader}
+    <div className="h-screen w-screen overflow-hidden">
       <MainlineHistory
         title="路面整修規劃"
         segments={planningSegments}

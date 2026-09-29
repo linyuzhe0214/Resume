@@ -157,10 +157,10 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
             onClick={handleSave} 
             disabled={!!validationError}
             className={cn(
-              "px-6 py-2.5 rounded-2xl text-sm font-black shadow-lg transition-all active:scale-95",
+              "px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black shadow-lg transition-all active:scale-95",
               validationError 
                 ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" 
-                : "bg-blue-600 text-white shadow-blue-600/20 hover:bg-blue-700"
+                : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700"
             )}
           >
             儲存
@@ -396,53 +396,62 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
             <div className="space-y-3">
               {formData.pavementLayers.length > 0 ? (
                 formData.pavementLayers.map((layer, index) => {
-                  const colors = ['bg-slate-400', 'bg-slate-500', 'bg-slate-600', 'bg-slate-700', 'bg-slate-800'];
-                  const colorClass = colors[index % colors.length];
+                  const layerGradients = [
+                    'from-slate-700 to-slate-800 border-slate-600/40',
+                    'from-slate-600 to-slate-700 border-slate-500/40',
+                    'from-slate-500 to-slate-600 border-slate-400/40',
+                    'from-stone-600 to-stone-700 border-stone-500/40',
+                    'from-zinc-600 to-zinc-700 border-zinc-500/40',
+                  ];
+                  const gradientClass = layerGradients[index % layerGradients.length];
                   const typeAbbr = layer.type.split('(')[0].trim();
 
                   return (
                     <div 
                       key={layer.id || index}
                       className={cn(
-                        "relative h-16 w-full flex items-center justify-between px-6 rounded-2xl shadow-sm border border-white/10 overflow-hidden",
-                        colorClass
+                        "relative h-18 sm:h-20 w-full flex items-center justify-between px-5 sm:px-6 rounded-2xl shadow-sm border bg-gradient-to-r text-white transition-all overflow-hidden",
+                        gradientClass
                       )}
                     >
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-white/50 uppercase tracking-widest leading-none mb-1">LAYER {index + 1}</span>
-                        <span className="font-black text-lg text-white leading-none">
+                      <div className="flex flex-col z-10">
+                        <span className="text-[9px] font-black text-white/60 uppercase tracking-widest leading-none mb-1">LAYER {index + 1}</span>
+                        <span className="font-black text-base sm:text-lg text-white leading-tight">
                           {typeAbbr}
                         </span>
-                        <span className="text-[10px] font-bold text-white/60 mt-1">
+                        <span className="text-[11px] font-bold text-white/70 mt-1 font-mono">
                           施作: {formatMonth(layer.month)}
                         </span>
                       </div>
                       
-                      <div className="flex items-baseline gap-1 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
-                        <span className="text-xl font-black text-white">{layer.thickness.toFixed(1)}</span>
-                        <span className="text-[10px] font-bold text-white/70">cm</span>
+                      <div className="flex items-baseline gap-1 bg-black/25 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 z-10 shadow-inner">
+                        <span className="text-xl sm:text-2xl font-mono font-black text-white">{layer.thickness.toFixed(1)}</span>
+                        <span className="text-xs font-bold text-white/70">cm</span>
                       </div>
+
+                      {/* Subtle road texture dots */}
+                      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:8px_8px] pointer-events-none" />
                     </div>
                   );
                 })
               ) : (
-                <div className="h-32 w-full flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl text-slate-400 gap-2">
+                <div className="h-32 w-full flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl text-slate-400 gap-2 bg-slate-50/50">
                   <Edit2 size={24} />
-                  <span className="text-sm font-black uppercase tracking-widest">尚未設定鋪面層</span>
+                  <span className="text-sm font-black tracking-wide">尚未設定鋪面層 (點擊設定)</span>
                 </div>
               )}
             </div>
             
             <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">TOTAL THICKNESS</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">TOTAL THICKNESS</span>
                 <span className="text-xs font-bold text-slate-600">總設計厚度</span>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-5xl font-black text-blue-600 tracking-tighter">
+              <div className="flex items-baseline gap-1.5 px-4 py-2 bg-blue-50 border border-blue-100 rounded-2xl">
+                <span className="text-4xl font-mono font-black text-blue-600 tracking-tight">
                   {totalThickness.toFixed(1)} 
                 </span>
-                <span className="text-sm font-black text-blue-400 uppercase">cm</span>
+                <span className="text-xs font-black text-blue-500 uppercase">cm</span>
               </div>
             </div>
           </div>

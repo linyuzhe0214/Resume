@@ -35,10 +35,10 @@ export default function MileageInput({ value, onChange, label }: MileageInputPro
 
   return (
     <div className="flex-1 space-y-1.5">
-      <label className="text-[10px] font-bold uppercase tracking-[0.05rem] text-slate-500 ml-1">{label}</label>
+      <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 ml-1">{label}</label>
       <div className={cn(
-        "bg-slate-50 border rounded-xl px-4 py-3 text-slate-800 font-bold text-lg flex items-center transition-all",
-        isFocused ? "border-[#005fb8] ring-2 ring-[#005fb8]/10" : "border-slate-200"
+        "bg-slate-50 border rounded-2xl px-4 py-3 text-slate-800 font-bold font-mono text-base sm:text-lg flex items-center transition-all shadow-2xs",
+        isFocused ? "border-blue-600 ring-4 ring-blue-500/10 bg-white" : "border-slate-200 hover:border-slate-300"
       )}>
         <input 
           type="text" 
@@ -46,7 +46,7 @@ export default function MileageInput({ value, onChange, label }: MileageInputPro
           onChange={handleChange}
           onFocus={() => setIsFocused(true)}
           onBlur={handleBlur}
-          className="bg-transparent outline-none w-full"
+          className="bg-transparent outline-none w-full placeholder:text-slate-300"
           placeholder="例如: 166k+587"
         />
       </div>
