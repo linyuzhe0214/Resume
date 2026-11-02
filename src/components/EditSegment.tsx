@@ -134,7 +134,7 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
       {/* TopAppBar */}
       <header className="bg-white/90 backdrop-blur-md sticky top-0 z-50 shadow-sm border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 h-16 w-full">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="flex items-center justify-center w-10 h-10 rounded-2xl hover:bg-slate-100 transition-all active:scale-90">
+          <button onClick={onBack} className="flex items-center justify-center w-10 h-10 rounded-2xl hover:bg-slate-100 transition-colors duration-150 active:scale-[0.93]">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </button>
           <div className="flex flex-col">
@@ -148,7 +148,7 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
           {segment && onDelete && (
             <button 
               onClick={() => setShowDeleteConfirm(true)} 
-              className="w-10 h-10 flex items-center justify-center rounded-2xl text-red-500 hover:bg-red-50 transition-all active:scale-90"
+              className="w-10 h-10 flex items-center justify-center rounded-2xl text-red-500 hover:bg-red-50 transition-colors duration-150 active:scale-[0.93]"
             >
               <Trash2 className="w-5 h-5" />
             </button>
@@ -157,7 +157,7 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
             onClick={handleSave} 
             disabled={!!validationError}
             className={cn(
-              "px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black shadow-lg transition-all active:scale-95",
+              "px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black shadow-md transition-[transform,opacity] duration-150 active:scale-[0.97]",
               validationError 
                 ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" 
                 : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700"
@@ -180,7 +180,7 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
               {segment && !isPlanning && onMoveToPlanning && (
                 <button 
                   onClick={() => onMoveToPlanning(segment)} 
-                  className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-colors active:scale-90"
+                  className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-colors duration-150 active:scale-[0.93]"
                   title="移至整修規劃"
                 >
                   <HardHat size={18} />
@@ -189,7 +189,7 @@ export default function EditSegment({ segment, isPlanning, laneOptions = [], all
               {segment && onCopy && (
                 <button 
                   onClick={onCopy} 
-                  className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors active:scale-90"
+                  className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors duration-150 active:scale-[0.93]"
                   title="複製新增"
                 >
                   <Copy size={18} />

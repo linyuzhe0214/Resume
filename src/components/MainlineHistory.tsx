@@ -541,7 +541,7 @@ export default function MainlineHistory({
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setIsLaneSettingsOpen(true)}
-                className="flex items-center gap-2 p-2.5 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700 active:scale-95"
+                className="flex items-center gap-2 p-2.5 sm:px-3 sm:py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-[transform,background-color] duration-150 ease-out shadow-xs text-slate-700 active:scale-[0.97]"
                 title="車道編輯"
               >
                 <Settings className="w-5 h-5 sm:w-3.5 sm:h-3.5" /> 
@@ -549,7 +549,7 @@ export default function MainlineHistory({
               </button>
               <button 
                 onClick={() => { setExportStart(''); setExportEnd(''); setShowExportModal(true); }}
-                className="hidden xl:flex items-center gap-2 p-2.5 xl:px-3 xl:py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm text-slate-700 active:scale-95"
+                className="hidden xl:flex items-center gap-2 p-2.5 xl:px-3 xl:py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-[transform,background-color] duration-150 ease-out shadow-xs text-slate-700 active:scale-[0.97]"
                 title="匯出"
               >
                 <Download className="w-5 h-5 xl:w-3.5 xl:h-3.5" /> 
@@ -569,7 +569,7 @@ export default function MainlineHistory({
               key={h.name}
               onClick={() => onActiveHighwayChange(h.name)}
               className={cn(
-                "whitespace-nowrap px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all duration-200 active:scale-95",
+                "whitespace-nowrap px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-[transform,background-color,box-shadow] duration-150 ease-out active:scale-[0.97]",
                 activeHighway === h.name 
                   ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/25 ring-1 ring-white/20" 
                   : "bg-slate-100/90 text-slate-600 hover:bg-slate-200/80 hover:text-slate-800"

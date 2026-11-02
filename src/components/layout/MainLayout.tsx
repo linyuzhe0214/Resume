@@ -1,5 +1,6 @@
 import React from 'react';
-import { Layers, Route, Split, HardHat } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Layers, Route, Split, HardHat, Check, AlertCircle } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import ConfirmDialog from '../ConfirmDialog';
@@ -44,7 +45,7 @@ export function MainLayout({
   onCancelDeleteLane,
 }: MainLayoutProps) {
   return (
-    <div className="relative">
+    <div className="relative min-h-screen">
       {children}
 
       {/* ── Global Overlays ── */}
@@ -66,52 +67,51 @@ export function MainLayout({
         onCancel={onCancelDeleteLane}
       />
 
-      {/* ── Toast ── */}
-      {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] anim-slide-up">
-          <div
-            className={cn(
-              'px-6 py-3 rounded-2xl shadow-2xl text-white font-bold text-sm flex items-center gap-2.5 border',
-              toast.type === 'success'
-                ? 'bg-emerald-500 border-emerald-400/30 shadow-emerald-500/20'
-                : toast.type === 'error'
-                ? 'bg-red-500 border-red-400/30 shadow-red-500/20'
-                : 'bg-slate-800 border-slate-700/30 shadow-slate-800/20',
-            )}
+      {/* ── Sonner-inspired Polished Toast ── */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key={toast.message}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.97 }}
+            transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }}
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-[200] pointer-events-none"
           >
-            {toast.type === 'success' && (
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            )}
-            {toast.type === 'error' && (
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
-              </svg>
-            )}
-            {toast.message}
-          </div>
-        </div>
-      )}
+            <div
+              className={cn(
+                'px-5 py-2.5 rounded-2xl shadow-xl text-white font-bold text-xs sm:text-sm flex items-center gap-2.5 border backdrop-blur-xl pointer-events-auto',
+                toast.type === 'success'
+                  ? 'bg-emerald-600/95 border-emerald-400/40 shadow-emerald-950/20 shadow-lg'
+                  : toast.type === 'error'
+                  ? 'bg-rose-600/95 border-rose-400/40 shadow-rose-950/20 shadow-lg'
+                  : 'bg-slate-900/95 border-slate-700/50 shadow-slate-950/25 shadow-lg',
+              )}
+            >
+              {toast.type === 'success' && <Check className="w-4 h-4 shrink-0 stroke-[2.5]" />}
+              {toast.type === 'error' && <AlertCircle className="w-4 h-4 shrink-0 stroke-[2.5]" />}
+              <span>{toast.message}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* ── Bottom Navigation ── */}
+      {/* ── Emil-style Floating Pill Bottom Navigation ── */}
       {subPage === 'none' && (
         <footer
           className={cn(
             'fixed bottom-0 left-0 w-full z-[100]',
-            // Mobile: full-width bottom bar
-            'pb-[env(safe-area-inset-bottom)] pt-1',
+            // Mobile: full-width bottom bar with safe area padding
+            'pb-[env(safe-area-inset-bottom)] pt-1 px-3',
             // Desktop: floating pill
-            'md:w-auto md:left-1/2 md:-translate-x-1/2 md:bottom-6 md:rounded-2xl md:px-2 md:py-2 md:pb-2',
+            'md:w-auto md:left-1/2 md:-translate-x-1/2 md:bottom-5 md:rounded-2xl md:p-1.5 md:pb-1.5',
             // Shared styles
             'flex justify-around md:justify-center md:gap-1 items-center',
-            'bg-white/85 md:bg-white/80 backdrop-blur-2xl backdrop-saturate-150',
-            'border-t md:border border-slate-200/60',
-            'shadow-[0_-2px_20px_rgba(0,0,0,0.06)] md:shadow-[0_8px_40px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)]',
-            'transition-all duration-300'
+            'bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl backdrop-saturate-180',
+            'border-t md:border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.08)]',
           )}
         >
-          {NAV_ITEMS.map(({ tab, icon: Icon, label, engLabel }) => {
+          {NAV_ITEMS.map(({ tab, icon: Icon, label }) => {
             const isActive = activeTab === tab;
             return (
               <button
@@ -119,26 +119,32 @@ export function MainLayout({
                 onClick={() => onNavigate(tab)}
                 className={cn(
                   'relative flex flex-col md:flex-row md:gap-2 items-center justify-center',
-                  'rounded-xl md:rounded-xl px-4 py-2 md:px-5 md:py-2.5',
-                  'transition-all duration-200 tap-highlight-none btn-press',
-                  isActive
-                    ? 'text-white'
-                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100/60',
+                  'rounded-xl px-4 py-2 md:px-4 md:py-2 select-none outline-none',
+                  'transition-colors duration-150 btn-press tap-highlight-none',
+                  isActive ? 'text-white' : 'text-slate-500 hover:text-slate-800',
                 )}
               >
-                {/* Active background pill */}
+                {/* Motion Shared Layout Background Pill */}
                 {isActive && (
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-600/25 transition-all duration-300" />
+                  <motion.div
+                    layoutId="active-nav-pill"
+                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 shadow-md shadow-blue-600/25"
+                  />
                 )}
                 <div className="relative z-10 flex flex-col md:flex-row items-center md:gap-2">
-                  <Icon className={cn(
-                    'w-5 h-5 md:w-[18px] md:h-[18px] transition-transform duration-200',
-                    isActive && 'drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]'
-                  )} />
-                  <span className={cn(
-                    'text-[10px] md:text-xs font-bold tracking-wide mt-0.5 md:mt-0',
-                    isActive && 'font-extrabold'
-                  )}>
+                  <Icon
+                    className={cn(
+                      'w-5 h-5 md:w-4 md:h-4 transition-transform duration-150',
+                      isActive ? 'scale-105' : 'opacity-80',
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'text-[10px] md:text-xs tracking-tight mt-0.5 md:mt-0',
+                      isActive ? 'font-bold' : 'font-medium',
+                    )}
+                  >
                     {label}
                   </span>
                 </div>

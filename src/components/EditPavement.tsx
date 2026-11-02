@@ -48,7 +48,7 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
         <div className="flex items-center gap-3">
           <button 
             onClick={onBack} 
-            className="w-10 h-10 flex items-center justify-center rounded-2xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 active:scale-90 duration-150 transition-all border border-slate-200/60 shadow-2xs"
+            className="w-10 h-10 flex items-center justify-center rounded-2xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.93] transition-colors duration-150 border border-slate-200/60 shadow-2xs"
             title="返回"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -60,7 +60,7 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
         </div>
         <button 
           onClick={() => onSave(layers)}
-          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm tracking-wide px-5 py-2.5 rounded-2xl shadow-md shadow-blue-600/25 active:scale-95 transition-all"
+          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm tracking-wide px-5 py-2.5 rounded-2xl shadow-md shadow-blue-600/25 active:scale-[0.97] transition-[transform,background-color] duration-150"
         >
           儲存結構
         </button>
@@ -111,7 +111,7 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
                   <button
                     onClick={() => moveLayer(index, 'up')}
                     disabled={index === 0}
-                    className="text-slate-400 hover:text-blue-600 active:scale-90 transition-all p-1.5 rounded-lg hover:bg-white disabled:opacity-20 disabled:cursor-not-allowed"
+                    className="text-slate-400 hover:text-blue-600 active:scale-[0.9] transition-colors duration-150 p-1.5 rounded-lg hover:bg-white disabled:opacity-20 disabled:cursor-not-allowed"
                     title="上移"
                   >
                     <ArrowUp className="w-4 h-4" />
@@ -119,14 +119,14 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
                   <button
                     onClick={() => moveLayer(index, 'down')}
                     disabled={index === layers.length - 1}
-                    className="text-slate-400 hover:text-blue-600 active:scale-90 transition-all p-1.5 rounded-lg hover:bg-white disabled:opacity-20 disabled:cursor-not-allowed"
+                    className="text-slate-400 hover:text-blue-600 active:scale-[0.9] transition-colors duration-150 p-1.5 rounded-lg hover:bg-white disabled:opacity-20 disabled:cursor-not-allowed"
                     title="下移"
                   >
                     <ArrowDown className="w-4 h-4" />
                   </button>
                   <button 
                     onClick={() => handleDeleteLayer(layer.id)}
-                    className="text-slate-400 hover:text-rose-600 active:scale-90 transition-all p-1.5 rounded-lg hover:bg-rose-50 ml-1"
+                    className="text-slate-400 hover:text-rose-600 active:scale-[0.9] transition-colors duration-150 p-1.5 rounded-lg hover:bg-rose-50 ml-1"
                     title="刪除圖層"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -214,7 +214,7 @@ export default function EditPavement({ layers: initialLayers, defaultMonth, onSa
           {/* Add Button */}
           <button 
             onClick={handleAddLayer}
-            className="w-full py-5 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-50 hover:border-[#005fb8]/30 transition-all active:scale-[0.98] group"
+            className="w-full py-5 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-50 hover:border-[#005fb8]/30 transition-[transform,border-color,background-color] duration-150 active:scale-[0.98] group"
           >
             <Plus className="w-5 h-5 text-slate-300 group-hover:text-[#005fb8]" />
             <span className="font-black tracking-tight group-hover:text-[#005fb8]">新增圖層結構</span>

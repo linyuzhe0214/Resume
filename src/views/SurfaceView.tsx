@@ -152,7 +152,7 @@ export default function SurfaceView({
     return (
       <div 
         onClick={() => setSelectedHistorySeg(historySeg)}
-        className="w-full flex-1 flex flex-col items-center justify-between p-3 rounded-2xl border shadow-sm transition-all duration-200 cursor-pointer hover:scale-[1.03] hover:shadow-lg active:scale-95 group relative overflow-hidden"
+        className="w-full flex-1 flex flex-col items-center justify-between p-3 rounded-2xl border shadow-xs transition-[transform,box-shadow] duration-150 ease-out cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:scale-[0.97] group relative overflow-hidden"
         style={{ 
           backgroundColor: info.color || '#f8fafc',
           borderColor: info.color ? 'rgba(0,0,0,0.12)' : '#e2e8f0',
@@ -260,7 +260,7 @@ export default function SurfaceView({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative z-10">
             <div className="relative group">
               <select
-                className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-black appearance-none text-center transition-all shadow-sm cursor-pointer"
+                className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-black appearance-none text-center transition-[background-color,border-color,box-shadow] duration-150 ease-out shadow-sm cursor-pointer"
                 value={highwayName}
                 onChange={e => {
                   const newHw = e.target.value;
@@ -286,7 +286,7 @@ export default function SurfaceView({
 
             <div className="relative group">
               <select
-                className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-black appearance-none text-center transition-all shadow-sm cursor-pointer"
+                className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 px-4 py-3 outline-none font-black appearance-none text-center transition-[background-color,border-color,box-shadow] duration-150 ease-out shadow-sm cursor-pointer"
                 value={direction}
                 onChange={e => onDirectionChange(e.target.value)}
               >
@@ -310,7 +310,7 @@ export default function SurfaceView({
               </div>
               <input
                 type="text"
-                className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 pl-11 pr-4 py-3 placeholder-blue-200/60 outline-none transition-all font-bold shadow-sm"
+                className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 text-white text-sm rounded-2xl focus:ring-4 focus:ring-white/10 pl-11 pr-4 py-3 placeholder-blue-200/60 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out font-bold shadow-sm"
                 placeholder="搜尋里程 (例: 166k+500)"
                 value={searchQuery}
                 onChange={e => onSearchQueryChange(e.target.value)}
@@ -358,7 +358,7 @@ export default function SurfaceView({
               <button
                 key={mode}
                 className={cn(
-                  'flex-1 py-2.5 text-xs sm:text-sm font-black rounded-xl transition-all active:scale-95',
+                  'flex-1 py-2.5 text-xs sm:text-sm font-black rounded-xl transition-[transform,background-color,color,box-shadow] duration-150 ease-out active:scale-[0.97]',
                   searchMode === mode
                     ? 'bg-white text-blue-700 shadow-md shadow-slate-200/60 ring-1 ring-slate-900/5'
                     : 'text-slate-500 hover:text-slate-800 hover:bg-white/40',

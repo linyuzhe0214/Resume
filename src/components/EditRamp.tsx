@@ -79,23 +79,23 @@ export default function EditRamp({ segment, onChange, onSave, onDelete, onBack, 
       {/* TopAppBar */}
       <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 h-16 shadow-sm border-b border-slate-200">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="text-[#005fb8] hover:bg-black/5 p-2 rounded-full active:scale-95 duration-200 transition-colors">
+          <button onClick={onBack} className="text-[#005fb8] hover:bg-slate-100 p-2 rounded-2xl active:scale-[0.93] duration-150 transition-colors">
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h1 className="font-black text-lg tracking-tight text-[#00488d]">匝道資料編輯 - 功能優化版</h1>
+          <h1 className="font-black text-lg tracking-tight text-slate-900">{segment ? '編輯匝道' : '新增匝道'}</h1>
         </div>
         <div className="flex items-center gap-2">
           {segment && onDelete && (
             <button 
               onClick={() => setShowDeleteConfirm(true)} 
-              className="text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors active:scale-95 duration-150"
+              className="text-red-500 p-2 rounded-2xl hover:bg-red-50 transition-colors active:scale-[0.93] duration-150"
             >
               <Trash2 className="w-5 h-5" />
             </button>
           )}
           <button 
             onClick={() => onSave(formData)}
-            className="text-[#005fb8] font-black text-lg tracking-tight haptic-feedback px-4 py-1"
+            className="px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black shadow-md transition-[transform,background-color] duration-150 active:scale-[0.97] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-blue-600/30"
           >
             儲存
           </button>
