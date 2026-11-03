@@ -200,7 +200,7 @@ export default function SurfaceView({
               <div className="flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse shadow-sm shadow-blue-400/50" />
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-sm">
-                  高速公路路巡系統
+                  國道鋪面履歷管理系統
                 </h1>
               </div>
               <div
